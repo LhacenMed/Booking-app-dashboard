@@ -14,7 +14,17 @@ module.exports = {
         "./node_modules/@heroui/theme/dist/components/(button|snippet|code|input).js",
     ],
     theme: {
-        extend: {},
+        extend: {
+            keyframes: {
+                "float-slow": {
+                    "0%, 100%": { transform: "translateY(0)" },
+                    "50%": { transform: "translateY(-15px)" },
+                },
+            },
+            animation: {
+                "float-slow": "float-slow 4s ease-in-out infinite",
+            },
+        },
     },
     darkMode: "class",
     plugins: [heroui()],

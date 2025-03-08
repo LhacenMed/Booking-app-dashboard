@@ -2,45 +2,53 @@ import { Link } from "@heroui/link";
 import { Snippet } from "@heroui/snippet";
 import { Code } from "@heroui/code";
 import { button as buttonStyles } from "@heroui/theme";
+import { useState } from "react";
 
 import { siteConfig } from "@/config/site";
 import { title, subtitle } from "@/components/primitives";
 import { GithubIcon } from "@/components/icons";
 import DefaultLayout from "@/layouts/default";
 
-import { Card, CardHeader, CardBody, Image, Button, CardFooter } from "@heroui/react";
-
-import { PlaceholdersAndVanishInput } from "@/components/ui/placeholders-and-vanish-input";
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Image,
+  Button,
+  CardFooter,
+} from "@heroui/react";
+import { ShootingStars } from "@/components/ui/shooting-stars";
+import { StarsBackground } from "@/components/ui/stars-background";
+import { CodeWindow } from "@/components/ui/code-window";
+import { TerminalOutput } from "@/components/ui/terminal-output";
 
 export default function IndexPage() {
-  const placeholders = [
-    "What's the first rule of Fight Club?",
-    "Who is Tyler Durden?",
-    "Where is Andrew Laeddis Hiding?",
-    "Write a Javascript method to reverse a string",
-    "How to assemble your own PC?",
-  ];
+  const [code, setCode] = useState('print("Hello World!")');
+  const [output, setOutput] = useState("Hello World!");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(e.target.value);
-  };
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log("submitted");
+  const handleCodeChange = (newCode: string) => {
+    setCode(newCode);
+    setIsLoading(true);
+
+    // Extract the text between quotes and set as output after delay
+    const match = newCode.match(/"([^"]*)"/);
+    if (match) {
+      setTimeout(() => {
+        setOutput(match[1]);
+        setIsLoading(false);
+      }, 2000);
+    }
   };
 
   return (
     <DefaultLayout>
-      <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
+      <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10 md:pt-2">
         <div className="inline-block max-w-lg text-center justify-center">
-          <span className={title()}>Make&nbsp;</span>
-          <span className={title({ color: "violet" })}>beautiful</span>
-          <br />
-          <span className={title()}>
-            websites regardless of your design experience.
-          </span>
+          <span className={title()}>Join digital excellence with&nbsp;</span>
+          <span className={title({ color: "supnum" })}>SupNum</span>
           <div className={subtitle({ class: "mt-4" })}>
-            Beautiful, fast and modern React UI library.
+            High-level training to shape digital experts.
           </div>
         </div>
 
@@ -64,6 +72,22 @@ export default function IndexPage() {
             <GithubIcon size={20} />
             GitHub
           </Link>
+        </div>
+
+        <div className="relative w-full max-w-4xl flex justify-center items-start pb-20 pt-10">
+          <div className="mr-[250px] animate-float-slow">
+            <CodeWindow
+              title="app.py"
+              code={code}
+              onCodeChange={handleCodeChange}
+            />
+          </div>
+          <div
+            className="ml-[550px] mt-[200px] absolute animate-float-slow"
+            style={{ animationDelay: "0.5s" }}
+          >
+            <TerminalOutput output={output} isLoading={isLoading} />
+          </div>
         </div>
 
         <div className="mt-8">
@@ -112,15 +136,9 @@ export default function IndexPage() {
             </Button>
           </CardFooter>
         </Card>
-
-        <div className="h-[40rem] flex flex-col justify-center  items-center px-4">
-          <PlaceholdersAndVanishInput
-            placeholders={placeholders}
-            onChange={handleChange}
-            onSubmit={onSubmit}
-          />
-        </div>
       </section>
+      <ShootingStars />
+      <StarsBackground />
     </DefaultLayout>
   );
 }

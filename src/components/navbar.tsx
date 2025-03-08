@@ -1,7 +1,5 @@
 import { Button } from "@heroui/button";
-import { Kbd } from "@heroui/kbd";
 import { Link } from "@heroui/link";
-import { Input } from "@heroui/input";
 import {
   Navbar as HeroUINavbar,
   NavbarBrand,
@@ -20,31 +18,31 @@ import {
   TwitterIcon,
   GithubIcon,
   DiscordIcon,
-  HeartFilledIcon,
-  SearchIcon,
 } from "@/components/icons";
 import { Logo } from "@/components/icons";
+import { PlaceholdersAndVanishInput } from "./ui/placeholders-and-vanish-input";
 
 export const Navbar = () => {
+  const searchPlaceholders = [
+    "Try searching for features like 'search'",
+    "Try searching for features like 'search'",
+    "Try searching for features like 'search'",
+    "Try searching for features like 'search'",
+  ];
+
   const searchInput = (
-    <Input
-      aria-label="Search"
-      classNames={{
-        inputWrapper: "bg-default-100",
-        input: "text-sm",
-      }}
-      endContent={
-        <Kbd className="hidden lg:inline-block" keys={["command"]}>
-          K
-        </Kbd>
-      }
-      labelPlacement="outside"
-      placeholder="Search..."
-      startContent={
-        <SearchIcon className="text-base text-default-400 pointer-events-none flex-shrink-0" />
-      }
-      type="search"
-    />
+    <div className="w-full max-w-xs">
+      <PlaceholdersAndVanishInput
+        placeholders={searchPlaceholders}
+        onChange={(e) => {
+          // Handle search input change
+        }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          // Handle search submit
+        }}
+      />
+    </div>
   );
 
   return (
@@ -62,7 +60,7 @@ export const Navbar = () => {
         </NavbarBrand>
         <div className="hidden lg:flex gap-4 justify-start ml-2">
           {siteConfig.navItems.map((item) => (
-            <NavbarItem key={item.href} >
+            <NavbarItem key={item.href}>
               <Link
                 className={clsx(
                   linkStyles({ color: "foreground" }),
