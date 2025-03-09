@@ -7,6 +7,7 @@ import React, {
   RefObject,
   useCallback,
 } from "react";
+import gsap from "gsap";
 
 interface StarProps {
   x: number;
@@ -14,6 +15,11 @@ interface StarProps {
   radius: number;
   opacity: number;
   twinkleSpeed: number | null;
+  initialX: number;
+  initialY: number;
+  parallaxFactor: number;
+  currentX: number;
+  currentY: number;
 }
 
 interface StarBackgroundProps {
@@ -23,6 +29,7 @@ interface StarBackgroundProps {
   minTwinkleSpeed?: number;
   maxTwinkleSpeed?: number;
   className?: string;
+  parallaxStrength?: number;
 }
 
 export const StarsBackground: React.FC<StarBackgroundProps> = ({
@@ -32,10 +39,13 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
   minTwinkleSpeed = 0.5,
   maxTwinkleSpeed = 1,
   className,
+  parallaxStrength = 2,
 }) => {
   const [stars, setStars] = useState<StarProps[]>([]);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const canvasRef: RefObject<HTMLCanvasElement> =
     useRef<HTMLCanvasElement>(null);
+  const starsRef = useRef<StarProps[]>([]);
 
   const generateStars = useCallback(
     (width: number, height: number): StarProps[] => {
@@ -44,15 +54,22 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
       return Array.from({ length: numStars }, () => {
         const shouldTwinkle =
           allStarsTwinkle || Math.random() < twinkleProbability;
+        const x = Math.random() * width;
+        const y = Math.random() * height;
         return {
-          x: Math.random() * width,
-          y: Math.random() * height,
+          x,
+          y,
+          initialX: x,
+          initialY: y,
+          currentX: x,
+          currentY: y,
           radius: Math.random() * 0.05 + 0.5,
           opacity: Math.random() * 0.5 + 0.5,
           twinkleSpeed: shouldTwinkle
             ? minTwinkleSpeed +
               Math.random() * (maxTwinkleSpeed - minTwinkleSpeed)
             : null,
+          parallaxFactor: Math.random() * 0.5 + 0.5,
         };
       });
     },
@@ -65,6 +82,32 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
     ]
   );
 
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const y = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+
+        // Update each star's position with GSAP
+        starsRef.current.forEach((star, index) => {
+          const offsetX = x * parallaxStrength * star.parallaxFactor * 100;
+          const offsetY = y * parallaxStrength * star.parallaxFactor * 100;
+
+          gsap.to(star, {
+            currentX: star.initialX + offsetX,
+            currentY: star.initialY + offsetY,
+            duration: 1,
+            ease: "power2.out",
+          });
+        });
+
+        setMousePosition({ x, y });
+      }
+    },
+    [parallaxStrength]
+  );
+
   useEffect(() => {
     const updateStars = () => {
       if (canvasRef.current) {
@@ -75,11 +118,14 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
         const { width, height } = canvas.getBoundingClientRect();
         canvas.width = width;
         canvas.height = height;
-        setStars(generateStars(width, height));
+        const newStars = generateStars(width, height);
+        setStars(newStars);
+        starsRef.current = newStars;
       }
     };
 
     updateStars();
+    window.addEventListener("mousemove", handleMouseMove);
 
     const resizeObserver = new ResizeObserver(updateStars);
     if (canvasRef.current) {
@@ -87,18 +133,12 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
     }
 
     return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
       if (canvasRef.current) {
         resizeObserver.unobserve(canvasRef.current);
       }
     };
-  }, [
-    starDensity,
-    allStarsTwinkle,
-    twinkleProbability,
-    minTwinkleSpeed,
-    maxTwinkleSpeed,
-    generateStars,
-  ]);
+  }, [generateStars, handleMouseMove]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -111,9 +151,9 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
 
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      stars.forEach((star) => {
+      starsRef.current.forEach((star) => {
         ctx.beginPath();
-        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.arc(star.currentX, star.currentY, star.radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
         ctx.fill();
 
@@ -132,7 +172,7 @@ export const StarsBackground: React.FC<StarBackgroundProps> = ({
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [stars]);
+  }, []);
 
   return (
     <canvas

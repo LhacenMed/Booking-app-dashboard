@@ -27,6 +27,8 @@ export default function IndexPage() {
   const [output, setOutput] = useState("Hello World!");
   const [isLoading, setIsLoading] = useState(false);
 
+  
+
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
     setIsLoading(true);
@@ -87,6 +89,66 @@ export default function IndexPage() {
             style={{ animationDelay: "0.5s" }}
           >
             <TerminalOutput output={output} isLoading={isLoading} />
+          </div>
+        </div>
+
+        {/* Features Section */}
+        <div className="w-full max-w-5xl mx-auto px-6 py-16">
+          <div className="text-center mb-12">
+            <h2 className="text-5xl font-bold mb-6">Fast. Simple. Scalable.</h2>
+            <p className="text-xl text-foreground/80 mb-8">
+              Notebooks include a{" "}
+              <span className="font-semibold">FREE GPU plan</span> and{" "}
+              <span className="font-semibold">FREE access to IPUs!</span>
+            </p>
+            <div className="flex gap-4 justify-center mb-16">
+              <Button
+                size="lg"
+                color="primary"
+                variant="shadow"
+                radius="full"
+                className="font-semibold"
+              >
+                Get started →
+              </Button>
+              <Button
+                size="lg"
+                variant="bordered"
+                radius="full"
+                className="font-semibold"
+              >
+                Read documentation
+              </Button>
+            </div>
+          </div>
+
+          {/* Partner Logos */}
+          <div className="flex items-center justify-center gap-12 opacity-60">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-thin">+</span>
+              <span className="text-xl">Galaxy</span>
+            </div>
+            <div className="h-8">
+              <img
+                src="/images/shippabo.png"
+                alt="Shippabo"
+                className="h-full object-contain grayscale"
+              />
+            </div>
+            <div className="h-8">
+              <img
+                src="/images/stratum-ai.png"
+                alt="Stratum AI"
+                className="h-full object-contain grayscale"
+              />
+            </div>
+            <div className="h-8">
+              <img
+                src="/images/omnyx.png"
+                alt="Omnyx"
+                className="h-full object-contain grayscale"
+              />
+            </div>
           </div>
         </div>
 

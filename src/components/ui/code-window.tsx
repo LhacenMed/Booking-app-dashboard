@@ -146,7 +146,7 @@ export const CodeWindow: React.FC<CodeWindowProps> = ({
               delay={0}
               closeDelay={500}
               showArrow={true}
-              color={isRefreshing ? "default" : "primary"}
+              color={isRefreshing ? "default" : "default"}
               className="select-none"
             >
               <input
