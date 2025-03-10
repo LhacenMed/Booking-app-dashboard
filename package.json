@@ -10,6 +10,8 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@cloudinary/react": "^1.14.1",
+        "@cloudinary/url-gen": "^1.21.0",
         "@heroui/button": "2.2.13",
         "@heroui/code": "2.2.10",
         "@heroui/dropdown": "2.3.13",
@@ -25,6 +27,7 @@
         "@heroui/use-theme": "2.1.5",
         "@react-aria/visually-hidden": "3.8.19",
         "@react-types/shared": "3.27.0",
+        "cloudinary": "^2.5.1",
         "clsx": "^2.1.1",
         "firebase": "^11.4.0",
         "framer-motion": "^11.15.0",
