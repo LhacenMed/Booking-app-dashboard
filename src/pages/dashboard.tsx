@@ -28,7 +28,7 @@ export default function DashboardPage() {
 
   return (
     <DefaultLayout>
-      <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
         <Card className="w-full max-w-2xl p-6">
           <CardHeader className="flex flex-col gap-2 items-center">
             <h1 className="text-2xl font-bold">Dashboard</h1>
