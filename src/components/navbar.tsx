@@ -16,18 +16,64 @@ import {
 } from "@heroui/react";
 import { link as linkStyles } from "@heroui/theme";
 import clsx from "clsx";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../../FirebaseConfig";
+import { useNavigate } from "react-router-dom";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
-import {
-  TwitterIcon,
-  GithubIcon,
-  DiscordIcon,
-} from "@/components/icons";
+import { TwitterIcon, GithubIcon, DiscordIcon } from "@/components/icons";
 import { Logo } from "@/components/icons";
 import { PlaceholdersAndVanishInput } from "./ui/placeholders-and-vanish-input";
 
+interface CompanyData {
+  name: string;
+  email: string;
+  logo: {
+    url: string;
+  };
+}
+
 export const Navbar = () => {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [companyData, setCompanyData] = useState<CompanyData | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const companyDoc = await getDoc(doc(db, "companies", user.uid));
+          if (companyDoc.exists()) {
+            setCompanyData({
+              name: companyDoc.data().name,
+              email: companyDoc.data().email,
+              logo: companyDoc.data().logo,
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching company data:", error);
+        }
+      } else {
+        setCompanyData(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
   const searchPlaceholders = [
     "Try searching for features like 'search'",
     "Try searching for features like 'search'",
@@ -51,27 +97,7 @@ export const Navbar = () => {
   );
 
   return (
-    <HeroUINavbar
-      maxWidth="xl"
-      position="sticky"
-      isBordered
-      classNames={{
-        item: [
-          "flex",
-          "relative",
-          "h-full",
-          "items-center",
-          "data-[active=true]:after:content-['']",
-          "data-[active=true]:after:absolute",
-          "data-[active=true]:after:bottom-0",
-          "data-[active=true]:after:left-0",
-          "data-[active=true]:after:right-0",
-          "data-[active=true]:after:h-[2px]",
-          "data-[active=true]:after:rounded-[2px]",
-          "data-[active=true]:after:bg-primary",
-        ],
-      }}
-    >
+    <HeroUINavbar maxWidth="xl" position="sticky" isBordered>
       <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
         <NavbarBrand className="gap-3 max-w-fit">
           <Link
@@ -118,7 +144,7 @@ export const Navbar = () => {
           <ThemeSwitch />
         </NavbarItem>
         <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
-        <NavbarItem className="hidden md:flex">
+        {!companyData && <NavbarItem className="hidden md:flex">
           <Button
             as={Link}
             className="text-md font-normal text-default-600 bg-default-100"
@@ -128,7 +154,7 @@ export const Navbar = () => {
           >
             Login
           </Button>
-        </NavbarItem>
+        </NavbarItem>}
       </NavbarContent>
 
       <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
@@ -163,36 +189,66 @@ export const Navbar = () => {
       </NavbarMenu>
 
       <NavbarContent as="div" justify="center">
-        <Dropdown placement="bottom-end">
-          <DropdownTrigger>
-            <Avatar
-              isBordered
-              as="button"
-              className="transition-transform"
-              color="primary"
-              name="Jason Hughes"
-              size="sm"
-              src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
-            />
-          </DropdownTrigger>
-          <DropdownMenu aria-label="Profile Actions" variant="flat">
-            <DropdownItem key="profile" className="h-14 gap-2">
-              <p className="font-semibold">Signed in as</p>
-              <p className="font-semibold text-primary">
-                2l7acenmed653@gmail.com
-              </p>
-            </DropdownItem>
-            <DropdownItem key="settings">My Settings</DropdownItem>
-            <DropdownItem key="team_settings">Team Settings</DropdownItem>
-            <DropdownItem key="analytics">Analytics</DropdownItem>
-            <DropdownItem key="system">System</DropdownItem>
-            <DropdownItem key="configurations">Configurations</DropdownItem>
-            <DropdownItem key="help_and_feedback">Help & Feedback</DropdownItem>
-            <DropdownItem key="logout" color="danger">
-              Log Out
-            </DropdownItem>
-          </DropdownMenu>
-        </Dropdown>
+        {!isLoading && (
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              {companyData ? (
+                <Avatar
+                  isBordered
+                  as="button"
+                  className="transition-transform"
+                  color="warning"
+                  name={companyData.name}
+                  size="sm"
+                  src={companyData.logo.url}
+                />
+              ) : (
+                <Avatar
+                  isDisabled
+                  isBordered
+                  as="button"
+                  className="transition-transform"
+                  color="primary"
+                  name=""
+                  size="sm"
+                  src=""
+                />
+              )}
+            </DropdownTrigger>
+            {companyData ? (
+              <DropdownMenu aria-label="Profile Actions" variant="flat">
+                <DropdownItem key="profile" className="h-14 gap-2">
+                  <p className="font-semibold">Signed in as</p>
+                  <p className="font-semibold text-primary">
+                    {companyData.email}
+                  </p>
+                </DropdownItem>
+                <DropdownItem key="company_profile">
+                  Company Profile
+                </DropdownItem>
+                <DropdownItem key="settings">Settings</DropdownItem>
+                <DropdownItem key="help">Help & Support</DropdownItem>
+                <DropdownItem
+                  key="logout"
+                  color="danger"
+                  onPress={handleLogout}
+                >
+                  Log Out
+                </DropdownItem>
+              </DropdownMenu>
+            ) : (
+              <DropdownMenu aria-label="Profile Actions" variant="flat">
+                <DropdownItem
+                  key="login"
+                  className="h-10"
+                  onPress={() => navigate("/login")}
+                >
+                  <p className="font-semibold">Login</p>
+                </DropdownItem>
+              </DropdownMenu>
+            )}
+          </Dropdown>
+        )}
       </NavbarContent>
     </HeroUINavbar>
   );

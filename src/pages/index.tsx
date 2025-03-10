@@ -54,16 +54,6 @@ export default function IndexPage() {
 
         <div className="flex gap-3">
           <Link
-            href="/login"
-            className={buttonStyles({
-              color: "primary",
-              radius: "full",
-              variant: "shadow",
-            })}
-          >
-            Login
-          </Link>
-          <Link
             isExternal
             className={buttonStyles({
               color: "primary",
