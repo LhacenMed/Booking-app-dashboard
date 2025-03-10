@@ -34,7 +34,7 @@ export const Navbar = () => {
     <div className="w-full max-w-xs">
       <PlaceholdersAndVanishInput
         placeholders={searchPlaceholders}
-        onChange={(e) => {
+        onChange={() => {
           // Handle search input change
         }}
         onSubmit={(e) => {
@@ -95,10 +95,9 @@ export const Navbar = () => {
         <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
         <NavbarItem className="hidden md:flex">
           <Button
-            isExternal
             as={Link}
-            className="text-sm font-normal text-default-600 bg-default-100"
-            href={siteConfig.links.sponsor}
+            className="text-md font-normal text-default-600 bg-default-100"
+            href={siteConfig.links.login}
             // startContent={<HeartFilledIcon className="text-danger" />}
             variant="flat"
           >

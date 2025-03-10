@@ -9,10 +9,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     setError("");
 
     try {
@@ -22,6 +24,7 @@ export default function LoginPage() {
         password
       );
       // Signed in successfully
+      setIsLoading(false);
       const user = userCredential.user;
       console.log("Logged in user:", user);
       navigate("/dashboard"); // Navigate to dashboard after login
@@ -30,27 +33,34 @@ export default function LoginPage() {
       switch (error.code) {
         case "auth/invalid-email":
           errorMessage = "Invalid email address";
+          setIsLoading(false);
           break;
         case "auth/user-disabled":
           errorMessage = "This account has been disabled";
+          setIsLoading(false);
           break;
         case "auth/user-not-found":
           errorMessage = "User not found";
+          setIsLoading(false);
           break;
         case "auth/wrong-password":
           errorMessage = "Incorrect password";
+          setIsLoading(false);
           break;
         default:
           errorMessage = error.message;
+          setIsLoading(false);
+          break;
       }
       setError(errorMessage);
+      setIsLoading(false);
       console.error("Login error:", error.message);
     }
   };
 
   return (
     <DefaultLayout>
-      <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
         <Card className="w-full max-w-md p-6">
           <CardHeader className="flex flex-col gap-2 items-center">
             <h1 className="text-2xl font-bold">Welcome Back</h1>
@@ -82,6 +92,7 @@ export default function LoginPage() {
                 color="primary"
                 className="w-full mt-2"
                 size="lg"
+                isLoading={isLoading}
               >
                 Sign In
               </Button>
