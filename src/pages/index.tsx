@@ -27,8 +27,6 @@ export default function IndexPage() {
   const [output, setOutput] = useState("Hello World!");
   const [isLoading, setIsLoading] = useState(false);
 
-  
-
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
     setIsLoading(true);
@@ -56,6 +54,16 @@ export default function IndexPage() {
 
         <div className="flex gap-3">
           <Link
+            href="/login"
+            className={buttonStyles({
+              color: "primary",
+              radius: "full",
+              variant: "shadow",
+            })}
+          >
+            Login
+          </Link>
+          <Link
             isExternal
             className={buttonStyles({
               color: "primary",
@@ -76,7 +84,10 @@ export default function IndexPage() {
           </Link>
         </div>
 
-        <div className="relative w-full max-w-4xl flex justify-center items-start pb-20 pt-10">
+        <div
+          className="relative w-full max-w-4xl flex justify-center items-start pb-20 pt-10"
+          data-cursor="-text"
+        >
           <div className="mr-[250px] animate-float-slow">
             <CodeWindow
               title="app.py"
