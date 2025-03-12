@@ -12,7 +12,7 @@ import {
 const routes = [
   { path: "/dashboard", Icon: FiHome, title: "Dashboard" },
   { path: "/team", Icon: FiUsers, title: "Team" },
-  { path: "/invoices", Icon: FiPaperclip, title: "Invoices" },
+  { path: "/trips", Icon: FiPaperclip, title: "Trips" },
   { path: "/integrations", Icon: FiLink, title: "Integrations" },
   { path: "/finance", Icon: FiDollarSign, title: "Finance" },
 ];
@@ -51,11 +51,11 @@ const Route = ({
       to={path}
       className={`flex items-center justify-start gap-2 w-full rounded px-2 py-1.5 text-sm transition-[box-shadow,_background-color,_color] ${
         selected
-          ? "bg-white text-stone-950 shadow"
-          : "hover:bg-stone-200 bg-transparent text-stone-500 shadow-none"
+          ? "bg-content1 text-foreground shadow-small"
+          : "hover:bg-content2 bg-transparent text-default-500 shadow-none"
       }`}
     >
-      <Icon className={selected ? "text-violet-500" : ""} />
+      <Icon className={selected ? "text-primary" : ""} />
       <span>{title}</span>
     </Link>
   );

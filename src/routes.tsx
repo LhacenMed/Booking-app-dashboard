@@ -7,7 +7,7 @@ import DocsPage from "./pages/docs";
 import Home from "./pages/page";
 import PrivateRoute from "./components/PrivateRoute";
 import TeamPage from "./pages/team";
-import InvoicesPage from "./pages/invoices";
+import TripsPage from "./pages/trips";
 import IntegrationsPage from "./pages/integrations";
 import FinancePage from "./pages/finance";
 
@@ -45,10 +45,10 @@ export const router = createBrowserRouter([
     ),
   },
   {
-    path: "/invoices",
+    path: "/trips",
     element: (
       <PrivateRoute>
-        <InvoicesPage />
+        <TripsPage />
       </PrivateRoute>
     ),
   },
