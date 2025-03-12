@@ -25,7 +25,14 @@ import {
   Tooltip,
   Switch,
 } from "@heroui/react";
-import { FiSearch, FiBell, FiPlus, FiCalendar, FiClock } from "react-icons/fi";
+import {
+  FiSearch,
+  FiBell,
+  FiPlus,
+  FiCalendar,
+  FiClock,
+  FiFilter,
+} from "react-icons/fi";
 import { MoonFilledIcon, SunFilledIcon } from "@/components/icons";
 import { useTheme } from "@heroui/use-theme";
 import {
@@ -37,6 +44,10 @@ import {
   doc,
   updateDoc,
   getDoc,
+  setDoc,
+  getDocs,
+  deleteDoc,
+  Timestamp,
 } from "firebase/firestore";
 import { auth, db } from "../../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
@@ -53,6 +64,7 @@ interface Trip {
   companyId: string;
   departureCity: string;
   destinationCity: string;
+  createdAt: Date;
 }
 
 interface FilterState {
@@ -70,6 +82,14 @@ interface NewTripForm {
   carType: "Medium" | "Large";
   price: number;
 }
+
+type SortOption =
+  | "newest"
+  | "oldest"
+  | "active_newest"
+  | "active_oldest"
+  | "inactive_newest"
+  | "inactive_oldest";
 
 export const Trips = () => {
   const navigate = useNavigate();
@@ -95,6 +115,8 @@ export const Trips = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { theme, setTheme } = useTheme();
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [tripToDelete, setTripToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     // Check authentication and get company ID
@@ -116,6 +138,7 @@ export const Trips = () => {
         const tripsData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
         })) as Trip[];
         setTrips(tripsData);
         setIsLoading(false);
@@ -136,7 +159,7 @@ export const Trips = () => {
   };
 
   const handleViewSeats = (tripId: string) => {
-    console.log("View seats:", tripId);
+    navigate(`/trips/seats/${tripId}`);
   };
 
   const handleDeactivateTrip = async (tripId: string) => {
@@ -155,6 +178,42 @@ export const Trips = () => {
     }
   };
 
+  const handleDeleteTrip = async (tripId: string) => {
+    try {
+      await deleteDoc(doc(db, "trips", tripId));
+      setTripToDelete(null);
+    } catch (error) {
+      console.error("Error deleting trip:", error);
+    }
+  };
+
+  const generateTripId = async (companyId: string) => {
+    // Get 2 random capitalized characters from company ID
+    const companyChars = companyId
+      .replace(/[^a-zA-Z]/g, "")
+      .toUpperCase()
+      .split("")
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 2)
+      .join("");
+
+    // Get count of existing trips for this company
+    const tripsQuery = query(
+      collection(db, "trips"),
+      where("companyId", "==", companyId)
+    );
+    const tripsSnapshot = await getDocs(tripsQuery);
+    const tripCount = (tripsSnapshot.size + 1).toString().padStart(4, "0");
+
+    // Get year
+    const year = new Date().getFullYear().toString().slice(-2);
+
+    // Generate random string
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    return `TR${companyChars}${tripCount}${year}-${random}`;
+  };
+
   const handleNewTripSubmit = async () => {
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
@@ -167,6 +226,9 @@ export const Trips = () => {
     }
 
     try {
+      const tripId = await generateTripId(companyId);
+      const tripRef = doc(db, "trips", tripId);
+
       // Create new trip in Firestore
       const tripData = {
         companyId,
@@ -179,10 +241,10 @@ export const Trips = () => {
         price: newTripForm.price,
         departureCity: newTripForm.departureCity,
         destinationCity: newTripForm.destinationCity,
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
       };
 
-      await addDoc(collection(db, "trips"), tripData);
+      await setDoc(tripRef, tripData);
 
       // Reset form and close modal
       setIsAddTripModalOpen(false);
@@ -203,6 +265,40 @@ export const Trips = () => {
 
   const cities = ["Nouakchott", "Atar", "Rosso", "Nouadhibou", "Zouérat"];
 
+  const getSortedTrips = () => {
+    return [...trips]
+      .filter((trip) => {
+        // Filter by status first
+        if (sortBy.startsWith("active_")) return trip.status === "Active";
+        if (sortBy.startsWith("inactive_")) return trip.status === "Inactive";
+        return true;
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case "newest":
+            return (
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+          case "oldest":
+            return (
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
+          case "active_newest":
+          case "inactive_newest":
+            return (
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+          case "active_oldest":
+          case "inactive_oldest":
+            return (
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
+          default:
+            return 0;
+        }
+      });
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <div className="flex-1">
@@ -222,6 +318,52 @@ export const Trips = () => {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              <Dropdown>
+                <DropdownTrigger>
+                  <Button
+                    variant="flat"
+                    startContent={<FiFilter className="text-default-500" />}
+                  >
+                    Sort by
+                  </Button>
+                </DropdownTrigger>
+                <DropdownMenu
+                  aria-label="Sort options"
+                  onAction={(key) => setSortBy(key as SortOption)}
+                  selectedKeys={new Set([sortBy])}
+                  selectionMode="single"
+                  disabledKeys={["active", "inactive"]}
+                >
+                  <DropdownItem key="newest">Newest First</DropdownItem>
+                  <DropdownItem key="oldest">Oldest First</DropdownItem>
+                  <DropdownItem
+                    key="active"
+                    className="text-default-500"
+                    isReadOnly
+                  >
+                    Active Trips
+                  </DropdownItem>
+                  <DropdownItem key="active_newest" className="pl-[25px]">
+                    Newest First
+                  </DropdownItem>
+                  <DropdownItem key="active_oldest" className="pl-[25px]">
+                    Oldest First
+                  </DropdownItem>
+                  <DropdownItem
+                    key="inactive"
+                    className="text-default-500"
+                    isReadOnly
+                  >
+                    Inactive Trips
+                  </DropdownItem>
+                  <DropdownItem key="inactive_newest" className="pl-[25px]">
+                    Newest First
+                  </DropdownItem>
+                  <DropdownItem key="inactive_oldest" className="pl-[25px]">
+                    Oldest First
+                  </DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
               <Tooltip content="Notifications">
                 <Button isIconOnly variant="light" className="relative">
                   <FiBell className="h-5 w-5" />
@@ -399,7 +541,7 @@ export const Trips = () => {
                       <TableCell>-</TableCell>
                       <TableCell>-</TableCell>
                     </TableRow>
-                  ) : trips.length === 0 ? (
+                  ) : getSortedTrips().length === 0 ? (
                     <TableRow>
                       <TableCell>-</TableCell>
                       <TableCell>-</TableCell>
@@ -411,7 +553,7 @@ export const Trips = () => {
                       <TableCell>-</TableCell>
                     </TableRow>
                   ) : (
-                    trips.map((trip) => (
+                    getSortedTrips().map((trip) => (
                       <TableRow key={trip.id}>
                         <TableCell>{trip.id}</TableCell>
                         <TableCell>{trip.route}</TableCell>
@@ -460,6 +602,14 @@ export const Trips = () => {
                                   ? "Deactivate"
                                   : "Activate"}{" "}
                                 Trip
+                              </DropdownItem>
+                              <DropdownItem
+                                key="delete"
+                                className="text-danger"
+                                color="danger"
+                                onPress={() => setTripToDelete(trip.id)}
+                              >
+                                Delete Trip
                               </DropdownItem>
                             </DropdownMenu>
                           </Dropdown>
@@ -580,7 +730,7 @@ export const Trips = () => {
                     })
                   }
                 />
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="bg-background/30 p-4 rounded-lg">
                   <h4 className="font-semibold mb-2">Trip Summary</h4>
                   <div className="space-y-2 text-sm">
                     <p>
@@ -609,6 +759,38 @@ export const Trips = () => {
             </Button>
             <Button color="primary" onPress={handleNewTripSubmit}>
               {currentStep < 3 ? "Next" : "Create Trip"}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!tripToDelete}
+        onClose={() => setTripToDelete(null)}
+        size="sm"
+      >
+        <ModalContent>
+          <ModalHeader>
+            <h3 className="text-xl font-semibold text-foreground">
+              Confirm Delete
+            </h3>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-default-500">
+              Are you sure you want to delete this trip? This action cannot be
+              undone.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={() => setTripToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              color="danger"
+              onPress={() => tripToDelete && handleDeleteTrip(tripToDelete)}
+            >
+              Delete
             </Button>
           </ModalFooter>
         </ModalContent>

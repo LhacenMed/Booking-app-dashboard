@@ -46,16 +46,19 @@ const Route = ({
   title: string;
   path: string;
 }) => {
+  const location = useLocation();
+  const isActive = location.pathname.startsWith(path);
+
   return (
     <Link
       to={path}
       className={`flex items-center justify-start gap-2 w-full rounded px-2 py-1.5 text-sm transition-[box-shadow,_background-color,_color] ${
-        selected
+        isActive
           ? "bg-content1 text-foreground shadow-small"
           : "hover:bg-content2 bg-transparent text-default-500 shadow-none"
       }`}
     >
-      <Icon className={selected ? "text-primary" : ""} />
+      <Icon className={isActive ? "text-primary" : ""} />
       <span>{title}</span>
     </Link>
   );

@@ -10,6 +10,8 @@ import TeamPage from "./pages/team";
 import TripsPage from "./pages/trips";
 import IntegrationsPage from "./pages/integrations";
 import FinancePage from "./pages/finance";
+import { SeatManagement } from "./components/Trips/SeatManagement";
+import { AppLayout } from "./layouts/AppLayout";
 
 export const router = createBrowserRouter([
   {
@@ -29,51 +31,45 @@ export const router = createBrowserRouter([
     element: <Home />,
   },
   {
-    path: "/dashboard",
     element: (
       <PrivateRoute>
-        <DashboardPage />
+        <AppLayout />
       </PrivateRoute>
     ),
-  },
-  {
-    path: "/team",
-    element: (
-      <PrivateRoute>
-        <TeamPage />
-      </PrivateRoute>
-    ),
-  },
-  {
-    path: "/trips",
-    element: (
-      <PrivateRoute>
-        <TripsPage />
-      </PrivateRoute>
-    ),
-  },
-  {
-    path: "/integrations",
-    element: (
-      <PrivateRoute>
-        <IntegrationsPage />
-      </PrivateRoute>
-    ),
-  },
-  {
-    path: "/finance",
-    element: (
-      <PrivateRoute>
-        <FinancePage />
-      </PrivateRoute>
-    ),
-  },
-  {
-    path: "/docs",
-    element: (
-      <PrivateRoute>
-        <DocsPage />
-      </PrivateRoute>
-    ),
+    children: [
+      {
+        path: "/dashboard",
+        element: <DashboardPage />,
+      },
+      {
+        path: "/team",
+        element: <TeamPage />,
+      },
+      {
+        path: "/trips",
+        children: [
+          {
+            path: "",
+            element: <TripsPage />,
+          },
+          {
+            path: "seats/:tripId",
+            element: <SeatManagement />,
+          },
+        ],
+      },
+      {
+        path: "/integrations",
+        element: <IntegrationsPage />,
+      },
+      {
+        path: "/finance",
+        element: <FinancePage />,
+      },
+      {
+        path: "/docs",
+        element: <DocsPage />,
+      },
+    ],
   },
 ]);
