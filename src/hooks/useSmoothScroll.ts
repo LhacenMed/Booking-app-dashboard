@@ -5,7 +5,7 @@ export const useSmoothScroll = () => {
     let scrollY = window.scrollY || window.pageYOffset;
     let currentScrollY = scrollY;
     let targetScrollY = scrollY;
-    const ease = 0.055; // Lower = smoother
+    const ease = 1; // Lower = smoother
 
     // Function to normalize scroll speed across different browsers/devices
     const normalizeWheel = (event: WheelEvent) => {

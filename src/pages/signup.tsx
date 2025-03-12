@@ -13,10 +13,8 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
 import { doc, setDoc } from "firebase/firestore";
-import { AdvancedImage } from "@cloudinary/react";
-import { cld } from "@/utils/cloudinaryConfig";
-import { auto } from "@cloudinary/url-gen/actions/resize";
-import { autoGravity } from "@cloudinary/url-gen/qualifiers/gravity";
+import { ImageUploadPreview } from "@/components/ImageUploadPreview";
+import { FileUpload } from "@/components/ui/file-upload";
 
 interface CompanyData {
   name: string;
@@ -28,13 +26,28 @@ interface CompanyData {
   businessLicenseUrl?: string;
 }
 
+interface LoadingState {
+  logo: boolean;
+  license: boolean;
+  submit: boolean;
+}
+
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<LoadingState>({
+    logo: false,
+    license: false,
+    submit: false,
+  });
   const [showPassword, setShowPassword] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const handleFilesUpload = (files: File[]) => {
+    setFiles(files);
+    console.log(files);
+  };
   const navigate = useNavigate();
 
   // Company Information State
@@ -50,14 +63,29 @@ export default function SignUpPage() {
 
   const handleFileUpload = async (file: File, type: "logo" | "license") => {
     try {
-      setIsLoading(true);
+      setIsLoading((prev) => ({ ...prev, [type]: true }));
+      setError("");
+
+      if (!file.type.startsWith("image/")) {
+        setError("Please upload an image file");
+        return;
+      }
+
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        setError("File size should be less than 5MB");
+        return;
+      }
+
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", "booking-app");
       formData.append("cloud_name", "dwctkor2s");
 
+      console.log("Uploading file:", file.name);
+
       const response = await fetch(
-        `https://api.cloudinary.com/v1_1/dwctkor2s/image/upload`,
+        "https://api.cloudinary.com/v1_1/dwctkor2s/image/upload",
         {
           method: "POST",
           body: formData,
@@ -65,6 +93,14 @@ export default function SignUpPage() {
       );
 
       const data = await response.json();
+      console.log("Upload response:", data);
+
+      if (!response.ok || data.error) {
+        console.error("Cloudinary error response:", data);
+        throw new Error(
+          data.error?.message || `Upload failed: ${response.statusText}`
+        );
+      }
 
       if (data.public_id && data.secure_url) {
         if (type === "logo") {
@@ -80,30 +116,36 @@ export default function SignUpPage() {
             businessLicenseUrl: data.secure_url,
           }));
         }
+      } else {
+        throw new Error("Missing public_id or secure_url in response");
       }
     } catch (error) {
       console.error("Error uploading file:", error);
-      setError("Error uploading file. Please try again.");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Error uploading file. Please try again."
+      );
     } finally {
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, [type]: false }));
     }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
+    setIsLoading((prev) => ({ ...prev, submit: true }));
 
     // Validation
     if (password !== confirmPassword) {
       setError("Passwords do not match");
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, submit: false }));
       return;
     }
 
     if (password.length < 6) {
       setError("Password should be at least 6 characters");
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, submit: false }));
       return;
     }
 
@@ -117,7 +159,7 @@ export default function SignUpPage() {
       setError(
         "Please fill in all required company information and upload a logo"
       );
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, submit: false }));
       return;
     }
 
@@ -156,7 +198,7 @@ export default function SignUpPage() {
       await setDoc(companyRef, companyDocData);
 
       console.log("Company data saved successfully:", companyDocData);
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, submit: false }));
       navigate("/login");
     } catch (error: any) {
       let errorMessage = "Failed to create an account";
@@ -179,7 +221,7 @@ export default function SignUpPage() {
       setError(errorMessage);
       console.error("Signup error:", error.message);
     } finally {
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, submit: false }));
     }
   };
 
@@ -249,32 +291,19 @@ export default function SignUpPage() {
                     <label className="block text-sm font-medium">
                       Company Logo
                     </label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, "logo");
-                      }}
-                      required
-                    />
-                    {companyData.logoPublicId && (
-                      <div className="mt-2">
-                        <AdvancedImage
-                          cldImg={cld
-                            .image(companyData.logoPublicId)
-                            .format("auto")
-                            .quality("auto")
-                            .resize(
-                              auto()
-                                .gravity(autoGravity())
-                                .width(500)
-                                .height(500)
-                            )}
-                          className="w-32 h-32 object-cover rounded-lg"
-                        />
-                      </div>
-                    )}
+                    {/* <ImageUploadPreview
+                      onFileSelect={(file) => handleFileUpload(file, "logo")}
+                      publicId={companyData.logoPublicId}
+                      required={true}
+                      isLoading={isLoading.logo}
+                    /> */}
+                    <div className="w-full max-w-4xl mx-auto min-h-96 border border-dashed bg-white dark:bg-black border-neutral-200 dark:border-neutral-800 rounded-lg">
+                      <FileUpload
+                        onChange={handleFilesUpload}
+                        type="logo"
+                        setCompanyData={setCompanyData}
+                      />
+                    </div>
                   </div>
 
                   <Input
@@ -315,31 +344,11 @@ export default function SignUpPage() {
                     <label className="block text-sm font-medium">
                       Business License (Optional)
                     </label>
-                    <Input
-                      type="file"
-                      accept=".pdf,.doc,.docx,image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload(file, "license");
-                      }}
+                    <ImageUploadPreview
+                      onFileSelect={(file) => handleFileUpload(file, "license")}
+                      publicId={companyData.businessLicensePublicId}
+                      isLoading={isLoading.license}
                     />
-                    {companyData.businessLicensePublicId && (
-                      <div className="mt-2">
-                        <AdvancedImage
-                          cldImg={cld
-                            .image(companyData.businessLicensePublicId)
-                            .format("auto")
-                            .quality("auto")
-                            .resize(
-                              auto()
-                                .gravity(autoGravity())
-                                .width(500)
-                                .height(500)
-                            )}
-                          className="w-32 h-32 object-cover rounded-lg"
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -349,7 +358,7 @@ export default function SignUpPage() {
                 color="primary"
                 className="w-full mt-6"
                 size="lg"
-                isLoading={isLoading}
+                isLoading={isLoading.submit}
               >
                 Create Company Account
               </Button>

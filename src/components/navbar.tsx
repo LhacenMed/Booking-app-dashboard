@@ -36,6 +36,12 @@ interface CompanyData {
   };
 }
 
+// Add a custom style for the avatar
+const avatarStyles = {
+  "--avatar-img-object-fit": "contain",
+  backgroundColor: "white", // Add a white background to make the logo more visible
+} as React.CSSProperties;
+
 export const Navbar = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -144,17 +150,20 @@ export const Navbar = () => {
           <ThemeSwitch />
         </NavbarItem>
         <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
-        {!companyData && <NavbarItem className="hidden md:flex">
-          <Button
-            as={Link}
-            className="text-md font-normal text-default-600 bg-default-100"
-            href={siteConfig.links.login}
-            // startContent={<HeartFilledIcon className="text-danger" />}
-            variant="flat"
-          >
-            Login
-          </Button>
-        </NavbarItem>}
+        {!companyData && (
+          <NavbarItem className="hidden md:flex">
+            <Button
+              as={Link}
+              className="text-md font-normal text-default-600 bg-default-100"
+              href={siteConfig.links.login}
+              // startContent={<HeartFilledIcon className="text-danger" />}
+              variant="flat"
+              disableRipple
+            >
+              Login
+            </Button>
+          </NavbarItem>
+        )}
       </NavbarContent>
 
       <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
@@ -196,11 +205,15 @@ export const Navbar = () => {
                 <Avatar
                   isBordered
                   as="button"
-                  className="transition-transform"
+                  className="transition-transform bg-white"
+                  style={avatarStyles}
                   color="warning"
                   name={companyData.name}
                   size="sm"
                   src={companyData.logo.url}
+                  imgProps={{
+                    className: "object-contain",
+                  }}
                 />
               ) : (
                 <Avatar
