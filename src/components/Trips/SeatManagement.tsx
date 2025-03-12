@@ -62,7 +62,7 @@ export const SeatManagement = () => {
         const tripData = doc.data();
         // Initialize seats if they don't exist
         if (!tripData.seats) {
-          const totalSeats = tripData.carType === "Medium" ? 15 : 60;
+          const totalSeats = tripData.carType === "Medium" ? 14 : 60;
           const initialSeats: Record<string, Seat> = {};
 
           for (let i = 1; i <= totalSeats; i++) {
@@ -117,91 +117,222 @@ export const SeatManagement = () => {
   const renderSeatGrid = () => {
     if (!trip) return null;
 
-    const totalSeats = trip.carType === "Medium" ? 15 : 60;
-    const seatsPerRow = trip.carType === "Medium" ? 4 : 4;
+    if (trip.carType === "Medium") {
+      // Specific layout for 14-seater
+      const seatLayout = [
+        [null, null, null, 1], // First row: 1 seat
+        [2, 3, 4, null], // Second row: 3 seats
+        [5, 6, null, 7], // Third row: 3 seats
+        [8, 9, null, 10], // Fourth row: 3 seats
+        [11, 12, 13, 14], // Fifth row: 4 seats
+      ];
 
-    return (
-      <div className="grid gap-4">
-        <div className="flex items-center justify-center mb-4">
-          <div className="bg-default-100 p-2 rounded-lg flex gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-success/20 border border-success"></div>
-              <span className="text-sm">Available</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-warning/20 border border-warning"></div>
-              <span className="text-sm">Booked</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-primary/20 border border-primary"></div>
-              <span className="text-sm">Paid</span>
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="grid gap-2"
-          style={{
-            gridTemplateColumns: `repeat(${seatsPerRow}, minmax(0, 1fr))`,
-          }}
-        >
-          {/* Driver seat icon */}
-          <div className="col-span-full flex justify-start mb-4">
-            <div className="w-8 h-8 rounded-full bg-default-100 flex items-center justify-center">
-              <FiArrowLeft className="rotate-[135deg]" />
+      return (
+        <div className="grid gap-4">
+          <div className="flex items-center justify-center mb-4">
+            <div className="bg-default-100 p-2 rounded-lg flex gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-success/20 border border-success"></div>
+                <span className="text-sm">Available</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-warning/20 border border-warning"></div>
+                <span className="text-sm">Booked</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-primary/20 border border-primary"></div>
+                <span className="text-sm">Paid</span>
+              </div>
             </div>
           </div>
 
-          {Array.from({ length: totalSeats }, (_, i) => {
-            const seatNumber = i + 1;
-            const seat = trip.seats[seatNumber] || {
-              id: seatNumber,
-              status: "Available",
-            };
+          <div className="relative w-full max-w-[600px] mx-auto bg-default-50 rounded-xl p-8">
+            {/* Driver seat */}
+            <div className="absolute top-4 left-4">
+              <div className="w-10 h-10 rounded-full bg-default-100 flex items-center justify-center">
+                <FiArrowLeft className="rotate-[135deg]" />
+              </div>
+            </div>
 
-            return (
-              <Tooltip
-                key={seatNumber}
-                content={`Seat ${seatNumber} - ${seat.status}`}
-              >
-                <Dropdown>
-                  <DropdownTrigger>
-                    <button
-                      className={`w-full aspect-square rounded-lg border transition-colors flex items-center justify-center text-sm
-                        ${
-                          seat.status === "Available"
-                            ? "bg-success/20 border-success hover:bg-success/30"
-                            : seat.status === "Booked"
-                              ? "bg-warning/20 border-warning hover:bg-warning/30"
-                              : "bg-primary/20 border-primary hover:bg-primary/30"
-                        }`}
-                    >
-                      {seatNumber}
-                    </button>
-                  </DropdownTrigger>
-                  <DropdownMenu
-                    aria-label="Seat status options"
-                    onAction={(key) =>
-                      handleSeatStatusChange(seatNumber, key as SeatStatus)
+            <div className="grid gap-y-6">
+              {seatLayout.map((row, rowIndex) => (
+                <div key={rowIndex} className="grid grid-cols-4 gap-4">
+                  {row.map((seatNumber, colIndex) => {
+                    if (seatNumber === null) {
+                      return <div key={`empty-${rowIndex}-${colIndex}`} />;
                     }
-                  >
-                    <DropdownItem key="Available" className="text-success">
-                      Available
-                    </DropdownItem>
-                    <DropdownItem key="Booked" className="text-warning">
-                      Booked
-                    </DropdownItem>
-                    <DropdownItem key="Paid" className="text-primary">
-                      Paid
-                    </DropdownItem>
-                  </DropdownMenu>
-                </Dropdown>
-              </Tooltip>
-            );
-          })}
+
+                    const seat = trip.seats[seatNumber] || {
+                      id: seatNumber,
+                      status: "Available",
+                    };
+
+                    return (
+                      <Tooltip
+                        key={seatNumber}
+                        content={`Seat ${seatNumber} - ${seat.status}`}
+                      >
+                        <Dropdown>
+                          <DropdownTrigger>
+                            <button
+                              className={`w-full aspect-square rounded-lg border transition-colors flex items-center justify-center text-sm
+                                ${
+                                  seat.status === "Available"
+                                    ? "bg-success/20 border-success hover:bg-success/30"
+                                    : seat.status === "Booked"
+                                      ? "bg-warning/20 border-warning hover:bg-warning/30"
+                                      : "bg-primary/20 border-primary hover:bg-primary/30"
+                                }`}
+                            >
+                              {seatNumber}
+                            </button>
+                          </DropdownTrigger>
+                          <DropdownMenu
+                            aria-label="Seat status options"
+                            onAction={(key) =>
+                              handleSeatStatusChange(
+                                seatNumber,
+                                key as SeatStatus
+                              )
+                            }
+                          >
+                            <DropdownItem
+                              key="Available"
+                              className="text-success"
+                            >
+                              Available
+                            </DropdownItem>
+                            <DropdownItem key="Booked" className="text-warning">
+                              Booked
+                            </DropdownItem>
+                            <DropdownItem key="Paid" className="text-primary">
+                              Paid
+                            </DropdownItem>
+                          </DropdownMenu>
+                        </Dropdown>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
-    );
+      );
+    } else {
+      // Layout for 60-seater
+      const seatLayout = [
+        [null, null, null, null, null], // The front: 0 seats
+        [1, 2, null, null, 3], // First row: 4 seats
+        [4, 5, 6, null, 7], // Second row: 4 seats
+        [8, 9, 10, null, 11], // Third row: 4 seats
+        [12, 13, 14, null, 15], // Fourth row: 4 seats
+        [16, 17, 18, null, 19], // Fifth row: 4 seats
+        [20, 21, 22, null, 23], // Sixth row: 4 seats
+        [24, 25, 26, null, 27], // Seventh row: 4 seats
+        [28, 29, 30, null, 31], // Eight row: 4 seats
+        [32, 33, 34, null, 35], // Ninth row: 4 seats
+        [36, 37, 38, null, 39], // Tenth row: 4 seats
+        [40, 41, 42, null, 43], // Eleventh row: 4 seats
+        [44, 45, 46, null, 47], // Twelfth row: 4 seats
+        [48, 49, 50, null, 51], // Thirteenth row: 4 seats
+        [52, 53, 54, null, 55], // Fourteenth row: 4 seats
+        [56, 57, 58, 59, 60], // Fifteenth row: 4 seats
+      ];
+
+      return (
+        <div className="grid gap-4">
+          <div className="flex items-center justify-center mb-4">
+            <div className="bg-default-100 p-2 rounded-lg flex gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-success/20 border border-success"></div>
+                <span className="text-sm">Available</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-warning/20 border border-warning"></div>
+                <span className="text-sm">Booked</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-primary/20 border border-primary"></div>
+                <span className="text-sm">Paid</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative w-full max-w-[800px] mx-auto bg-default-50 rounded-xl p-8">
+            {/* Driver seat */}
+            <div className="absolute top-4 left-4">
+              <div className="w-10 h-10 rounded-full bg-default-100 flex items-center justify-center">
+                <FiArrowLeft className="rotate-[135deg]" />
+              </div>
+            </div>
+
+            <div className="grid gap-y-4 mt-8">
+              {seatLayout.map((row, rowIndex) => (
+                <div key={rowIndex} className="grid grid-cols-5 gap-4">
+                  {row.map((seatNumber, colIndex) => {
+                    if (seatNumber === null) {
+                      return <div key={`empty-${rowIndex}-${colIndex}`} />;
+                    }
+
+                    const seat = trip.seats[seatNumber] || {
+                      id: seatNumber,
+                      status: "Available",
+                    };
+
+                    return (
+                      <Tooltip
+                        key={seatNumber}
+                        content={`Seat ${seatNumber} - ${seat.status}`}
+                      >
+                        <Dropdown>
+                          <DropdownTrigger>
+                            <button
+                              className={`w-full aspect-square rounded-lg border transition-colors flex items-center justify-center text-sm
+                                ${
+                                  seat.status === "Available"
+                                    ? "bg-success/20 border-success hover:bg-success/30"
+                                    : seat.status === "Booked"
+                                      ? "bg-warning/20 border-warning hover:bg-warning/30"
+                                      : "bg-primary/20 border-primary hover:bg-primary/30"
+                                }`}
+                            >
+                              {seatNumber}
+                            </button>
+                          </DropdownTrigger>
+                          <DropdownMenu
+                            aria-label="Seat status options"
+                            onAction={(key) =>
+                              handleSeatStatusChange(
+                                seatNumber,
+                                key as SeatStatus
+                              )
+                            }
+                          >
+                            <DropdownItem
+                              key="Available"
+                              className="text-success"
+                            >
+                              Available
+                            </DropdownItem>
+                            <DropdownItem key="Booked" className="text-warning">
+                              Booked
+                            </DropdownItem>
+                            <DropdownItem key="Paid" className="text-primary">
+                              Paid
+                            </DropdownItem>
+                          </DropdownMenu>
+                        </Dropdown>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
   };
 
   if (isLoading) {
