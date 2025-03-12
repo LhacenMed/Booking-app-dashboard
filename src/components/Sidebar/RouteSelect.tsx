@@ -1,5 +1,6 @@
 import React from "react";
 import { IconType } from "react-icons";
+import { Link, useLocation } from "react-router-dom";
 import {
   FiDollarSign,
   FiHome,
@@ -8,14 +9,28 @@ import {
   FiUsers,
 } from "react-icons/fi";
 
+const routes = [
+  { path: "/dashboard", Icon: FiHome, title: "Dashboard" },
+  { path: "/team", Icon: FiUsers, title: "Team" },
+  { path: "/invoices", Icon: FiPaperclip, title: "Invoices" },
+  { path: "/integrations", Icon: FiLink, title: "Integrations" },
+  { path: "/finance", Icon: FiDollarSign, title: "Finance" },
+];
+
 export const RouteSelect = () => {
+  const location = useLocation();
+
   return (
     <div className="space-y-1">
-      <Route Icon={FiHome} selected={true} title="Dashboard" />
-      <Route Icon={FiUsers} selected={false} title="Team" />
-      <Route Icon={FiPaperclip} selected={false} title="Invoices" />
-      <Route Icon={FiLink} selected={false} title="Integrations" />
-      <Route Icon={FiDollarSign} selected={false} title="Finance" />
+      {routes.map((route) => (
+        <Route
+          key={route.path}
+          Icon={route.Icon}
+          selected={location.pathname === route.path}
+          title={route.title}
+          path={route.path}
+        />
+      ))}
     </div>
   );
 };
@@ -24,13 +39,16 @@ const Route = ({
   selected,
   Icon,
   title,
+  path,
 }: {
   selected: boolean;
   Icon: IconType;
   title: string;
+  path: string;
 }) => {
   return (
-    <button
+    <Link
+      to={path}
       className={`flex items-center justify-start gap-2 w-full rounded px-2 py-1.5 text-sm transition-[box-shadow,_background-color,_color] ${
         selected
           ? "bg-white text-stone-950 shadow"
@@ -39,6 +57,6 @@ const Route = ({
     >
       <Icon className={selected ? "text-violet-500" : ""} />
       <span>{title}</span>
-    </button>
+    </Link>
   );
 };

@@ -6,6 +6,10 @@ import IndexPage from "./pages/index";
 import DocsPage from "./pages/docs";
 import Home from "./pages/page";
 import PrivateRoute from "./components/PrivateRoute";
+import TeamPage from "./pages/team";
+import InvoicesPage from "./pages/invoices";
+import IntegrationsPage from "./pages/integrations";
+import FinancePage from "./pages/finance";
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +33,38 @@ export const router = createBrowserRouter([
     element: (
       <PrivateRoute>
         <DashboardPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/team",
+    element: (
+      <PrivateRoute>
+        <TeamPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/invoices",
+    element: (
+      <PrivateRoute>
+        <InvoicesPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/integrations",
+    element: (
+      <PrivateRoute>
+        <IntegrationsPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/finance",
+    element: (
+      <PrivateRoute>
+        <FinancePage />
       </PrivateRoute>
     ),
   },

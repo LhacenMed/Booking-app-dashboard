@@ -1,11 +1,11 @@
 import React from "react";
 import { MainLayout } from "@/components/Layout/MainLayout";
-import { Dashboard } from "@/components/Dashboard/Dashboard";
+import { Invoices } from "@/components/Invoices/Invoices";
 
-export default function DashboardPage() {
+export default function InvoicesPage() {
   return (
     <MainLayout>
-      <Dashboard />
+      <Invoices />
     </MainLayout>
   );
 }
