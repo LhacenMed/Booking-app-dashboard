@@ -9,8 +9,32 @@ import {
 } from "firebase/firestore";
 import { db } from "../../FirebaseConfig";
 
+interface CompanyData {
+  id: string;
+  name: string;
+  email: string;
+  logo: {
+    url: string;
+  };
+}
+
+interface Trip {
+  id: string;
+  route: string;
+  dateTime: string;
+  carType: "Medium" | "Large";
+  seatsAvailable: number;
+  seatsBooked: number;
+  status: "Active" | "Inactive";
+  price: number;
+  companyId: string;
+  departureCity: string;
+  destinationCity: string;
+  createdAt: Date;
+}
+
 export const useCompanyData = (userId: string | null) => {
-  return useQuery({
+  return useQuery<CompanyData | null, Error>({
     queryKey: ["company", userId],
     queryFn: async () => {
       if (!userId) return null;
@@ -30,7 +54,7 @@ export const useCompanyData = (userId: string | null) => {
 };
 
 export const useTrips = (companyId: string | null) => {
-  return useQuery({
+  return useQuery<Trip[], Error>({
     queryKey: ["trips", companyId],
     queryFn: async () => {
       if (!companyId) return [];
@@ -43,7 +67,7 @@ export const useTrips = (companyId: string | null) => {
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate() || new Date(),
-      }));
+      })) as Trip[];
     },
     enabled: !!companyId,
     staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes

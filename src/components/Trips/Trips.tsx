@@ -69,6 +69,7 @@ interface Trip {
 }
 
 interface CompanyData {
+  id: string;
   name: string;
   email: string;
   logo: {
@@ -248,6 +249,8 @@ export const Trips = () => {
   const cities = ["Nouakchott", "Atar", "Rosso", "Nouadhibou", "Zouérat"];
 
   const getSortedTrips = () => {
+    if (!trips) return [];
+
     return [...trips]
       .filter((trip) => {
         // Filter by status first
