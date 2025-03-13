@@ -3,18 +3,17 @@ import { FiArrowUpRight, FiDollarSign, FiMoreHorizontal } from "react-icons/fi";
 
 export const RecentTransactions = () => {
   return (
-    <div className="col-span-12 p-4 rounded border border-stone-300">
+    <div className="col-span-12 p-4 rounded border border-divider bg-content1">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-1.5 font-medium">
+        <h3 className="flex items-center gap-1.5 font-medium text-foreground">
           <FiDollarSign /> Recent Transactions
         </h3>
-        <button className="text-sm text-violet-500 hover:underline">
+        <button className="text-sm text-primary hover:underline">
           See all
         </button>
       </div>
       <table className="w-full table-auto">
         <TableHead />
-
         <tbody>
           <TableRow
             cusId="#48149"
@@ -67,7 +66,7 @@ export const RecentTransactions = () => {
 const TableHead = () => {
   return (
     <thead>
-      <tr className="text-sm font-normal text-stone-500">
+      <tr className="text-sm font-normal text-default-500">
         <th className="text-start p-1.5">Customer ID</th>
         <th className="text-start p-1.5">SKU</th>
         <th className="text-start p-1.5">Date</th>
@@ -92,21 +91,21 @@ const TableRow = ({
   order: number;
 }) => {
   return (
-    <tr className={order % 2 ? "bg-stone-100 text-sm" : "text-sm"}>
+    <tr className={order % 2 ? "bg-default-50 text-sm" : "text-sm"}>
       <td className="p-1.5">
         <a
           href="#"
-          className="text-violet-600 underline flex items-center gap-1"
+          className="text-primary hover:underline flex items-center gap-1"
         >
           {cusId} <FiArrowUpRight />
         </a>
       </td>
-      <td className="p-1.5">{sku}</td>
-      <td className="p-1.5">{date}</td>
-      <td className="p-1.5">{price}</td>
+      <td className="p-1.5 text-foreground">{sku}</td>
+      <td className="p-1.5 text-foreground">{date}</td>
+      <td className="p-1.5 text-foreground">{price}</td>
       <td className="w-8">
-        <button className="hover:bg-stone-200 transition-colors grid place-content-center rounded text-sm size-8">
-          <FiMoreHorizontal />
+        <button className="hover:bg-default-100 transition-colors grid place-content-center rounded text-sm size-8">
+          <FiMoreHorizontal className="text-default-500" />
         </button>
       </td>
     </tr>

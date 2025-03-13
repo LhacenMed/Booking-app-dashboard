@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { doc, setDoc } from "firebase/firestore";
 import { ImageUploadPreview } from "@/components/ImageUploadPreview";
 import { FileUpload } from "@/components/ui/file-upload";
+import { addAccountToLocalStorage } from "@/utils/localAccounts";
 
 interface CompanyData {
   name: string;
@@ -196,6 +197,16 @@ export default function SignUpPage() {
       // Save company data to Firestore
       const companyRef = doc(db, "companies", userCredential.user.uid);
       await setDoc(companyRef, companyDocData);
+
+      // Save to local storage
+      addAccountToLocalStorage({
+        id: userCredential.user.uid,
+        name: companyData.name,
+        email: userCredential.user.email || "",
+        logo: {
+          url: companyData.logoUrl,
+        },
+      });
 
       console.log("Company data saved successfully:", companyDocData);
       setIsLoading((prev) => ({ ...prev, submit: false }));

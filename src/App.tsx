@@ -7,6 +7,7 @@ import { useSmoothScroll } from "@/hooks/useSmoothScroll";
 import type { NavigateOptions } from "react-router-dom";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 declare module "@react-types/shared" {
   interface RouterConfig {
@@ -14,9 +15,19 @@ declare module "@react-types/shared" {
   }
 }
 
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // disable automatic refetching when window gains focus
+      retry: 1, // retry failed requests only once
+    },
+  },
+});
+
 function App() {
   // Initialize smooth scroll
-  useSmoothScroll();
+  // useSmoothScroll();
 
   // useEffect(() => {
   //   // Initialize MouseFollower
@@ -64,7 +75,11 @@ function App() {
   //   };
   // }, []);
 
-  return <RouterProvider router={router} />; // The actual routing is handled by RouterProvider in provider.tsx
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
 }
 
 export default App;

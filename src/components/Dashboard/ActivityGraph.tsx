@@ -52,9 +52,9 @@ const data = [
 
 export const ActivityGraph = () => {
   return (
-    <div className="col-span-8 overflow-hidden rounded border border-stone-300">
+    <div className="col-span-8 overflow-hidden rounded border border-divider bg-content1">
       <div className="p-4">
-        <h3 className="flex items-center gap-1.5 font-medium">
+        <h3 className="flex items-center gap-1.5 font-medium text-foreground">
           <FiUser /> Activity
         </h3>
       </div>
@@ -72,34 +72,45 @@ export const ActivityGraph = () => {
               bottom: 0,
             }}
           >
-            <CartesianGrid stroke="#e4e4e7" />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-divider" />
             <XAxis
               dataKey="name"
               axisLine={false}
               tickLine={false}
-              className="text-xs font-bold"
+              tick={{ fill: "currentColor" }}
+              className="text-default-500"
               padding={{ right: 4 }}
             />
             <YAxis
-              className="text-xs font-bold"
+              tick={{ fill: "currentColor" }}
+              className="text-default-500"
               axisLine={false}
               tickLine={false}
             />
             <Tooltip
-              wrapperClassName="text-sm rounded"
-              labelClassName="text-xs text-stone-500"
+              contentStyle={{
+                backgroundColor: "var(--nextui-background)",
+                border: "1px solid var(--nextui-divider)",
+                borderRadius: "8px",
+              }}
+              itemStyle={{
+                color: "var(--nextui-foreground)",
+              }}
+              labelStyle={{
+                color: "var(--nextui-default-500)",
+              }}
             />
             <Line
               type="monotone"
               dataKey="New"
-              stroke="#18181b"
-              fill="#18181b"
+              className="stroke-primary"
+              strokeWidth={2}
             />
             <Line
               type="monotone"
               dataKey="Returning"
-              stroke="#5b21b6"
-              fill="#5b21b6"
+              className="stroke-secondary"
+              strokeWidth={2}
             />
           </LineChart>
         </ResponsiveContainer>

@@ -141,7 +141,7 @@ export const CodeWindow: React.FC<CodeWindowProps> = ({
             <span className="text-foreground">(</span>
             <span className="text-primary">"</span>
             <Tooltip
-              content={`${isRefreshing ? "Refreshing output..." : `Click to edit the text (max ${MAX_LENGTH} characters)`}`}
+              content={`${isRefreshing ? "Refreshing output..." : `Edit the string (max ${MAX_LENGTH} chars)`}`}
               placement="bottom"
               delay={0}
               closeDelay={500}

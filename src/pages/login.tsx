@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Card, CardHeader, CardBody, Input, Button, Link } from "@heroui/react";
 import DefaultLayout from "@/layouts/default";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../FirebaseConfig";
+import { auth, db } from "../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
+import { addAccountToLocalStorage } from "@/utils/localAccounts";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -18,38 +20,55 @@ export default function LoginPage() {
     setError("");
 
     try {
+      console.log("Attempting login with:", email);
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
         password
       );
-      // Signed in successfully
+      console.log("Login successful, user:", userCredential.user.uid);
+
+      // Get company data
+      const companyDoc = await getDoc(
+        doc(db, "companies", userCredential.user.uid)
+      );
+      if (companyDoc.exists()) {
+        const companyData = companyDoc.data();
+        console.log("Company data fetched:", companyData);
+
+        // Save to local storage
+        const accountData = {
+          id: userCredential.user.uid,
+          name: companyData.name,
+          email: companyData.email,
+          logo: companyData.logo,
+        };
+        console.log("Saving account to local storage:", accountData);
+        const saved = addAccountToLocalStorage(accountData);
+        console.log("Save to local storage result:", saved);
+      } else {
+        console.log("No company data found for user:", userCredential.user.uid);
+      }
+
       setIsLoading(false);
-      const user = userCredential.user;
-      console.log("Logged in user:", user);
-      navigate("/dashboard"); // Navigate to dashboard after login
+      navigate("/dashboard");
     } catch (error: any) {
       let errorMessage = "Failed to login";
       switch (error.code) {
         case "auth/invalid-email":
           errorMessage = "Invalid email address";
-          setIsLoading(false);
           break;
         case "auth/user-disabled":
           errorMessage = "This account has been disabled";
-          setIsLoading(false);
           break;
         case "auth/user-not-found":
           errorMessage = "User not found";
-          setIsLoading(false);
           break;
         case "auth/wrong-password":
           errorMessage = "Incorrect password";
-          setIsLoading(false);
           break;
         default:
           errorMessage = error.message;
-          setIsLoading(false);
           break;
       }
       setError(errorMessage);

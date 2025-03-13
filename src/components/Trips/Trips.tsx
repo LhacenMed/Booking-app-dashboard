@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Button,
   Input,
@@ -51,6 +51,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
+import { useCompanyData, useTrips } from "@/hooks/useQueries";
 
 interface Trip {
   id: string;
@@ -65,6 +66,14 @@ interface Trip {
   departureCity: string;
   destinationCity: string;
   createdAt: Date;
+}
+
+interface CompanyData {
+  name: string;
+  email: string;
+  logo: {
+    url: string;
+  };
 }
 
 interface FilterState {
@@ -91,6 +100,12 @@ type SortOption =
   | "inactive_newest"
   | "inactive_oldest";
 
+// Add a custom style for the avatar
+const avatarStyles = {
+  "--avatar-img-object-fit": "contain",
+  backgroundColor: "white", // Add a white background to make the logo more visible
+} as React.CSSProperties;
+
 export const Trips = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterState>({
@@ -111,44 +126,12 @@ export const Trips = () => {
     price: 0,
   });
 
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const userId = auth.currentUser?.uid || null;
+  const { data: companyData } = useCompanyData(userId);
+  const { data: trips = [], isLoading } = useTrips(userId);
   const { theme, setTheme } = useTheme();
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [tripToDelete, setTripToDelete] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Check authentication and get company ID
-    const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        navigate("/login");
-        return;
-      }
-
-      setCompanyId(user.uid);
-
-      // Get company's trips
-      const tripsQuery = query(
-        collection(db, "trips"),
-        where("companyId", "==", user.uid)
-      );
-
-      const unsubscribeTrips = onSnapshot(tripsQuery, (snapshot) => {
-        const tripsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-        })) as Trip[];
-        setTrips(tripsData);
-        setIsLoading(false);
-      });
-
-      return () => unsubscribeTrips();
-    });
-
-    return () => unsubscribeAuth();
-  }, [navigate]);
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -220,18 +203,18 @@ export const Trips = () => {
       return;
     }
 
-    if (!companyId) {
+    if (!userId) {
       console.error("No company ID found");
       return;
     }
 
     try {
-      const tripId = await generateTripId(companyId);
+      const tripId = await generateTripId(userId);
       const tripRef = doc(db, "trips", tripId);
 
       // Create new trip in Firestore
       const tripData = {
-        companyId,
+        companyId: userId,
         route: `${newTripForm.departureCity} → ${newTripForm.destinationCity}`,
         dateTime: `${newTripForm.date} ${newTripForm.time}`,
         carType: newTripForm.carType,
@@ -259,7 +242,6 @@ export const Trips = () => {
       });
     } catch (error) {
       console.error("Error adding trip:", error);
-      // Here you might want to show an error message to the user
     }
   };
 
@@ -375,15 +357,16 @@ export const Trips = () => {
               {!isLoading && (
                 <Dropdown placement="bottom-end">
                   <DropdownTrigger>
-                    {companyId ? (
+                    {companyData ? (
                       <Avatar
                         isBordered
                         as="button"
                         className="transition-transform bg-white"
+                        style={avatarStyles}
                         color="warning"
-                        name={companyId}
+                        name={companyData.name}
                         size="sm"
-                        src="https://i.pravatar.cc/150?u=a042581f4e29026024d"
+                        src={companyData.logo.url}
                         imgProps={{
                           className: "object-contain",
                         }}
@@ -401,12 +384,12 @@ export const Trips = () => {
                       />
                     )}
                   </DropdownTrigger>
-                  {companyId ? (
+                  {companyData ? (
                     <DropdownMenu aria-label="Profile Actions" variant="flat">
                       <DropdownItem key="profile" className="h-14 gap-2">
                         <p className="font-semibold">Signed in as</p>
                         <p className="font-semibold text-primary">
-                          {companyId}
+                          {companyData.email}
                         </p>
                       </DropdownItem>
                       <DropdownItem key="theme" className="h-14 gap-2">

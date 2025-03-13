@@ -48,9 +48,9 @@ const data = [
 
 export const UsageRadar = () => {
   return (
-    <div className="col-span-4 overflow-hidden rounded border border-stone-300">
+    <div className="col-span-4 overflow-hidden rounded border border-divider bg-content1">
       <div className="p-4">
-        <h3 className="flex items-center gap-1.5 font-medium">
+        <h3 className="flex items-center gap-1.5 font-medium text-foreground">
           <FiEye /> Usage
         </h3>
       </div>
@@ -58,28 +58,42 @@ export const UsageRadar = () => {
       <div className="h-64 px-4">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
-            <PolarGrid />
-            <PolarAngleAxis className="text-xs font-bold" dataKey="feature" />
-            <PolarRadiusAxis angle={30} domain={[0, 150]} />
+            <PolarGrid className="stroke-divider" />
+            <PolarAngleAxis
+              dataKey="feature"
+              tick={{ fill: "currentColor" }}
+              className="text-default-500"
+            />
+            <PolarRadiusAxis
+              angle={30}
+              domain={[0, 150]}
+              tick={{ fill: "currentColor" }}
+              className="text-default-500"
+            />
             <Radar
               name="Mobile"
               dataKey="mobile"
-              stroke="#18181b"
-              fill="#18181b"
-              fillOpacity={0.2}
+              className="stroke-primary fill-primary/20"
             />
             <Radar
               name="Desktop"
               dataKey="desktop"
-              stroke="#5b21b6"
-              fill="#5b21b6"
-              fillOpacity={0.2}
+              className="stroke-secondary fill-secondary/20"
             />
             <Tooltip
-              wrapperClassName="text-sm rounded"
-              labelClassName="text-xs text-stone-500"
+              contentStyle={{
+                backgroundColor: "var(--nextui-background)",
+                border: "1px solid var(--nextui-divider)",
+                borderRadius: "8px",
+              }}
+              itemStyle={{
+                color: "var(--nextui-foreground)",
+              }}
+              labelStyle={{
+                color: "var(--nextui-default-500)",
+              }}
             />
-            <Legend />
+            <Legend className="text-default-500" />
           </RadarChart>
         </ResponsiveContainer>
       </div>

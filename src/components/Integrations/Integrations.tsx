@@ -2,12 +2,12 @@ import React from "react";
 
 export const Integrations = () => {
   return (
-    <div className="bg-white rounded-lg pb-4 shadow">
-      <div className="border-b px-4 mb-4 mt-2 pb-4 border-stone-200">
+    <div className="bg-background rounded-lg pb-4">
+      <div className="border-b px-4 mb-4 mt-2 pb-4 border-divider">
         <div className="flex items-center justify-between p-0.5">
           <div>
             <span className="text-sm font-bold block">Integrations</span>
-            <span className="text-xs block text-stone-500">
+            <span className="text-xs block text-default-500">
               Connect your favorite tools and services
             </span>
           </div>
