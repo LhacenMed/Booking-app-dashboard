@@ -20,21 +20,8 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Badge,
-  Avatar,
-  Tooltip,
-  Switch,
 } from "@heroui/react";
-import {
-  FiSearch,
-  FiBell,
-  FiPlus,
-  FiCalendar,
-  FiClock,
-  FiFilter,
-} from "react-icons/fi";
-import { MoonFilledIcon, SunFilledIcon } from "@/components/icons";
-import { useTheme } from "@heroui/use-theme";
+import { FiPlus, FiCalendar, FiClock, FiFilter } from "react-icons/fi";
 import {
   collection,
   addDoc,
@@ -52,6 +39,7 @@ import {
 import { auth, db } from "../../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
 import { useCompanyData, useTrips } from "@/hooks/useQueries";
+import { DashboardTopBar } from "@/components/Dashboard/DashboardTopBar";
 
 interface Trip {
   id: string;
@@ -130,9 +118,7 @@ export const Trips = () => {
   const userId = auth.currentUser?.uid || null;
   const { data: companyData } = useCompanyData(userId);
   const { data: trips = [], isLoading } = useTrips(userId);
-  const { theme, setTheme } = useTheme();
   const [sortBy, setSortBy] = useState<SortOption>("newest");
-  const [tripToDelete, setTripToDelete] = useState<string | null>(null);
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -165,7 +151,6 @@ export const Trips = () => {
   const handleDeleteTrip = async (tripId: string) => {
     try {
       await deleteDoc(doc(db, "trips", tripId));
-      setTripToDelete(null);
     } catch (error) {
       console.error("Error deleting trip:", error);
     }
@@ -285,168 +270,59 @@ export const Trips = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
-      <div className="flex-1">
-        {/* Top Bar */}
-        <div className="bg-content1 border-b border-divider px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 flex-1">
-              <div className="relative flex-1 max-w-md">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-default-400" />
-                <Input
-                  type="text"
-                  className="pl-10"
-                  placeholder="Search trips by ID or destination..."
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange("search", e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <Dropdown>
-                <DropdownTrigger>
-                  <Button
-                    variant="flat"
-                    startContent={<FiFilter className="text-default-500" />}
-                  >
-                    Sort by
-                  </Button>
-                </DropdownTrigger>
-                <DropdownMenu
-                  aria-label="Sort options"
-                  onAction={(key) => setSortBy(key as SortOption)}
-                  selectedKeys={new Set([sortBy])}
-                  selectionMode="single"
-                  disabledKeys={["active", "inactive"]}
-                >
-                  <DropdownItem key="newest">Newest First</DropdownItem>
-                  <DropdownItem key="oldest">Oldest First</DropdownItem>
-                  <DropdownItem
-                    key="active"
-                    className="text-default-500"
-                    isReadOnly
-                  >
-                    Active Trips
-                  </DropdownItem>
-                  <DropdownItem key="active_newest" className="pl-[25px]">
-                    Newest First
-                  </DropdownItem>
-                  <DropdownItem key="active_oldest" className="pl-[25px]">
-                    Oldest First
-                  </DropdownItem>
-                  <DropdownItem
-                    key="inactive"
-                    className="text-default-500"
-                    isReadOnly
-                  >
-                    Inactive Trips
-                  </DropdownItem>
-                  <DropdownItem key="inactive_newest" className="pl-[25px]">
-                    Newest First
-                  </DropdownItem>
-                  <DropdownItem key="inactive_oldest" className="pl-[25px]">
-                    Oldest First
-                  </DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-              <Tooltip content="Notifications">
-                <Button isIconOnly variant="light" className="relative">
-                  <FiBell className="h-5 w-5" />
-                  <div className="absolute top-1 right-1">
-                    <Badge color="danger">5</Badge>
-                  </div>
-                </Button>
-              </Tooltip>
-              {!isLoading && (
-                <Dropdown placement="bottom-end">
-                  <DropdownTrigger>
-                    {companyData ? (
-                      <Avatar
-                        isBordered
-                        as="button"
-                        className="transition-transform bg-white"
-                        style={avatarStyles}
-                        color="warning"
-                        name={companyData.name}
-                        size="sm"
-                        src={companyData.logo.url}
-                        imgProps={{
-                          className: "object-contain",
-                        }}
-                      />
-                    ) : (
-                      <Avatar
-                        isDisabled
-                        isBordered
-                        as="button"
-                        className="transition-transform"
-                        color="primary"
-                        name=""
-                        size="sm"
-                        src=""
-                      />
-                    )}
-                  </DropdownTrigger>
-                  {companyData ? (
-                    <DropdownMenu aria-label="Profile Actions" variant="flat">
-                      <DropdownItem key="profile" className="h-14 gap-2">
-                        <p className="font-semibold">Signed in as</p>
-                        <p className="font-semibold text-primary">
-                          {companyData.email}
-                        </p>
-                      </DropdownItem>
-                      <DropdownItem key="theme" className="h-14 gap-2">
-                        <div className="flex justify-between items-center w-full">
-                          <div className="flex gap-2 items-center">
-                            {theme === "light" ? (
-                              <SunFilledIcon size={20} />
-                            ) : (
-                              <MoonFilledIcon size={20} />
-                            )}
-                            <span>Dark mode</span>
-                          </div>
-                          <Switch
-                            defaultSelected={theme === "dark"}
-                            size="sm"
-                            onChange={() =>
-                              setTheme(theme === "light" ? "dark" : "light")
-                            }
-                          />
-                        </div>
-                      </DropdownItem>
-                      <DropdownItem key="company_profile">
-                        Company Profile
-                      </DropdownItem>
-                      <DropdownItem key="settings">Settings</DropdownItem>
-                      <DropdownItem key="help">Help & Support</DropdownItem>
-                      <DropdownItem
-                        key="logout"
-                        color="danger"
-                        onPress={() => {
-                          // Implement logout functionality
-                        }}
-                      >
-                        Log Out
-                      </DropdownItem>
-                    </DropdownMenu>
-                  ) : (
-                    <DropdownMenu aria-label="Profile Actions" variant="flat">
-                      <DropdownItem
-                        key="login"
-                        className="h-10"
-                        onPress={() => navigate("/login")}
-                      >
-                        <p className="font-semibold">Login</p>
-                      </DropdownItem>
-                    </DropdownMenu>
-                  )}
-                </Dropdown>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
+    <div className="flex flex-col h-screen bg-background">
+      <DashboardTopBar
+        searchPlaceholder="Search trips by ID or destination..."
+        rightContent={
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                variant="flat"
+                startContent={<FiFilter className="text-default-500" />}
+              >
+                Sort by
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              aria-label="Sort options"
+              onAction={(key) => setSortBy(key as SortOption)}
+              selectedKeys={new Set([sortBy])}
+              selectionMode="single"
+              disabledKeys={["active", "inactive"]}
+            >
+              <DropdownItem key="newest">Newest First</DropdownItem>
+              <DropdownItem key="oldest">Oldest First</DropdownItem>
+              <DropdownItem
+                key="active"
+                className="text-default-500"
+                isReadOnly
+              >
+                Active Trips
+              </DropdownItem>
+              <DropdownItem key="active_newest" className="pl-[25px]">
+                Newest First
+              </DropdownItem>
+              <DropdownItem key="active_oldest" className="pl-[25px]">
+                Oldest First
+              </DropdownItem>
+              <DropdownItem
+                key="inactive"
+                className="text-default-500"
+                isReadOnly
+              >
+                Inactive Trips
+              </DropdownItem>
+              <DropdownItem key="inactive_newest" className="pl-[25px]">
+                Newest First
+              </DropdownItem>
+              <DropdownItem key="inactive_oldest" className="pl-[25px]">
+                Oldest First
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        }
+      />
+      <div className="flex-1 overflow-auto">
         <div className="p-6">
           <div className="bg-content1 rounded-lg shadow">
             {/* Header */}
@@ -593,7 +469,7 @@ export const Trips = () => {
                                 key="delete"
                                 className="text-danger"
                                 color="danger"
-                                onPress={() => setTripToDelete(trip.id)}
+                                onPress={() => handleDeleteTrip(trip.id)}
                               >
                                 Delete Trip
                               </DropdownItem>
@@ -745,38 +621,6 @@ export const Trips = () => {
             </Button>
             <Button color="primary" onPress={handleNewTripSubmit}>
               {currentStep < 3 ? "Next" : "Create Trip"}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={!!tripToDelete}
-        onClose={() => setTripToDelete(null)}
-        size="sm"
-      >
-        <ModalContent>
-          <ModalHeader>
-            <h3 className="text-xl font-semibold text-foreground">
-              Confirm Delete
-            </h3>
-          </ModalHeader>
-          <ModalBody>
-            <p className="text-default-500">
-              Are you sure you want to delete this trip? This action cannot be
-              undone.
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="light" onPress={() => setTripToDelete(null)}>
-              Cancel
-            </Button>
-            <Button
-              color="danger"
-              onPress={() => tripToDelete && handleDeleteTrip(tripToDelete)}
-            >
-              Delete
             </Button>
           </ModalFooter>
         </ModalContent>
