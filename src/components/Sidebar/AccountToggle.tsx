@@ -98,7 +98,7 @@ export const AccountToggle = () => {
 
   if (isLoading) {
     return (
-      <div className="border-b mb-4 mt-2 pb-4 border-divider">
+      <div className="border-b mb-4 mt-2 pb-4 border-divider px-3">
         <div className="flex p-0.5 relative gap-2 w-full items-center">
           <div className="size-8 rounded shrink-0 bg-default-200 animate-pulse" />
           <div className="flex-1">
@@ -115,7 +115,7 @@ export const AccountToggle = () => {
   }
 
   return (
-    <div className="border-b mb-4 mt-2 pb-4 border-divider">
+    <div className="border-b mb-4 mt-2 pb-4 border-divider px-3">
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setIsExpanded(!isExpanded)}

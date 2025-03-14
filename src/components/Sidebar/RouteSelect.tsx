@@ -21,7 +21,7 @@ export const RouteSelect = () => {
   const location = useLocation();
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 px-3">
       {routes.map((route) => (
         <Route
           key={route.path}

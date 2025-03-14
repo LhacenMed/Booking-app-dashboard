@@ -8,8 +8,8 @@ export const Search = () => {
   const [open, setOpen] = useState(false);
 
   return (
-    <>
-      <div className="bg-content2 mb-4 relative rounded flex items-center px-2 py-1.5 text-sm">
+    <div className="px-3">
+      <div className="bg-content2 mb-4 relative rounded flex items-center px-2 py-1.5 text-sm ">
         <FiSearch className="mr-2 text-default-400" />
         <input
           onFocus={(e) => {
@@ -27,6 +27,6 @@ export const Search = () => {
       </div>
 
       <CommandMenu open={open} setOpen={setOpen} />
-    </>
+    </div>
   );
 };

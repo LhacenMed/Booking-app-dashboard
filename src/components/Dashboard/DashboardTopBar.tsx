@@ -41,7 +41,7 @@ export const DashboardTopBar = ({
   const { data: companyData, isLoading } = useCompanyData(userId);
 
   return (
-    <div className="sticky top-0 z-40 bg-content1 border-b border-divider px-6 py-5">
+    <div className="sticky top-0 bg-content1 border-b border-divider px-6 py-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 flex-1">
           {showSearch && (

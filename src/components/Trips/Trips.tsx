@@ -345,7 +345,7 @@ export const Trips = () => {
             </div>
 
             {/* Filters */}
-            <div className="p-6 border-b border-divider">
+            {/* <div className="p-6 border-b border-divider">
               <div className="flex gap-4">
                 <Input
                   type="date"
@@ -376,7 +376,7 @@ export const Trips = () => {
                   <SelectItem key="large">Large</SelectItem>
                 </Select>
               </div>
-            </div>
+            </div> */}
 
             {/* Trips Table */}
             <div className="p-6">
