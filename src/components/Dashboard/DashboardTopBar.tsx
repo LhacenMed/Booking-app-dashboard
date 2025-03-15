@@ -15,8 +15,9 @@ import { FiSearch, FiBell } from "react-icons/fi";
 import { MoonFilledIcon, SunFilledIcon } from "@/components/icons";
 import { useTheme } from "@heroui/use-theme";
 import { useNavigate } from "react-router-dom";
-import { useCompanyData } from "@/hooks/useQueries";
+import { useAdminData } from "@/hooks/useQueries";
 import { auth } from "../../../FirebaseConfig";
+import { signOut } from "firebase/auth";
 
 interface DashboardTopBarProps {
   searchPlaceholder?: string;
@@ -38,7 +39,16 @@ export const DashboardTopBar = ({
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const userId = auth.currentUser?.uid || null;
-  const { data: companyData, isLoading } = useCompanyData(userId);
+  const { data: adminData, isLoading } = useAdminData(userId);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   return (
     <div className="sticky top-0 bg-content1 border-b border-divider px-6 py-5">
@@ -68,16 +78,16 @@ export const DashboardTopBar = ({
           {!isLoading && (
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
-                {companyData ? (
+                {adminData ? (
                   <Avatar
                     isBordered
                     as="button"
                     className="transition-transform bg-white"
                     style={avatarStyles}
                     color="warning"
-                    name={companyData.name}
+                    name={adminData.name}
                     size="sm"
-                    src={companyData.logo.url}
+                    src={adminData.logo.url}
                     imgProps={{
                       className: "object-contain",
                     }}
@@ -95,12 +105,12 @@ export const DashboardTopBar = ({
                   />
                 )}
               </DropdownTrigger>
-              {companyData ? (
+              {adminData ? (
                 <DropdownMenu aria-label="Profile Actions" variant="flat">
                   <DropdownItem key="profile" className="h-14 gap-2">
                     <p className="font-semibold">Signed in as</p>
                     <p className="font-semibold text-primary">
-                      {companyData.email}
+                      {adminData.email}
                     </p>
                   </DropdownItem>
                   <DropdownItem key="theme" className="h-14 gap-2">
@@ -122,12 +132,14 @@ export const DashboardTopBar = ({
                       />
                     </div>
                   </DropdownItem>
-                  <DropdownItem key="company_profile">
-                    Company Profile
-                  </DropdownItem>
+                  <DropdownItem key="admin_profile">Admin Profile</DropdownItem>
                   <DropdownItem key="settings">Settings</DropdownItem>
                   <DropdownItem key="help">Help & Support</DropdownItem>
-                  <DropdownItem key="logout" color="danger">
+                  <DropdownItem
+                    key="logout"
+                    color="danger"
+                    onPress={handleLogout}
+                  >
                     Log Out
                   </DropdownItem>
                 </DropdownMenu>
@@ -136,7 +148,7 @@ export const DashboardTopBar = ({
                   <DropdownItem
                     key="login"
                     className="h-10"
-                    onPress={() => navigate("/login")}
+                    onPress={() => navigate("/")}
                   >
                     <p className="font-semibold">Login</p>
                   </DropdownItem>

@@ -13,7 +13,7 @@ const firebaseConfig = {
   projectId: "rnauthvideo2",
   storageBucket: "rnauthvideo2.firebasestorage.app",
   messagingSenderId: "995000915226",
-  appId: "1:995000915226:web:1d881f3439e7a1d38088a3",
+  appId: "1:995000915226:web:e4cc2f937e2ddab08088a3"
 };
 
 const app = initializeApp(firebaseConfig);

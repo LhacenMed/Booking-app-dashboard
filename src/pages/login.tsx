@@ -4,7 +4,14 @@ import DefaultLayout from "@/layouts/default";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";
 
 export default function LoginPage() {
@@ -28,27 +35,48 @@ export default function LoginPage() {
       );
       console.log("Login successful, user:", userCredential.user.uid);
 
-      // Get company data
-      const companyDoc = await getDoc(
-        doc(db, "companies", userCredential.user.uid)
+      // Query admins collection to find the admin document with matching Firebase UID
+      const adminsQuery = query(
+        collection(db, "admins"),
+        where("firebaseUid", "==", userCredential.user.uid)
       );
-      if (companyDoc.exists()) {
-        const companyData = companyDoc.data();
-        console.log("Company data fetched:", companyData);
+      const querySnapshot = await getDocs(adminsQuery);
 
-        // Save to local storage
-        const accountData = {
-          id: userCredential.user.uid,
-          name: companyData.name,
-          email: companyData.email,
-          logo: companyData.logo,
-        };
-        console.log("Saving account to local storage:", accountData);
-        const saved = addAccountToLocalStorage(accountData);
-        console.log("Save to local storage result:", saved);
-      } else {
-        console.log("No company data found for user:", userCredential.user.uid);
+      if (querySnapshot.empty) {
+        throw new Error(
+          "Unauthorized access. This login is for administrators only."
+        );
       }
+
+      // Get the first matching admin document
+      const adminDoc = querySnapshot.docs[0];
+      const adminData = adminDoc.data();
+      console.log("Admin data fetched:", adminData);
+
+      // Save to local storage with custom admin ID
+      const accountData = {
+        id: adminDoc.id, // This is the custom admin_XXXX ID
+        name: adminData.name,
+        email: adminData.email,
+        logo: adminData.logo,
+        lastLoginAt: new Date().toISOString(),
+      };
+
+      // Debug local storage before saving
+      console.log(
+        "Current local storage:",
+        localStorage.getItem("recentAccounts")
+      );
+      console.log("About to save account data:", accountData);
+
+      const saved = addAccountToLocalStorage(accountData);
+
+      // Debug local storage after saving
+      console.log("Save to local storage result:", saved);
+      console.log(
+        "Updated local storage:",
+        localStorage.getItem("recentAccounts")
+      );
 
       setIsLoading(false);
       navigate("/dashboard");
@@ -82,8 +110,10 @@ export default function LoginPage() {
       <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
         <Card className="w-full max-w-md p-6">
           <CardHeader className="flex flex-col gap-2 items-center">
-            <h1 className="text-2xl font-bold">Welcome Back</h1>
-            <p className="text-default-500">Sign in to continue</p>
+            <h1 className="text-2xl font-bold">Admin Login</h1>
+            <p className="text-default-500">
+              Sign in to access admin dashboard
+            </p>
           </CardHeader>
           <CardBody>
             <form onSubmit={handleLogin} className="flex flex-col gap-4">
@@ -116,12 +146,6 @@ export default function LoginPage() {
                 Sign In
               </Button>
             </form>
-            <div className="mt-4 text-center text-default-500">
-              Don't have an account?{" "}
-              <Link href="/signup" className="text-primary">
-                Sign up
-              </Link>
-            </div>
           </CardBody>
         </Card>
       </div>

@@ -16,19 +16,11 @@ import { AppLayout } from "./layouts/AppLayout";
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <IndexPage />,
-  },
-  {
-    path: "/login",
     element: <LoginPage />,
   },
   {
     path: "/signup",
     element: <SignUpPage />,
-  },
-  {
-    path: "/page",
-    element: <Home />,
   },
   {
     element: (
@@ -37,6 +29,10 @@ export const router = createBrowserRouter([
       </PrivateRoute>
     ),
     children: [
+      {
+        path: "/home",
+        element: <IndexPage />,
+      },
       {
         path: "/dashboard",
         element: <DashboardPage />,

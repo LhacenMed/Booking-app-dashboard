@@ -33,6 +33,15 @@ interface Trip {
   createdAt: Date;
 }
 
+interface AdminData {
+  id: string;
+  name: string;
+  email: string;
+  logo: {
+    url: string;
+  };
+}
+
 export const useCompanyData = (userId: string | null) => {
   return useQuery<CompanyData | null, Error>({
     queryKey: ["company", userId],
@@ -72,5 +81,37 @@ export const useTrips = (companyId: string | null) => {
     enabled: !!companyId,
     staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes
     gcTime: 15 * 60 * 1000, // Keep data in cache for 15 minutes
+  });
+};
+
+export const useAdminData = (firebaseUid: string | null) => {
+  return useQuery<AdminData | null, Error>({
+    queryKey: ["admin", firebaseUid],
+    queryFn: async () => {
+      if (!firebaseUid) return null;
+
+      // Query admins collection to find the admin document with matching Firebase UID
+      const adminsQuery = query(
+        collection(db, "admins"),
+        where("firebaseUid", "==", firebaseUid)
+      );
+      const querySnapshot = await getDocs(adminsQuery);
+
+      if (querySnapshot.empty) return null;
+
+      // Get the first matching admin document
+      const adminDoc = querySnapshot.docs[0];
+      const adminData = adminDoc.data();
+
+      return {
+        id: adminDoc.id, // This is the custom admin_XXXX ID
+        name: adminData.name,
+        email: adminData.email,
+        logo: adminData.logo,
+      };
+    },
+    enabled: !!firebaseUid,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 30 * 60 * 1000, // Keep data in cache for 30 minutes
   });
 };

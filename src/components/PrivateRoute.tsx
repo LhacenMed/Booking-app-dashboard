@@ -17,7 +17,7 @@ export default function PrivateRoute({
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         // No user is signed in, redirect to login
-        navigate("/login");
+        navigate("/");
       }
       setIsLoading(false);
     });

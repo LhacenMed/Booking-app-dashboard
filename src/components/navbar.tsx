@@ -28,7 +28,7 @@ import { TwitterIcon, GithubIcon, DiscordIcon } from "@/components/icons";
 import { Logo } from "@/components/icons";
 import { PlaceholdersAndVanishInput } from "./ui/placeholders-and-vanish-input";
 
-interface CompanyData {
+interface AdminData {
   name: string;
   email: string;
   logo: {
@@ -45,25 +45,25 @@ const avatarStyles = {
 export const Navbar = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [companyData, setCompanyData] = useState<CompanyData | null>(null);
+  const [adminData, setAdminData] = useState<AdminData | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          const companyDoc = await getDoc(doc(db, "companies", user.uid));
-          if (companyDoc.exists()) {
-            setCompanyData({
-              name: companyDoc.data().name,
-              email: companyDoc.data().email,
-              logo: companyDoc.data().logo,
+          const adminDoc = await getDoc(doc(db, "admins", user.uid));
+          if (adminDoc.exists()) {
+            setAdminData({
+              name: adminDoc.data().name,
+              email: adminDoc.data().email,
+              logo: adminDoc.data().logo,
             });
           }
         } catch (error) {
-          console.error("Error fetching company data:", error);
+          console.error("Error fetching admin data:", error);
         }
       } else {
-        setCompanyData(null);
+        setAdminData(null);
       }
       setIsLoading(false);
     });
@@ -74,7 +74,7 @@ export const Navbar = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      navigate("/login");
+      navigate("/");
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -150,7 +150,7 @@ export const Navbar = () => {
           <ThemeSwitch />
         </NavbarItem>
         <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
-        {!companyData && (
+        {!adminData && (
           <NavbarItem className="hidden md:flex">
             <Button
               as={Link}
@@ -201,16 +201,16 @@ export const Navbar = () => {
         {!isLoading && (
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
-              {companyData ? (
+              {adminData ? (
                 <Avatar
                   isBordered
                   as="button"
                   className="transition-transform bg-white"
                   style={avatarStyles}
                   color="warning"
-                  name={companyData.name}
+                  name={adminData.name}
                   size="sm"
-                  src={companyData.logo.url}
+                  src={adminData.logo.url}
                   imgProps={{
                     className: "object-contain",
                   }}
@@ -228,17 +228,15 @@ export const Navbar = () => {
                 />
               )}
             </DropdownTrigger>
-            {companyData ? (
+            {adminData ? (
               <DropdownMenu aria-label="Profile Actions" variant="flat">
                 <DropdownItem key="profile" className="h-14 gap-2">
                   <p className="font-semibold">Signed in as</p>
                   <p className="font-semibold text-primary">
-                    {companyData.email}
+                    {adminData.email}
                   </p>
                 </DropdownItem>
-                <DropdownItem key="company_profile">
-                  Company Profile
-                </DropdownItem>
+                <DropdownItem key="admin_profile">Admin Profile</DropdownItem>
                 <DropdownItem key="settings">Settings</DropdownItem>
                 <DropdownItem key="help">Help & Support</DropdownItem>
                 <DropdownItem
@@ -254,7 +252,7 @@ export const Navbar = () => {
                 <DropdownItem
                   key="login"
                   className="h-10"
-                  onPress={() => navigate("/login")}
+                  onPress={() => navigate("/")}
                 >
                   <p className="font-semibold">Login</p>
                 </DropdownItem>
