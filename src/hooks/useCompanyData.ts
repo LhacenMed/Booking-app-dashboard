@@ -1,23 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../FirebaseConfig";
-
-export interface CompanyData {
-  id: string;
-  name: string;
-  email: string;
-  logo: {
-    publicId: string;
-    url: string;
-    uploadedAt: string;
-  };
-  status: "pending" | "approved" | "rejected";
-  createdAt: any;
-  updatedAt: any;
-}
+import { CompanyData } from "@/types/company";
 
 export const useCompanyData = (companyId: string | null) => {
-  return useQuery<CompanyData | null>({
+  return useQuery<CompanyData | null, Error>({
     queryKey: ["companyData", companyId],
     queryFn: async () => {
       if (!companyId) return null;
@@ -39,10 +26,10 @@ export const useCompanyData = (companyId: string | null) => {
         status: data.status,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
-      };
+      } as CompanyData;
     },
     enabled: !!companyId,
     staleTime: 1 * 60 * 1000, // Consider data fresh for 1 minute
-    cacheTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 };

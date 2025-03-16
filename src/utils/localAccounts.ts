@@ -1,69 +1,32 @@
-interface StoredAccount {
-  id: string;
-  name: string;
-  email: string;
-  logo: {
-    url: string;
-  };
-  lastLoginAt: string;
-}
+import { StoredAccount, CompanyLogo } from "@/types/company";
 
-const LOCAL_STORAGE_KEY = "recentAccounts";
+const ACCOUNTS_KEY = "stored_accounts";
 
 export const addAccountToLocalStorage = (
   account: Omit<StoredAccount, "lastLoginAt">
 ) => {
-  try {
-    if (!account.id || !account.name || !account.email || !account.logo?.url) {
-      console.error("Invalid account data:", account);
-      return false;
-    }
+  const accounts = getLocalAccounts();
+  const now = new Date().toISOString();
 
-    console.log("Adding account to local storage:", account);
-    const existingAccounts = getLocalAccounts();
-    console.log("Existing accounts:", existingAccounts);
+  const newAccount: StoredAccount = {
+    ...account,
+    lastLoginAt: now,
+  };
 
-    const newAccount = { ...account, lastLoginAt: new Date().toISOString() };
+  const updatedAccounts = accounts
+    .filter((acc) => acc.id !== account.id)
+    .concat(newAccount);
 
-    // Remove if account already exists (to update it)
-    const filteredAccounts = existingAccounts.filter(
-      (acc) => acc.id !== account.id
-    );
-
-    // Add new account at the beginning
-    const updatedAccounts = [newAccount, ...filteredAccounts].slice(0, 5); // Keep only last 5 accounts
-    console.log("Updated accounts list:", updatedAccounts);
-
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedAccounts));
-    return true;
-  } catch (error) {
-    console.error("Error saving account to local storage:", error);
-    return false;
-  }
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(updatedAccounts));
 };
 
 export const getLocalAccounts = (): StoredAccount[] => {
-  try {
-    const accounts = localStorage.getItem(LOCAL_STORAGE_KEY);
-    const parsedAccounts = accounts ? JSON.parse(accounts) : [];
-    console.log("Retrieved accounts from local storage:", parsedAccounts);
-    return parsedAccounts;
-  } catch (error) {
-    console.error("Error reading accounts from local storage:", error);
-    return [];
-  }
+  const accounts = localStorage.getItem(ACCOUNTS_KEY);
+  return accounts ? JSON.parse(accounts) : [];
 };
 
 export const removeAccountFromLocalStorage = (accountId: string) => {
-  try {
-    console.log("Removing account:", accountId);
-    const accounts = getLocalAccounts();
-    const filteredAccounts = accounts.filter((acc) => acc.id !== accountId);
-    console.log("Updated accounts after removal:", filteredAccounts);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filteredAccounts));
-    return true;
-  } catch (error) {
-    console.error("Error removing account from local storage:", error);
-    return false;
-  }
+  const accounts = getLocalAccounts();
+  const updatedAccounts = accounts.filter((acc) => acc.id !== accountId);
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(updatedAccounts));
 };

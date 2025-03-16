@@ -9,18 +9,7 @@ import {
 } from "@/utils/localAccounts";
 import { useCompanyData } from "@/hooks/useCompanyData";
 import { Spinner } from "@heroui/react";
-
-interface StoredAccount {
-  id: string;
-  name: string;
-  email: string;
-  logo: {
-    publicId: string;
-    url: string;
-    uploadedAt: string;
-  };
-  lastLoginAt: string;
-}
+import { StoredAccount } from "@/types/company";
 
 export const AccountToggle = () => {
   const navigate = useNavigate();

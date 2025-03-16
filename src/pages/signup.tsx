@@ -336,7 +336,9 @@ export default function SignUpPage() {
         name: companyData.name,
         email: userCredential.user.email || "",
         logo: {
+          publicId: companyData.logoPublicId,
           url: companyData.logoUrl,
+          uploadedAt: new Date().toISOString(),
         },
       });
 
