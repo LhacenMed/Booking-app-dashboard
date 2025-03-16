@@ -5,14 +5,14 @@ import {
   FiDollarSign,
   FiHome,
   FiLink,
-  FiPaperclip,
+  FiTruck,
   FiUsers,
 } from "react-icons/fi";
 
 const routes = [
   { path: "/dashboard", Icon: FiHome, title: "Dashboard" },
   { path: "/team", Icon: FiUsers, title: "Team" },
-  { path: "/trips", Icon: FiPaperclip, title: "Trips" },
+  { path: "/trips", Icon: FiTruck, title: "Trips" },
   { path: "/integrations", Icon: FiLink, title: "Integrations" },
   { path: "/finance", Icon: FiDollarSign, title: "Finance" },
 ];

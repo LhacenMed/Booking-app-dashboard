@@ -12,25 +12,34 @@ import DefaultLayout from "@/layouts/default";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection } from "firebase/firestore";
 import { ImageUploadPreview } from "@/components/ImageUploadPreview";
 import { FileUpload } from "@/components/ui/file-upload";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";
+import { GeoPoint, Timestamp } from "firebase/firestore";
 
 interface CompanyData {
   name: string;
-  location: string;
-  phone: string;
+  location: GeoPoint;
+  phoneNumber: string;
   logoPublicId: string;
   logoUrl: string;
   businessLicensePublicId?: string;
   businessLicenseUrl?: string;
+  creditBalance?: number;
+  status?: "pending" | "approved" | "rejected" | null;
 }
 
 interface LoadingState {
   logo: boolean;
   license: boolean;
   submit: boolean;
+  location: boolean;
+}
+
+interface LocationInput {
+  latitude: string;
+  longitude: string;
 }
 
 export default function SignUpPage() {
@@ -38,10 +47,15 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [locationInput, setLocationInput] = useState<LocationInput>({
+    latitude: "",
+    longitude: "",
+  });
   const [isLoading, setIsLoading] = useState<LoadingState>({
     logo: false,
     license: false,
     submit: false,
+    location: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
@@ -54,12 +68,14 @@ export default function SignUpPage() {
   // Company Information State
   const [companyData, setCompanyData] = useState<CompanyData>({
     name: "",
-    location: "",
-    phone: "",
+    location: new GeoPoint(0, 0),
+    phoneNumber: "",
     logoPublicId: "",
     logoUrl: "",
     businessLicensePublicId: "",
     businessLicenseUrl: "",
+    creditBalance: 0,
+    status: "pending",
   });
 
   const handleFileUpload = async (file: File, type: "logo" | "license") => {
@@ -132,6 +148,81 @@ export default function SignUpPage() {
     }
   };
 
+  const handleLocationChange = (field: keyof LocationInput, value: string) => {
+    // Only allow numbers, decimal point, and minus sign
+    if (!/^-?\d*\.?\d*$/.test(value) && value !== "") return;
+
+    setLocationInput((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    const lat =
+      field === "latitude" ? Number(value) : Number(locationInput.latitude);
+    const lng =
+      field === "longitude" ? Number(value) : Number(locationInput.longitude);
+
+    // Update GeoPoint only if both values are valid numbers
+    if (!isNaN(lat) && !isNaN(lng)) {
+      setCompanyData((prev) => ({
+        ...prev,
+        location: new GeoPoint(lat, lng),
+      }));
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsLoading((prev) => ({ ...prev, location: true }));
+    setError("");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+
+        // Update both the input fields and the GeoPoint
+        setLocationInput({
+          latitude: latitude.toFixed(6),
+          longitude: longitude.toFixed(6),
+        });
+
+        setCompanyData((prev) => ({
+          ...prev,
+          location: new GeoPoint(latitude, longitude),
+        }));
+
+        setIsLoading((prev) => ({ ...prev, location: false }));
+      },
+      (error) => {
+        let errorMessage = "Failed to get your location";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Please allow location access to continue";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out";
+            break;
+          default:
+            errorMessage = "An unknown error occurred";
+        }
+        setError(errorMessage);
+        setIsLoading((prev) => ({ ...prev, location: false }));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -150,10 +241,28 @@ export default function SignUpPage() {
       return;
     }
 
+    // Validate location coordinates
+    const latitude = Number(locationInput.latitude);
+    const longitude = Number(locationInput.longitude);
+
+    if (
+      isNaN(latitude) ||
+      isNaN(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      setError("Please enter valid location coordinates");
+      setIsLoading((prev) => ({ ...prev, submit: false }));
+      return;
+    }
+
     if (
       !companyData.name ||
-      !companyData.location ||
-      !companyData.phone ||
+      !locationInput.latitude ||
+      !locationInput.longitude ||
+      !companyData.phoneNumber ||
       !companyData.logoPublicId ||
       !companyData.logoUrl
     ) {
@@ -172,14 +281,15 @@ export default function SignUpPage() {
         password
       );
 
+      // Create GeoPoint from validated coordinates
+      const geoPoint = new GeoPoint(latitude, longitude);
+
       // Prepare company data for Firestore
       const companyDocData = {
-        ...companyData,
-        userId: userCredential.user.uid,
+        name: companyData.name,
         email: userCredential.user.email,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        // Add metadata for images
+        location: geoPoint,
+        phoneNumber: companyData.phoneNumber,
         logo: {
           publicId: companyData.logoPublicId,
           url: companyData.logoUrl,
@@ -192,11 +302,33 @@ export default function SignUpPage() {
               uploadedAt: new Date().toISOString(),
             }
           : null,
+        creditBalance: 0,
+        status: "pending",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
       };
 
       // Save company data to Firestore
-      const companyRef = doc(db, "companies", userCredential.user.uid);
+      const companyRef = doc(
+        db,
+        "transportation_companies",
+        userCredential.user.uid
+      );
       await setDoc(companyRef, companyDocData);
+
+      // Create empty trips subcollection
+      const tripsCollectionRef = collection(companyRef, "trips");
+      await setDoc(doc(tripsCollectionRef, "placeholder"), {
+        createdAt: Timestamp.now(),
+        placeholder: true,
+      });
+
+      // Create empty seats subcollection
+      const seatsCollectionRef = collection(companyRef, "seats");
+      await setDoc(doc(seatsCollectionRef, "placeholder"), {
+        createdAt: Timestamp.now(),
+        placeholder: true,
+      });
 
       // Save to local storage
       addAccountToLocalStorage({
@@ -327,25 +459,84 @@ export default function SignUpPage() {
                     required
                   />
 
-                  <Input
-                    label="Main Office Location"
-                    value={companyData.location}
-                    onChange={(e) =>
-                      setCompanyData({
-                        ...companyData,
-                        location: e.target.value,
-                      })
-                    }
-                    placeholder="Enter company headquarters location"
-                    required
-                  />
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm font-medium">
+                        Company Location
+                      </label>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="primary"
+                        onClick={getCurrentLocation}
+                        isLoading={isLoading.location}
+                        startContent={
+                          !isLoading.location && (
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                            </svg>
+                          )
+                        }
+                      >
+                        {isLoading.location
+                          ? "Getting Location..."
+                          : "Use Current Location"}
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <Input
+                        label="Latitude"
+                        value={locationInput.latitude}
+                        onChange={(e) =>
+                          handleLocationChange("latitude", e.target.value)
+                        }
+                        placeholder="Waiting for location..."
+                        required
+                        description="Use current location button above"
+                        isDisabled={isLoading.location}
+                        isReadOnly
+                      />
+                      <Input
+                        label="Longitude"
+                        value={locationInput.longitude}
+                        onChange={(e) =>
+                          handleLocationChange("longitude", e.target.value)
+                        }
+                        placeholder="Waiting for location..."
+                        required
+                        description="Use current location button above"
+                        isDisabled={isLoading.location}
+                        isReadOnly
+                      />
+                    </div>
+                  </div>
 
                   <Input
                     label="Phone Number"
                     type="tel"
-                    value={companyData.phone}
+                    value={companyData.phoneNumber}
                     onChange={(e) =>
-                      setCompanyData({ ...companyData, phone: e.target.value })
+                      setCompanyData({
+                        ...companyData,
+                        phoneNumber: e.target.value,
+                      })
                     }
                     placeholder="Enter company phone number"
                     required

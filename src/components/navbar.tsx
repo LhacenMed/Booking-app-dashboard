@@ -16,11 +16,10 @@ import {
 } from "@heroui/react";
 import { link as linkStyles } from "@heroui/theme";
 import clsx from "clsx";
-import { useEffect, useState } from "react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../../FirebaseConfig";
+import { auth } from "../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
+import { signOut } from "firebase/auth";
+import { useCompanyData } from "@/hooks/useCompanyData";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -28,48 +27,17 @@ import { TwitterIcon, GithubIcon, DiscordIcon } from "@/components/icons";
 import { Logo } from "@/components/icons";
 import { PlaceholdersAndVanishInput } from "./ui/placeholders-and-vanish-input";
 
-interface CompanyData {
-  name: string;
-  email: string;
-  logo: {
-    url: string;
-  };
-}
-
 // Add a custom style for the avatar
 const avatarStyles = {
   "--avatar-img-object-fit": "contain",
-  backgroundColor: "white", // Add a white background to make the logo more visible
+  backgroundColor: "white",
 } as React.CSSProperties;
 
 export const Navbar = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [companyData, setCompanyData] = useState<CompanyData | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          const companyDoc = await getDoc(doc(db, "companies", user.uid));
-          if (companyDoc.exists()) {
-            setCompanyData({
-              name: companyDoc.data().name,
-              email: companyDoc.data().email,
-              logo: companyDoc.data().logo,
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching company data:", error);
-        }
-      } else {
-        setCompanyData(null);
-      }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const { data: companyData, isLoading } = useCompanyData(
+    auth.currentUser?.uid || null
+  );
 
   const handleLogout = async () => {
     try {

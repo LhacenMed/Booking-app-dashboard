@@ -15,7 +15,9 @@ import { FiSearch, FiBell } from "react-icons/fi";
 import { MoonFilledIcon, SunFilledIcon } from "@/components/icons";
 import { useTheme } from "@heroui/use-theme";
 import { useNavigate } from "react-router-dom";
-import { useCompanyData } from "@/hooks/useQueries";
+import { useQuery } from "@tanstack/react-query";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../../FirebaseConfig";
 import { auth } from "../../../FirebaseConfig";
 
 interface DashboardTopBarProps {
@@ -23,6 +25,34 @@ interface DashboardTopBarProps {
   showSearch?: boolean;
   rightContent?: React.ReactNode;
 }
+
+interface CompanyData {
+  name: string;
+  email: string;
+  logo: {
+    publicId: string;
+    url: string;
+    uploadedAt: string;
+  };
+}
+
+const useCompanyData = (companyId: string | null) => {
+  return useQuery<CompanyData | null>({
+    queryKey: ["companyData", companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const docRef = doc(db, "transportation_companies", companyId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return null;
+      return {
+        name: docSnap.data().name,
+        email: docSnap.data().email,
+        logo: docSnap.data().logo,
+      };
+    },
+    enabled: !!companyId,
+  });
+};
 
 // Add a custom style for the avatar
 const avatarStyles = {

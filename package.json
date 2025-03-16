@@ -12,6 +12,7 @@
     "dependencies": {
         "@cloudinary/react": "^1.14.1",
         "@cloudinary/url-gen": "^1.21.0",
+        "@googlemaps/js-api-loader": "^1.16.8",
         "@heroui/button": "2.2.13",
         "@heroui/code": "2.2.10",
         "@heroui/dropdown": "2.3.13",

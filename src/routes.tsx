@@ -12,6 +12,7 @@ import IntegrationsPage from "./pages/integrations";
 import FinancePage from "./pages/finance";
 import { SeatManagement } from "./components/Trips/SeatManagement";
 import { AppLayout } from "./layouts/AppLayout";
+import { StatusProtectedRoute } from "@/components/ProtectedRoute/StatusProtectedRoute";
 
 export const router = createBrowserRouter([
   {
@@ -64,7 +65,13 @@ export const router = createBrowserRouter([
       },
       {
         path: "/finance",
-        element: <FinancePage />,
+        element: (
+          <PrivateRoute>
+            <StatusProtectedRoute>
+              <FinancePage />
+            </StatusProtectedRoute>
+          </PrivateRoute>
+        ),
       },
       {
         path: "/docs",
