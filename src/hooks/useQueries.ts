@@ -8,6 +8,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { db } from "../../FirebaseConfig";
+import { Timestamp } from "firebase/firestore";
 
 interface CompanyData {
   id: string;
@@ -20,17 +21,13 @@ interface CompanyData {
 
 interface Trip {
   id: string;
-  route: string;
-  dateTime: string;
-  carType: "Medium" | "Large";
-  seatsAvailable: number;
-  seatsBooked: number;
-  status: "Active" | "Inactive";
-  price: number;
-  companyId: string;
   departureCity: string;
   destinationCity: string;
-  createdAt: Date;
+  departureTime: Timestamp | null;
+  arrivalTime: Timestamp | null;
+  carType: "medium" | "large";
+  pricePerSeat: number;
+  createdAt: Timestamp | null;
 }
 
 export const useCompanyData = (userId: string | null) => {
@@ -59,15 +56,22 @@ export const useTrips = (companyId: string | null) => {
     queryFn: async () => {
       if (!companyId) return [];
       const tripsQuery = query(
-        collection(db, "trips"),
-        where("companyId", "==", companyId)
+        collection(db, `transportation_companies/${companyId}/trips`)
       );
       const snapshot = await getDocs(tripsQuery);
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-      })) as Trip[];
+      return snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          departureCity: data.departureCity,
+          destinationCity: data.destinationCity,
+          departureTime: data.departureTime,
+          arrivalTime: data.arrivalTime,
+          carType: data.carType,
+          pricePerSeat: data.pricePerSeat,
+          createdAt: data.createdAt,
+        } as Trip;
+      });
     },
     enabled: !!companyId,
     staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes

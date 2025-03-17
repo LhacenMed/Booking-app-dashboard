@@ -35,6 +35,7 @@ import {
   getDocs,
   deleteDoc,
   Timestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "../../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
@@ -43,17 +44,13 @@ import { DashboardTopBar } from "@/components/Dashboard/DashboardTopBar";
 
 interface Trip {
   id: string;
-  route: string;
-  dateTime: string;
-  carType: "Medium" | "Large";
-  seatsAvailable: number;
-  seatsBooked: number;
-  status: "Active" | "Inactive";
-  price: number;
-  companyId: string;
   departureCity: string;
   destinationCity: string;
-  createdAt: Date;
+  departureTime: Timestamp | null;
+  arrivalTime: Timestamp | null;
+  carType: "medium" | "large";
+  pricePerSeat: number;
+  createdAt: Timestamp | null;
 }
 
 interface CompanyData {
@@ -77,17 +74,13 @@ interface NewTripForm {
   destinationCity: string;
   date: string;
   time: string;
-  carType: "Medium" | "Large";
+  arrivalDate: string;
+  arrivalTime: string;
+  carType: "medium" | "large";
   price: number;
 }
 
-type SortOption =
-  | "newest"
-  | "oldest"
-  | "active_newest"
-  | "active_oldest"
-  | "inactive_newest"
-  | "inactive_oldest";
+type SortOption = "newest" | "oldest";
 
 // Add a custom style for the avatar
 const avatarStyles = {
@@ -111,7 +104,9 @@ export const Trips = () => {
     destinationCity: "",
     date: "",
     time: "",
-    carType: "Medium",
+    arrivalDate: "",
+    arrivalTime: "",
+    carType: "medium",
     price: 0,
   });
 
@@ -129,7 +124,8 @@ export const Trips = () => {
   };
 
   const handleViewSeats = (tripId: string) => {
-    navigate(`/trips/seats/${tripId}`);
+    if (!userId) return;
+    navigate(`/companies/${userId}/trips/${tripId}/seats`);
   };
 
   const handleDeactivateTrip = async (tripId: string) => {
@@ -149,7 +145,30 @@ export const Trips = () => {
   };
 
   const handleDeleteTrip = async (tripId: string) => {
+    if (!userId) return;
+
     try {
+      // Delete all seats in the seats subcollection
+      const seatsRef = collection(
+        db,
+        `transportation_companies/${userId}/trips/${tripId}/seats`
+      );
+      const seatsSnapshot = await getDocs(seatsRef);
+      const batch = writeBatch(db);
+
+      seatsSnapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      // Delete the trip document
+      const tripRef = doc(
+        db,
+        `transportation_companies/${userId}/trips`,
+        tripId
+      );
+      batch.delete(tripRef);
+
+      await batch.commit();
       await deleteDoc(doc(db, "trips", tripId));
     } catch (error) {
       console.error("Error deleting trip:", error);
@@ -196,24 +215,46 @@ export const Trips = () => {
 
     try {
       const tripId = await generateTripId(userId);
-      const tripRef = doc(db, "trips", tripId);
+
+      // Create departure and arrival timestamps
+      const departureTimestamp = Timestamp.fromDate(
+        new Date(`${newTripForm.date}T${newTripForm.time}`)
+      );
+      const arrivalTimestamp = Timestamp.fromDate(
+        new Date(`${newTripForm.arrivalDate}T${newTripForm.arrivalTime}`)
+      );
+
+      // Reference to the company's trips subcollection
+      const tripRef = doc(
+        collection(db, `transportation_companies/${userId}/trips`),
+        tripId
+      );
 
       // Create new trip in Firestore
       const tripData = {
-        companyId: userId,
-        route: `${newTripForm.departureCity} → ${newTripForm.destinationCity}`,
-        dateTime: `${newTripForm.date} ${newTripForm.time}`,
-        carType: newTripForm.carType,
-        seatsAvailable: newTripForm.carType === "Medium" ? 20 : 30,
-        seatsBooked: 0,
-        status: "Active",
-        price: newTripForm.price,
         departureCity: newTripForm.departureCity,
         destinationCity: newTripForm.destinationCity,
+        departureTime: departureTimestamp,
+        arrivalTime: arrivalTimestamp,
+        carType: newTripForm.carType,
+        pricePerSeat: newTripForm.price,
         createdAt: Timestamp.now(),
       };
 
+      // Add trip document
       await setDoc(tripRef, tripData);
+
+      // Generate and add seats to the seats subcollection
+      const seats = generateSeats(newTripForm.carType);
+      const seatsCollectionRef = collection(tripRef, "seats");
+
+      // Add all seats in a batch
+      const batch = writeBatch(db);
+      Object.entries(seats).forEach(([seatId, seatData]) => {
+        const seatRef = doc(seatsCollectionRef, seatId);
+        batch.set(seatRef, seatData);
+      });
+      await batch.commit();
 
       // Reset form and close modal
       setIsAddTripModalOpen(false);
@@ -223,7 +264,9 @@ export const Trips = () => {
         destinationCity: "",
         date: "",
         time: "",
-        carType: "Medium",
+        arrivalDate: "",
+        arrivalTime: "",
+        carType: "medium",
         price: 0,
       });
     } catch (error) {
@@ -233,40 +276,48 @@ export const Trips = () => {
 
   const cities = ["Nouakchott", "Atar", "Rosso", "Nouadhibou", "Zouérat"];
 
+  const formatTimestamp = (timestamp: Timestamp | null | undefined) => {
+    if (!timestamp || typeof timestamp.seconds === "undefined") {
+      return "N/A";
+    }
+    return new Date(timestamp.seconds * 1000).toLocaleString();
+  };
+
   const getSortedTrips = () => {
     if (!trips) return [];
 
-    return [...trips]
-      .filter((trip) => {
-        // Filter by status first
-        if (sortBy.startsWith("active_")) return trip.status === "Active";
-        if (sortBy.startsWith("inactive_")) return trip.status === "Inactive";
-        return true;
-      })
-      .sort((a, b) => {
-        switch (sortBy) {
-          case "newest":
-            return (
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-          case "oldest":
-            return (
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            );
-          case "active_newest":
-          case "inactive_newest":
-            return (
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-          case "active_oldest":
-          case "inactive_oldest":
-            return (
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            );
-          default:
-            return 0;
-        }
-      });
+    return [...trips].sort((a, b) => {
+      const aSeconds = a.createdAt?.seconds ?? 0;
+      const bSeconds = b.createdAt?.seconds ?? 0;
+
+      switch (sortBy) {
+        case "newest":
+          return bSeconds - aSeconds;
+        case "oldest":
+          return aSeconds - bSeconds;
+        default:
+          return 0;
+      }
+    });
+  };
+
+  const generateSeats = (carType: "medium" | "large") => {
+    const seatCount = carType === "medium" ? 15 : 60;
+    const seats: {
+      [key: string]: {
+        id: number;
+        status: "available" | "booked" | "disabled";
+      };
+    } = {};
+
+    for (let i = 1; i <= seatCount; i++) {
+      seats[i] = {
+        id: i,
+        status: "available",
+      };
+    }
+
+    return seats;
   };
 
   return (
@@ -288,36 +339,9 @@ export const Trips = () => {
               onAction={(key) => setSortBy(key as SortOption)}
               selectedKeys={new Set([sortBy])}
               selectionMode="single"
-              disabledKeys={["active", "inactive"]}
             >
               <DropdownItem key="newest">Newest First</DropdownItem>
               <DropdownItem key="oldest">Oldest First</DropdownItem>
-              <DropdownItem
-                key="active"
-                className="text-default-500"
-                isReadOnly
-              >
-                Active Trips
-              </DropdownItem>
-              <DropdownItem key="active_newest" className="pl-[25px]">
-                Newest First
-              </DropdownItem>
-              <DropdownItem key="active_oldest" className="pl-[25px]">
-                Oldest First
-              </DropdownItem>
-              <DropdownItem
-                key="inactive"
-                className="text-default-500"
-                isReadOnly
-              >
-                Inactive Trips
-              </DropdownItem>
-              <DropdownItem key="inactive_newest" className="pl-[25px]">
-                Newest First
-              </DropdownItem>
-              <DropdownItem key="inactive_oldest" className="pl-[25px]">
-                Oldest First
-              </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         }
@@ -384,17 +408,15 @@ export const Trips = () => {
                 <TableHeader>
                   <TableColumn>TRIP ID</TableColumn>
                   <TableColumn>ROUTE</TableColumn>
-                  <TableColumn>DATE & TIME</TableColumn>
+                  <TableColumn>DEPARTURE</TableColumn>
+                  <TableColumn>ARRIVAL</TableColumn>
                   <TableColumn>CAR TYPE</TableColumn>
-                  <TableColumn>SEATS</TableColumn>
                   <TableColumn>PRICE</TableColumn>
-                  <TableColumn>STATUS</TableColumn>
                   <TableColumn>ACTIONS</TableColumn>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell>-</TableCell>
                       <TableCell>-</TableCell>
                       <TableCell>-</TableCell>
                       <TableCell>-</TableCell>
@@ -412,30 +434,26 @@ export const Trips = () => {
                       <TableCell>-</TableCell>
                       <TableCell>-</TableCell>
                       <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
                     </TableRow>
                   ) : (
                     getSortedTrips().map((trip) => (
                       <TableRow key={trip.id}>
                         <TableCell>{trip.id}</TableCell>
-                        <TableCell>{trip.route}</TableCell>
-                        <TableCell>{trip.dateTime}</TableCell>
-                        <TableCell>{trip.carType}</TableCell>
                         <TableCell>
-                          {trip.seatsBooked}/
-                          {trip.seatsAvailable + trip.seatsBooked}
+                          {trip.departureCity} → {trip.destinationCity}
                         </TableCell>
-                        <TableCell>${trip.price}</TableCell>
                         <TableCell>
-                          <Chip
-                            color={
-                              trip.status === "Active" ? "success" : "danger"
-                            }
-                            variant="flat"
-                          >
-                            {trip.status}
-                          </Chip>
+                          {formatTimestamp(trip.departureTime)}
                         </TableCell>
+                        <TableCell>
+                          {formatTimestamp(trip.arrivalTime)}
+                        </TableCell>
+                        <TableCell>
+                          {trip.carType === "medium"
+                            ? "Medium (15 seats)"
+                            : "Large (60 seats)"}
+                        </TableCell>
+                        <TableCell>${trip.pricePerSeat}</TableCell>
                         <TableCell>
                           <Dropdown>
                             <DropdownTrigger>
@@ -453,17 +471,6 @@ export const Trips = () => {
                                 onPress={() => handleViewSeats(trip.id)}
                               >
                                 View Seats
-                              </DropdownItem>
-                              <DropdownItem
-                                key="deactivate"
-                                className="text-danger"
-                                color="danger"
-                                onPress={() => handleDeactivateTrip(trip.id)}
-                              >
-                                {trip.status === "Active"
-                                  ? "Deactivate"
-                                  : "Activate"}{" "}
-                                Trip
                               </DropdownItem>
                               <DropdownItem
                                 key="delete"
@@ -535,24 +542,54 @@ export const Trips = () => {
                   ))}
                 </Select>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    type="date"
-                    label="Date"
-                    value={newTripForm.date}
-                    onChange={(e) =>
-                      setNewTripForm({ ...newTripForm, date: e.target.value })
-                    }
-                    startContent={<FiCalendar className="text-gray-400" />}
-                  />
-                  <Input
-                    type="time"
-                    label="Time"
-                    value={newTripForm.time}
-                    onChange={(e) =>
-                      setNewTripForm({ ...newTripForm, time: e.target.value })
-                    }
-                    startContent={<FiClock className="text-gray-400" />}
-                  />
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Departure Time</h4>
+                    <Input
+                      type="date"
+                      label="Date"
+                      value={newTripForm.date}
+                      onChange={(e) =>
+                        setNewTripForm({ ...newTripForm, date: e.target.value })
+                      }
+                      startContent={<FiCalendar className="text-gray-400" />}
+                    />
+                    <Input
+                      type="time"
+                      label="Time"
+                      value={newTripForm.time}
+                      onChange={(e) =>
+                        setNewTripForm({ ...newTripForm, time: e.target.value })
+                      }
+                      startContent={<FiClock className="text-gray-400" />}
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Arrival Time</h4>
+                    <Input
+                      type="date"
+                      label="Date"
+                      value={newTripForm.arrivalDate}
+                      onChange={(e) =>
+                        setNewTripForm({
+                          ...newTripForm,
+                          arrivalDate: e.target.value,
+                        })
+                      }
+                      startContent={<FiCalendar className="text-gray-400" />}
+                    />
+                    <Input
+                      type="time"
+                      label="Time"
+                      value={newTripForm.arrivalTime}
+                      onChange={(e) =>
+                        setNewTripForm({
+                          ...newTripForm,
+                          arrivalTime: e.target.value,
+                        })
+                      }
+                      startContent={<FiClock className="text-gray-400" />}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -567,12 +604,12 @@ export const Trips = () => {
                       onChange={(e) =>
                         setNewTripForm({
                           ...newTripForm,
-                          carType: e.target.value as "Medium" | "Large",
+                          carType: e.target.value as "medium" | "large",
                         })
                       }
                     >
-                      <SelectItem key="medium">Medium (20 seats)</SelectItem>
-                      <SelectItem key="large">Large (30 seats)</SelectItem>
+                      <SelectItem key="medium">Medium (15 seats)</SelectItem>
+                      <SelectItem key="large">Large (60 seats)</SelectItem>
                     </Select>
                   </div>
                 </div>
@@ -600,9 +637,18 @@ export const Trips = () => {
                       {newTripForm.destinationCity}
                     </p>
                     <p>
-                      Date & Time: {newTripForm.date} {newTripForm.time}
+                      Departure: {newTripForm.date} {newTripForm.time}
                     </p>
-                    <p>Car Type: {newTripForm.carType}</p>
+                    <p>
+                      Arrival: {newTripForm.arrivalDate}{" "}
+                      {newTripForm.arrivalTime}
+                    </p>
+                    <p>
+                      Car Type:{" "}
+                      {newTripForm.carType === "medium"
+                        ? "Medium (15 seats)"
+                        : "Large (60 seats)"}
+                    </p>
                     <p>Price per Seat: ${newTripForm.price}</p>
                   </div>
                 </div>
