@@ -1,13 +1,18 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useCompanyStatus } from "@/hooks/useCompanyStatus";
+import { useCompanyData } from "@/hooks/useQueries";
 import { auth } from "../../FirebaseConfig";
 import { StatusBanner } from "@/components/CompanyStatus/StatusBanner";
-import { Spinner } from "@heroui/react";
+import { Button, Spinner } from "@heroui/react";
 import { Dashboard } from "@/components/Dashboard/Dashboard";
+import { DashboardTopBar } from "@/components/Dashboard/DashboardTopBar";
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const userId = auth.currentUser?.uid || null;
   const { data: statusData, isLoading, error } = useCompanyStatus(userId);
+  const { data: companyData } = useCompanyData(userId);
 
   if (isLoading) {
     return (
@@ -19,8 +24,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <StatusBanner />
+      <div className="container mx-auto">
         <div className="mt-8 text-center text-red-500">
           <p>Failed to load company status. Please try again later.</p>
         </div>
@@ -53,8 +57,22 @@ export default function DashboardPage() {
     );
   }
 
+  if (!userId) {
+    return (
+      <div className="container mx-auto">
+        <DashboardTopBar showSearch={false} />
+        <div className="text-xl font-medium text-default-500 text-center pt-20">
+          Please sign in to continue
+          <div className="mt-3">
+            <Button onPress={() => navigate("/login")}>Login</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto">
       <StatusBanner />
       <Dashboard />
     </div>

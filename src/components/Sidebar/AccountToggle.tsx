@@ -103,7 +103,17 @@ export const AccountToggle = () => {
   }
 
   if (!companyData) {
-    return null;
+    return (
+      <div className="border-b mb-4 mt-2 pb-4 border-divider px-3">
+        <div className="flex p-0.5 relative gap-2 w-full items-center">
+          <div className="size-8 rounded shrink-0 bg-default-300" />
+          <div className="flex-1">
+            <div className="text-sm font-medium text-default-500">Not logged in</div>
+            <div className="text-xs text-default-400">Please sign in to continue</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -182,7 +192,7 @@ export const AccountToggle = () => {
 
             {/* Add Account Button */}
             <button
-              onClick={() => navigate("/signup")}
+              onClick={() => navigate("/login")}
               className="flex items-center gap-2 w-full px-2 py-1.5 hover:bg-content2 transition-colors text-default-600"
             >
               <FiPlus className="text-lg" />

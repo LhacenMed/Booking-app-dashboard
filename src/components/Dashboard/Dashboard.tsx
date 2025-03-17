@@ -17,7 +17,7 @@ export const Dashboard = () => {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <DashboardTopBar showSearch={false} rightContent={dateSelector} />
+      <DashboardTopBar rightContent={dateSelector} />
       <div className="flex-1 overflow-auto">
         <div className="p-6">
           <Grid />

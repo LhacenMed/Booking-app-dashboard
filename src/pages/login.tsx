@@ -30,7 +30,7 @@ export default function LoginPage() {
 
       // Get company data
       const companyDoc = await getDoc(
-        doc(db, "companies", userCredential.user.uid)
+        doc(db, "transportation_companies", userCredential.user.uid)
       );
       if (companyDoc.exists()) {
         const companyData = companyDoc.data();

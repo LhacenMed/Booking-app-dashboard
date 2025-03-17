@@ -334,7 +334,31 @@ export const SeatManagement = () => {
   };
 
   if (isLoading) {
-    return <div className="p-6">Loading...</div>;
+    return (
+      <div>
+        <div className="bg-content1 border-b border-divider px-6 py-4">
+          <div className="flex items-center gap-4">
+            <Button
+              isIconOnly
+              variant="light"
+              onPress={() => navigate("/trips")}
+            >
+              <FiArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">
+                Seat Management
+              </h1>
+              <p className="text-small text-default-500">
+                Loading
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6">Loading...</div>
+      </div>
+    );
   }
 
   if (!trip) {

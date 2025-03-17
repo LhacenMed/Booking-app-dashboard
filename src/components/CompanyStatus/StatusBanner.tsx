@@ -1,17 +1,30 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useCompanyStatus } from "@/hooks/useCompanyStatus";
 import { auth } from "../../../FirebaseConfig";
 import { Card, CardBody, Button, Spinner } from "@heroui/react";
-import { FiClock, FiCheckCircle, FiXCircle } from "react-icons/fi";
+import { FiClock, FiCheckCircle, FiXCircle, FiX } from "react-icons/fi";
 
 export const StatusBanner = () => {
   const userId = auth.currentUser?.uid || null;
   const { data: statusData, isLoading, error } = useCompanyStatus(userId);
+  const [isVisible, setIsVisible] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !localStorage.getItem(`statusBannerHidden_${userId}`);
+    }
+    return false;
+  });
+
+  const handleClose = () => {
+    setIsVisible(false);
+    localStorage.setItem(`statusBannerHidden_${userId}`, "true");
+  };
+
+  if (!isVisible) return null;
 
   if (isLoading) {
     return (
-      <Card className="border-default">
-        <CardBody className="flex items-center justify-center py-3">
+      <Card className="border-default shadow-lg fixed top-0 right-0 left-[280px] z-50">
+        <CardBody className="flex items-center justify-center py-3 bg-background/95 backdrop-blur-sm">
           <Spinner size="sm" />
           <span className="ml-2">Loading status...</span>
         </CardBody>
@@ -21,8 +34,8 @@ export const StatusBanner = () => {
 
   if (error || !statusData) {
     return (
-      <Card className="border-danger">
-        <CardBody className="flex items-center gap-4 py-3">
+      <Card className="border-danger shadow-lg fixed top-0 right-0 left-[280px] z-50">
+        <CardBody className="flex items-center gap-4 py-3 bg-background/95 backdrop-blur-sm">
           <div className="text-danger">
             <FiXCircle className="w-5 h-5" />
           </div>
@@ -34,6 +47,15 @@ export const StatusBanner = () => {
                 : "Failed to load company status"}
             </p>
           </div>
+          <Button
+            isIconOnly
+            variant="light"
+            size="sm"
+            onClick={handleClose}
+            className="text-default-400 hover:text-default-600"
+          >
+            <FiX className="w-4 h-4" />
+          </Button>
         </CardBody>
       </Card>
     );
@@ -66,8 +88,12 @@ export const StatusBanner = () => {
   if (!config) return null;
 
   return (
-    <Card className={`border-${config.color} bg-${config.color}/5`}>
-      <CardBody className="flex items-center gap-4 py-3">
+    <Card
+      className={`bg-background/50 shadow-lg fixed top-0 right-0 left-[280px] mt-2 ml-[300px] mr-[300px] z-50`}
+    >
+      <CardBody
+        className={`flex items-center flex-row gap-4 py-3 backdrop-blur-sm`}
+      >
         <div className={`text-${config.color}`}>{config.icon}</div>
         <div className="flex-1">
           <h3 className="text-sm font-semibold">{config.title}</h3>
@@ -78,17 +104,28 @@ export const StatusBanner = () => {
             </p>
           )}
         </div>
-        {statusData.status === "rejected" && (
+        <div className="flex items-center gap-2">
+          {statusData.status === "rejected" && (
+            <Button
+              color="primary"
+              size="sm"
+              onClick={() =>
+                (window.location.href = "mailto:support@example.com")
+              }
+            >
+              Contact Support
+            </Button>
+          )}
           <Button
-            color="primary"
+            isIconOnly
+            variant="light"
             size="sm"
-            onClick={() =>
-              (window.location.href = "mailto:support@example.com")
-            }
+            onClick={handleClose}
+            className="text-default-400 hover:text-default-600"
           >
-            Contact Support
+            <FiX className="w-4 h-4" />
           </Button>
-        )}
+        </div>
       </CardBody>
     </Card>
   );
