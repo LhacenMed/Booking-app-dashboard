@@ -8,6 +8,8 @@ import {
   FiTruck,
   FiUsers,
 } from "react-icons/fi";
+import { useCompanyStatus } from "@/hooks/useCompanyStatus";
+import { auth } from "../../../FirebaseConfig";
 
 const routes = [
   { path: "/dashboard", Icon: FiHome, title: "Dashboard" },
@@ -19,6 +21,9 @@ const routes = [
 
 export const RouteSelect = () => {
   const location = useLocation();
+  const userId = auth.currentUser?.uid || null;
+  const { data: statusData } = useCompanyStatus(userId);
+  const isPending = statusData?.status === "pending";
 
   return (
     <div className="space-y-1 px-3">
@@ -29,6 +34,7 @@ export const RouteSelect = () => {
           selected={location.pathname === route.path}
           title={route.title}
           path={route.path}
+          disabled={isPending && route.path !== "/dashboard"}
         />
       ))}
     </div>
@@ -40,11 +46,13 @@ const Route = ({
   Icon,
   title,
   path,
+  disabled,
 }: {
   selected: boolean;
   Icon: IconType;
   title: string;
   path: string;
+  disabled?: boolean;
 }) => {
   const location = useLocation();
   const isActive = location.pathname.startsWith(path);
@@ -56,7 +64,7 @@ const Route = ({
         isActive
           ? "bg-content1 text-foreground shadow-small"
           : "hover:bg-content2 bg-transparent text-default-500 shadow-none"
-      }`}
+      } ${disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`}
     >
       <Icon className={isActive ? "text-primary" : ""} />
       <span>{title}</span>

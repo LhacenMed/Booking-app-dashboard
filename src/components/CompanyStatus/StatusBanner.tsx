@@ -23,8 +23,8 @@ export const StatusBanner = () => {
 
   if (isLoading) {
     return (
-      <Card className="border-default shadow-lg fixed top-0 right-0 left-[280px] z-50">
-        <CardBody className="flex items-center justify-center py-3 bg-background/95 backdrop-blur-sm">
+      <Card className="bg-background/50 shadow-lg fixed top-0 right-0 left-[280px] mt-2 ml-[300px] mr-[300px] z-50 animate-slideDown">
+        <CardBody className="flex flex-row items-center justify-center py-3 bg-background/95 backdrop-blur-sm">
           <Spinner size="sm" />
           <span className="ml-2">Loading status...</span>
         </CardBody>
@@ -34,8 +34,8 @@ export const StatusBanner = () => {
 
   if (error || !statusData) {
     return (
-      <Card className="border-danger shadow-lg fixed top-0 right-0 left-[280px] z-50">
-        <CardBody className="flex items-center gap-4 py-3 bg-background/95 backdrop-blur-sm">
+      <Card className="bg-background/50 shadow-lg fixed top-0 right-0 left-[280px] mt-2 ml-[300px] mr-[300px] z-50 animate-slideDown">
+        <CardBody className="flex flex-row items-center gap-4 py-3 bg-background/95 backdrop-blur-sm">
           <div className="text-danger">
             <FiXCircle className="w-5 h-5" />
           </div>
@@ -89,7 +89,7 @@ export const StatusBanner = () => {
 
   return (
     <Card
-      className={`bg-background/50 shadow-lg fixed top-0 right-0 left-[280px] mt-2 ml-[300px] mr-[300px] z-50`}
+      className={`bg-background/50 shadow-lg fixed top-0 right-0 left-[280px] mt-2 ml-[300px] mr-[300px] z-50 animate-slideDown`}
     >
       <CardBody
         className={`flex items-center flex-row gap-4 py-3 backdrop-blur-sm`}

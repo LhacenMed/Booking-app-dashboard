@@ -10,6 +10,8 @@ import {
   FiSearch,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import { useCompanyStatus } from "@/hooks/useCompanyStatus";
+import { auth } from "../../../FirebaseConfig";
 
 interface Page {
   title: string;
@@ -67,6 +69,9 @@ export const CommandMenu = ({
   const [value, setValue] = useState("");
   const [pages_filtered, setFilteredPages] = useState<Page[]>(pages);
   const navigate = useNavigate();
+  const userId = auth.currentUser?.uid || null;
+  const { data: statusData } = useCompanyStatus(userId);
+  const isPending = statusData?.status === "pending";
 
   // Filter pages based on search input
   useEffect(() => {
@@ -93,15 +98,18 @@ export const CommandMenu = ({
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        if (!isPending) {
+          setOpen((open) => !open);
+        }
       }
     };
 
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, []);
+  }, [isPending]);
 
   const handleSelect = (href: string) => {
+    if (isPending && href !== "/dashboard") return;
     navigate(href);
     setOpen(false);
     setValue("");
@@ -110,7 +118,10 @@ export const CommandMenu = ({
   return (
     <Command.Dialog
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(open) => {
+        if (isPending && open) return;
+        setOpen(open);
+      }}
       label="Global Command Menu"
       className="fixed inset-0 bg-overlay/50"
       onClick={() => setOpen(false)}
@@ -124,8 +135,9 @@ export const CommandMenu = ({
           <Command.Input
             value={value}
             onValueChange={setValue}
-            placeholder="Search pages..."
+            placeholder={isPending ? "Search (Pending)" : "Search pages..."}
             className="w-full py-3 text-foreground placeholder:text-default-400 focus:outline-none bg-transparent"
+            disabled={isPending}
           />
         </div>
 
@@ -144,7 +156,11 @@ export const CommandMenu = ({
                   key={page.href}
                   value={page.title}
                   onSelect={() => handleSelect(page.href)}
-                  className="flex cursor-pointer transition-colors p-2 text-sm text-foreground hover:bg-content2 rounded items-center gap-2"
+                  className={`flex cursor-pointer transition-colors p-2 text-sm text-foreground hover:bg-content2 rounded items-center gap-2 ${
+                    isPending && page.href !== "/dashboard"
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
                 >
                   {page.icon}
                   <div className="flex flex-col">
@@ -153,6 +169,11 @@ export const CommandMenu = ({
                       {page.description}
                     </span>
                   </div>
+                  {isPending && page.href !== "/dashboard" && (
+                    <span className="ml-auto text-xs text-warning">
+                      Pending
+                    </span>
+                  )}
                 </Command.Item>
               ))}
             </Command.Group>

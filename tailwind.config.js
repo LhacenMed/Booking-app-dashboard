@@ -20,9 +20,20 @@ module.exports = {
                     "0%, 100%": { transform: "translateY(0)" },
                     "50%": { transform: "translateY(-15px)" },
                 },
+                slideDown: {
+                    "0%": {
+                        transform: "translateY(-100%)",
+                        opacity: "0",
+                    },
+                    "100%": {
+                        transform: "translateY(0)",
+                        opacity: "1",
+                    },
+                },
             },
             animation: {
                 "float-slow": "float-slow 4s ease-in-out infinite",
+                slideDown: "slideDown 0.5s ease-out forwards",
             },
             backgroundImage: {
                 "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

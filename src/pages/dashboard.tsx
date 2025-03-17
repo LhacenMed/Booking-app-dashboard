@@ -35,9 +35,9 @@ export default function DashboardPage() {
   // Show restricted dashboard for non-approved companies
   if (statusData && statusData.status !== "approved") {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-[200px] flex justify-center">
         <StatusBanner />
-        <div className="mt-8">
+        <div className="flex flex-col justify-center items-center">
           <h2 className="text-2xl font-bold mb-4">Welcome to Your Dashboard</h2>
           <p className="text-gray-600">
             Your account is currently {statusData.status}. Once approved, you'll
