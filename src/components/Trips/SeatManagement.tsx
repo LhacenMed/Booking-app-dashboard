@@ -13,30 +13,31 @@ import {
   DropdownItem,
   Tooltip,
 } from "@heroui/react";
-import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
-import { db } from "../../../FirebaseConfig";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  onSnapshot,
+  collection,
+} from "firebase/firestore";
+import { db, auth } from "../../../FirebaseConfig";
 import { FiArrowLeft } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-
-type SeatStatus = "Available" | "Booked" | "Paid";
-
-interface Seat {
-  id: number;
-  status: SeatStatus;
-}
+import { Timestamp } from "firebase/firestore";
 
 interface Trip {
   id: string;
-  route: string;
-  dateTime: string;
-  carType: "Medium" | "Large";
-  seatsAvailable: number;
-  seatsBooked: number;
-  status: "Active" | "Inactive";
-  price: number;
   departureCity: string;
   destinationCity: string;
-  seats: Record<string, Seat>;
+  departureTime: Timestamp;
+  arrivalTime: Timestamp;
+  carType: "medium" | "large";
+  pricePerSeat: number;
+}
+
+interface Seat {
+  id: number;
+  status: "available" | "booked" | "disabled";
 }
 
 const statusColors = {
@@ -49,65 +50,56 @@ export const SeatManagement = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const [trip, setTrip] = useState<Trip | null>(null);
+  const [seats, setSeats] = useState<Record<string, Seat>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const userId = auth.currentUser?.uid;
 
   useEffect(() => {
-    if (!tripId) return;
+    if (!tripId || !userId) return;
 
-    const tripRef = doc(db, "trips", tripId);
+    const tripRef = doc(
+      db,
+      `transportation_companies/${userId}/trips/${tripId}`
+    );
+    const seatsRef = collection(tripRef, "seats");
 
     // Set up real-time listener for trip updates
-    const unsubscribe = onSnapshot(tripRef, (doc) => {
+    const unsubscribeTrip = onSnapshot(tripRef, (doc) => {
       if (doc.exists()) {
-        const tripData = doc.data();
-        // Initialize seats if they don't exist
-        if (!tripData.seats) {
-          const totalSeats = tripData.carType === "Medium" ? 14 : 60;
-          const initialSeats: Record<string, Seat> = {};
-
-          for (let i = 1; i <= totalSeats; i++) {
-            initialSeats[i] = {
-              id: i,
-              status: "Available",
-            };
-          }
-
-          // Update Firestore with initial seats
-          updateDoc(tripRef, { seats: initialSeats }).then(() => {
-            setTrip({ ...tripData, id: doc.id, seats: initialSeats } as Trip);
-          });
-        } else {
-          setTrip({ ...tripData, id: doc.id } as Trip);
-        }
+        setTrip({ id: doc.id, ...doc.data() } as Trip);
       }
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [tripId]);
+    // Set up real-time listener for seats updates
+    const unsubscribeSeats = onSnapshot(seatsRef, (snapshot) => {
+      const seatsData: Record<string, Seat> = {};
+      snapshot.docs.forEach((doc) => {
+        seatsData[doc.id] = doc.data() as Seat;
+      });
+      setSeats(seatsData);
+    });
+
+    return () => {
+      unsubscribeTrip();
+      unsubscribeSeats();
+    };
+  }, [tripId, userId]);
 
   const handleSeatStatusChange = async (
     seatId: number,
-    newStatus: SeatStatus
+    newStatus: "available" | "booked" | "disabled"
   ) => {
-    if (!trip || !tripId) return;
+    if (!trip || !tripId || !userId) return;
 
-    const tripRef = doc(db, "trips", tripId);
-    const updatedSeats = { ...trip.seats };
-    updatedSeats[seatId] = {
-      ...updatedSeats[seatId],
-      status: newStatus,
-    };
+    const seatRef = doc(
+      db,
+      `transportation_companies/${userId}/trips/${tripId}/seats/${seatId}`
+    );
 
     try {
-      await updateDoc(tripRef, {
-        seats: updatedSeats,
-        seatsAvailable: Object.values(updatedSeats).filter(
-          (seat) => seat.status === "Available"
-        ).length,
-        seatsBooked: Object.values(updatedSeats).filter(
-          (seat) => seat.status === "Booked" || seat.status === "Paid"
-        ).length,
+      await updateDoc(seatRef, {
+        status: newStatus,
       });
     } catch (error) {
       console.error("Error updating seat status:", error);
@@ -117,7 +109,7 @@ export const SeatManagement = () => {
   const renderSeatGrid = () => {
     if (!trip) return null;
 
-    if (trip.carType === "Medium") {
+    if (trip.carType === "medium") {
       // Specific layout for 14-seater
       const seatLayout = [
         [null, null, null, 1], // First row: 1 seat
@@ -162,9 +154,9 @@ export const SeatManagement = () => {
                       return <div key={`empty-${rowIndex}-${colIndex}`} />;
                     }
 
-                    const seat = trip.seats[seatNumber] || {
+                    const seat = seats[seatNumber] || {
                       id: seatNumber,
-                      status: "Available",
+                      status: "available",
                     };
 
                     return (
@@ -177,9 +169,9 @@ export const SeatManagement = () => {
                             <button
                               className={`w-full aspect-square rounded-lg border transition-colors flex items-center justify-center text-sm
                                 ${
-                                  seat.status === "Available"
+                                  seat.status === "available"
                                     ? "bg-success/20 border-success hover:bg-success/30"
-                                    : seat.status === "Booked"
+                                    : seat.status === "booked"
                                       ? "bg-warning/20 border-warning hover:bg-warning/30"
                                       : "bg-primary/20 border-primary hover:bg-primary/30"
                                 }`}
@@ -192,21 +184,24 @@ export const SeatManagement = () => {
                             onAction={(key) =>
                               handleSeatStatusChange(
                                 seatNumber,
-                                key as SeatStatus
+                                key as "available" | "booked" | "disabled"
                               )
                             }
                           >
                             <DropdownItem
-                              key="Available"
+                              key="available"
                               className="text-success"
                             >
                               Available
                             </DropdownItem>
-                            <DropdownItem key="Booked" className="text-warning">
+                            <DropdownItem key="booked" className="text-warning">
                               Booked
                             </DropdownItem>
-                            <DropdownItem key="Paid" className="text-primary">
-                              Paid
+                            <DropdownItem
+                              key="disabled"
+                              className="text-primary"
+                            >
+                              Disabled
                             </DropdownItem>
                           </DropdownMenu>
                         </Dropdown>
@@ -275,9 +270,9 @@ export const SeatManagement = () => {
                       return <div key={`empty-${rowIndex}-${colIndex}`} />;
                     }
 
-                    const seat = trip.seats[seatNumber] || {
+                    const seat = seats[seatNumber] || {
                       id: seatNumber,
-                      status: "Available",
+                      status: "available",
                     };
 
                     return (
@@ -290,9 +285,9 @@ export const SeatManagement = () => {
                             <button
                               className={`w-full aspect-square rounded-lg border transition-colors flex items-center justify-center text-sm
                                 ${
-                                  seat.status === "Available"
+                                  seat.status === "available"
                                     ? "bg-success/20 border-success hover:bg-success/30"
-                                    : seat.status === "Booked"
+                                    : seat.status === "booked"
                                       ? "bg-warning/20 border-warning hover:bg-warning/30"
                                       : "bg-primary/20 border-primary hover:bg-primary/30"
                                 }`}
@@ -305,21 +300,24 @@ export const SeatManagement = () => {
                             onAction={(key) =>
                               handleSeatStatusChange(
                                 seatNumber,
-                                key as SeatStatus
+                                key as "available" | "booked" | "disabled"
                               )
                             }
                           >
                             <DropdownItem
-                              key="Available"
+                              key="available"
                               className="text-success"
                             >
                               Available
                             </DropdownItem>
-                            <DropdownItem key="Booked" className="text-warning">
+                            <DropdownItem key="booked" className="text-warning">
                               Booked
                             </DropdownItem>
-                            <DropdownItem key="Paid" className="text-primary">
-                              Paid
+                            <DropdownItem
+                              key="disabled"
+                              className="text-primary"
+                            >
+                              Disabled
                             </DropdownItem>
                           </DropdownMenu>
                         </Dropdown>
@@ -360,7 +358,7 @@ export const SeatManagement = () => {
                 Seat Management
               </h1>
               <p className="text-small text-default-500">
-                {trip.route} - {trip.dateTime}
+                {trip.departureCity} → {trip.destinationCity}
               </p>
             </div>
           </div>
@@ -372,32 +370,33 @@ export const SeatManagement = () => {
               <CardHeader className="flex gap-3">
                 <div className="flex flex-col">
                   <p className="text-md">Trip Details</p>
-                  <p className="text-small text-default-500">{trip.route}</p>
+                  <p className="text-small text-default-500">
+                    {trip.departureCity} → {trip.destinationCity}
+                  </p>
                 </div>
               </CardHeader>
               <Divider />
               <CardBody>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-default-500">Date & Time</span>
-                    <span>{trip.dateTime}</span>
+                    <span className="text-default-500">Departure</span>
+                    <span>{trip.departureTime.toDate().toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-default-500">Arrival</span>
+                    <span>{trip.arrivalTime.toDate().toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-default-500">Car Type</span>
-                    <span>{trip.carType}</span>
+                    <span>
+                      {trip.carType === "medium"
+                        ? "Medium (15 seats)"
+                        : "Large (60 seats)"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-default-500">Price</span>
-                    <span>${trip.price}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-default-500">Status</span>
-                    <Chip
-                      color={trip.status === "Active" ? "success" : "danger"}
-                      variant="flat"
-                    >
-                      {trip.status}
-                    </Chip>
+                    <span>${trip.pricePerSeat}</span>
                   </div>
                 </div>
               </CardBody>

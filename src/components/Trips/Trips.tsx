@@ -125,7 +125,7 @@ export const Trips = () => {
 
   const handleViewSeats = (tripId: string) => {
     if (!userId) return;
-    navigate(`/companies/${userId}/trips/${tripId}/seats`);
+    navigate(`/trips/seats/${tripId}`);
   };
 
   const handleDeactivateTrip = async (tripId: string) => {
