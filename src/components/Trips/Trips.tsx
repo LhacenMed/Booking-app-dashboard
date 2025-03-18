@@ -443,18 +443,23 @@ export const Trips = () => {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <div className="flex justify-center items-center gap-2">
-                          <Spinner size="sm" />
-                          <span>Loading trips...</span>
-                        </div>
-                      </TableCell>
+                      <TableCell>Loading...</TableCell>
+                      <TableCell>Loading...</TableCell>
+                      <TableCell>Loading...</TableCell>
+                      <TableCell>Loading...</TableCell>
+                      <TableCell>Loading...</TableCell>
+                      <TableCell>Loading...</TableCell>
+                      <TableCell>Loading...</TableCell>
                     </TableRow>
                   ) : getSortedTrips().length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        No trips found
-                      </TableCell>
+                      <TableCell>No trips found</TableCell>
+                      <TableCell>No trips found</TableCell>
+                      <TableCell>No trips found</TableCell>
+                      <TableCell>No trips found</TableCell>
+                      <TableCell>No trips found</TableCell>
+                      <TableCell>No trips found</TableCell>
+                      <TableCell>No trips found</TableCell>
                     </TableRow>
                   ) : (
                     getSortedTrips().map((trip) => (
