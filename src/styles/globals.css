@@ -4,3 +4,19 @@
 body::-webkit-scrollbar {
     display: none;
 }
+
+@keyframes highlight {
+    0% {
+        background-color: rgb(34 197 94 / 0.1);
+    }
+    50% {
+        background-color: rgb(34 197 94 / 0.2);
+    }
+    100% {
+        background-color: rgb(34 197 94 / 0.1);
+    }
+}
+
+.animate-highlight {
+    animation: highlight 1s ease-in-out infinite;
+}

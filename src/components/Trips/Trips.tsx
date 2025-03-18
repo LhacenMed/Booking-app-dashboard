@@ -20,6 +20,7 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Spinner,
 } from "@heroui/react";
 import { FiPlus, FiCalendar, FiClock, FiFilter } from "react-icons/fi";
 import {
@@ -41,6 +42,7 @@ import { auth, db } from "../../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
 import { useCompanyData, useTrips } from "@/hooks/useQueries";
 import { DashboardTopBar } from "@/components/Dashboard/DashboardTopBar";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Trip {
   id: string;
@@ -114,6 +116,11 @@ export const Trips = () => {
   const { data: companyData } = useCompanyData(userId);
   const { data: trips = [], isLoading } = useTrips(userId);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [latestAddedTripId, setLatestAddedTripId] = useState<string | null>(
+    null
+  );
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -202,9 +209,17 @@ export const Trips = () => {
     return `TR${companyChars}${tripCount}${year}-${random}`;
   };
 
+  const handleNextStep = () => {
+    setCurrentStep(currentStep + 1);
+  };
+
+  const handlePreviousStep = () => {
+    setCurrentStep(currentStep - 1);
+  };
+
   const handleNewTripSubmit = async () => {
     if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
+      handleNextStep();
       return;
     }
 
@@ -213,6 +228,7 @@ export const Trips = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const tripId = await generateTripId(userId);
 
@@ -256,6 +272,14 @@ export const Trips = () => {
       });
       await batch.commit();
 
+      // Invalidate and refetch trips query
+      await queryClient.invalidateQueries({ queryKey: ["trips", userId] });
+
+      // Set the latest added trip ID for highlighting
+      setLatestAddedTripId(tripId);
+      // Remove the highlight after 3 seconds
+      setTimeout(() => setLatestAddedTripId(null), 1000);
+
       // Reset form and close modal
       setIsAddTripModalOpen(false);
       setCurrentStep(1);
@@ -271,6 +295,8 @@ export const Trips = () => {
       });
     } catch (error) {
       console.error("Error adding trip:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -417,27 +443,29 @@ export const Trips = () => {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="flex justify-center items-center gap-2">
+                          <Spinner size="sm" />
+                          <span>Loading trips...</span>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ) : getSortedTrips().length === 0 ? (
                     <TableRow>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>No trips found</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
-                      <TableCell>-</TableCell>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        No trips found
+                      </TableCell>
                     </TableRow>
                   ) : (
                     getSortedTrips().map((trip) => (
-                      <TableRow key={trip.id}>
+                      <TableRow
+                        key={trip.id}
+                        className={`transition-colors duration-300 ${
+                          trip.id === latestAddedTripId
+                            ? "bg-success/10 animate-highlight"
+                            : ""
+                        }`}
+                      >
                         <TableCell>{trip.id}</TableCell>
                         <TableCell>
                           {trip.departureCity} → {trip.destinationCity}
@@ -499,6 +527,7 @@ export const Trips = () => {
         onClose={() => {
           setIsAddTripModalOpen(false);
           setCurrentStep(1);
+          setIsSubmitting(false);
         }}
         size="2xl"
       >
@@ -661,11 +690,25 @@ export const Trips = () => {
               onPress={() => {
                 setIsAddTripModalOpen(false);
                 setCurrentStep(1);
+                setIsSubmitting(false);
               }}
             >
               Cancel
             </Button>
-            <Button color="primary" onPress={handleNewTripSubmit}>
+            {currentStep > 1 && (
+              <Button
+                variant="flat"
+                onPress={handlePreviousStep}
+                isDisabled={isSubmitting}
+              >
+                Previous
+              </Button>
+            )}
+            <Button
+              color="primary"
+              onPress={handleNewTripSubmit}
+              isLoading={isSubmitting}
+            >
               {currentStep < 3 ? "Next" : "Create Trip"}
             </Button>
           </ModalFooter>
