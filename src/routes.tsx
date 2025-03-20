@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import LoginPage from "./pages/login";
 import SignUpPage from "./pages/signup";
+import SignUpTestPage from "./pages/signup-test";
 import DashboardPage from "./pages/dashboard";
 import IndexPage from "./pages/index";
 import DocsPage from "./pages/docs";
@@ -28,8 +29,8 @@ export const router = createBrowserRouter([
     element: <SignUpPage />,
   },
   {
-    path: "/page",
-    element: <Home />,
+    path: "/signup-test",
+    element: <SignUpTestPage />,
   },
   {
     element: (
