@@ -94,7 +94,7 @@ export const AccountToggle = () => {
         <div className="flex p-0.5 relative gap-2 w-full items-center">
           <div className="size-8 rounded shrink-0 bg-default-200 animate-pulse" />
           <div className="flex-1">
-            <div className="h-4 bg-default-200 rounded animate-pulse mb-1" />
+            <div className="h-5 bg-default-200 rounded animate-pulse mb-1" />
             <div className="h-3 bg-default-200 rounded animate-pulse w-2/3" />
           </div>
         </div>

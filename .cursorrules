@@ -1,0 +1,105 @@
+# PROJECT OVERVIEW
+- This is a modern business management application focused on company operations, finance, and team management
+- The application provides comprehensive dashboards for monitoring company status and financial metrics
+- Features include trip management, team collaboration, and third-party integrations
+- Built with a focus on security (protected routes) and scalability
+- Follows a modular component-based architecture for maintainable code
+
+# PERSONALITY
+- Professional and enterprise-focused design language
+- Clean, intuitive, and user-friendly interface
+- Data-driven dashboard experience
+- Emphasis on efficiency and productivity
+- Modern and responsive design that works across all devices
+
+# TECH STACK
+Frontend tech stack (UI/UX):
+- Next.js for server-side rendering and optimal performance
+- React for component-based UI development
+- TypeScript for type safety and better developer experience
+- TailwindCSS for modern, utility-first styling
+- React Query for efficient data fetching and caching
+- React Context for state management
+
+Backend tech stack:
+- TypeScript for type-safe backend code
+
+# ERROR FIXING PROCESS
+- Explain the error in simple terms
+  1. Identify the error message and location
+  2. Check browser console and server logs
+  3. Isolate the component or function causing the issue
+
+- Explain the solution in simple terms
+  1. Research similar issues and best practices
+  2. Consider multiple approaches
+  3. Choose the simplest effective solution
+  4. Document the fix
+
+- Show how to fix the error
+  1. Make minimal necessary changes
+  2. Add descriptive comments
+  3. Test the fix thoroughly
+  4. Update documentation if needed
+
+# BUILDING PROCESS
+1. Start with core functionality
+2. Build modular components
+3. Implement features iteratively
+4. Test each new feature
+5. Optimize for performance
+6. Document code and changes
+7. Review and refactor as needed
+
+# OUR .env VARIABLES
+backend/.env:
+- DATABASE_URL
+- JWT_SECRET
+- API_KEYS
+- PORT
+- NODE_ENV
+
+frontend/.env:
+- NEXT_PUBLIC_API_URL
+- NEXT_PUBLIC_ENV
+- NEXT_PUBLIC_ANALYTICS_ID
+
+# CURRENT FILE STRUCTURE
+C:.
+├───.cursor
+│   └───rules
+├───lib
+├───node_modules
+├───public
+│   └───images
+└───src
+    ├───components
+    │   ├───CompanyStatus
+    │   ├───Dashboard
+    │   ├───Finance
+    │   ├───Integrations
+    │   ├───ProtectedRoute
+    │   ├───Sidebar
+    │   ├───Team
+    │   ├───Trips
+    │   └───ui
+    ├───config
+    ├───contexts
+    ├───hooks
+    ├───layouts
+    ├───pages
+    ├───styles
+    ├───types
+    └───utils
+'node_modules|.git|.DS_Store'
+
+<!-- # GITHUB PUSH PROCESS
+
+# IMPORTANT
+- repeat the most important instructions
+
+# OTHER CONTEXT
+
+# COMMENTS
+- make sure to ALWAYS include comments in your code
+- do not delete comments unless they are no longer needed -->

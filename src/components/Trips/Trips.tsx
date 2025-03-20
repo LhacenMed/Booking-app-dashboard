@@ -4,7 +4,6 @@ import {
   Input,
   Select,
   SelectItem,
-  Chip,
   Table,
   TableHeader,
   TableColumn,
@@ -20,15 +19,12 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Spinner,
 } from "@heroui/react";
 import { FiPlus, FiCalendar, FiClock, FiFilter } from "react-icons/fi";
 import {
   collection,
-  addDoc,
   query,
   where,
-  onSnapshot,
   doc,
   updateDoc,
   getDoc,
@@ -43,6 +39,7 @@ import { useNavigate } from "react-router-dom";
 import { useCompanyData, useTrips } from "@/hooks/useQueries";
 import { DashboardTopBar } from "@/components/Dashboard/DashboardTopBar";
 import { useQueryClient } from "@tanstack/react-query";
+import { CustomScrollbar } from "@/components/ui/CustomScrollbar";
 
 interface Trip {
   id: string;
@@ -372,8 +369,8 @@ export const Trips = () => {
           </Dropdown>
         }
       />
-      <div className="flex-1 overflow-auto">
-        <div className="p-6">
+      <div className="flex-1 overflow-hidden">
+        <CustomScrollbar className="h-full p-6">
           <div className="bg-content1 rounded-lg shadow">
             {/* Header */}
             <div className="p-6 border-b border-divider flex justify-between items-center">
@@ -443,23 +440,37 @@ export const Trips = () => {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell>Loading...</TableCell>
-                      <TableCell>Loading...</TableCell>
-                      <TableCell>Loading...</TableCell>
-                      <TableCell>Loading...</TableCell>
-                      <TableCell>Loading...</TableCell>
-                      <TableCell>Loading...</TableCell>
-                      <TableCell>Loading...</TableCell>
+                      <TableCell>
+                        <div className="h-6 bg-default-200 rounded animate-pulse mb-3" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-6 bg-default-200 rounded animate-pulse mb-1" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-6 bg-default-200 rounded animate-pulse mb-1" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-6 bg-default-200 rounded animate-pulse mb-1" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-6 bg-default-200 rounded animate-pulse mb-1" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-6 bg-default-200 rounded animate-pulse mb-1" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-6 bg-default-200 rounded animate-pulse mb-1" />
+                      </TableCell>
                     </TableRow>
                   ) : getSortedTrips().length === 0 ? (
                     <TableRow>
                       <TableCell>No trips found</TableCell>
-                      <TableCell>No trips found</TableCell>
-                      <TableCell>No trips found</TableCell>
-                      <TableCell>No trips found</TableCell>
-                      <TableCell>No trips found</TableCell>
-                      <TableCell>No trips found</TableCell>
-                      <TableCell>No trips found</TableCell>
+                      <TableCell>-</TableCell>
+                      <TableCell>-</TableCell>
+                      <TableCell>-</TableCell>
+                      <TableCell>-</TableCell>
+                      <TableCell>-</TableCell>
+                      <TableCell>-</TableCell>
                     </TableRow>
                   ) : (
                     getSortedTrips().map((trip) => (
@@ -482,15 +493,15 @@ export const Trips = () => {
                           {formatTimestamp(trip.arrivalTime)}
                         </TableCell>
                         <TableCell>
-                          {trip.carType === "medium"
-                            ? "Medium (15 seats)"
-                            : "Large (60 seats)"}
+                          {trip.carType === "medium" ? "Medium" : "Large"}
                         </TableCell>
                         <TableCell>${trip.pricePerSeat}</TableCell>
                         <TableCell>
                           <Dropdown>
                             <DropdownTrigger>
-                              <Button variant="light">Actions</Button>
+                              <Button isIconOnly variant="ghost">
+                                ⋮
+                              </Button>
                             </DropdownTrigger>
                             <DropdownMenu aria-label="Trip actions">
                               <DropdownItem
@@ -523,7 +534,7 @@ export const Trips = () => {
               </Table>
             </div>
           </div>
-        </div>
+        </CustomScrollbar>
       </div>
 
       {/* Add New Trip Modal */}
