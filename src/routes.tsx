@@ -14,6 +14,7 @@ import FinancePage from "./pages/finance";
 import { SeatManagement } from "./components/Trips/SeatManagement";
 import { AppLayout } from "./layouts/AppLayout";
 import { StatusProtectedRoute } from "@/components/ProtectedRoute/StatusProtectedRoute";
+import MessageEmail from "./pages/message-email";
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
   {
     path: "/signup-test",
     element: <SignUpTestPage />,
+  },
+  {
+    path: "/message-email",
+    element: <MessageEmail />,
   },
   {
     element: (

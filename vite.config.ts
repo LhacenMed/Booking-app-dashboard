@@ -13,4 +13,18 @@ export default defineConfig({
   optimizeDeps: {
     include: ["@heroui/react"],
   },
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, "/api"),
+      },
+    },
+  },
+  define: {
+    // This is required for Vite to properly handle environment variables
+    "process.env": {},
+  },
 });
