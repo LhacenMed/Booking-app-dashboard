@@ -1,3 +1,4 @@
+// server/index.js
 require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -6,10 +7,39 @@ const SibApiV3Sdk = require("@getbrevo/brevo");
 
 // Debug environment variables
 console.log("Environment check:", {
-    BREVO_API_KEY: process.env.BREVO_API_KEY ? "Present" : "Missing",
-    SENDER_EMAIL: process.env.SENDER_EMAIL ? "Present" : "Missing",
-    SENDER_NAME: process.env.SENDER_NAME ? "Present" : "Missing",
+    BREVO_API_KEY: process.env.BREVO_API_KEY ?
+        `${process.env.BREVO_API_KEY.substring(0, 10)}...` : "Missing",
+    BREVO_API_KEY_LENGTH: process.env.BREVO_API_KEY ?
+        process.env.BREVO_API_KEY.length : 0,
+    SENDER_EMAIL: process.env.SENDER_EMAIL || "Missing",
+    SENDER_NAME: process.env.SENDER_NAME || "Missing",
 });
+
+// Validate environment variables before starting server
+function validateEnvironmentVariables() {
+    const required = {
+        BREVO_API_KEY: process.env.BREVO_API_KEY,
+        SENDER_EMAIL: process.env.SENDER_EMAIL,
+        SENDER_NAME: process.env.SENDER_NAME
+    };
+
+    const missing = Object.entries(required)
+        .filter(([key, value]) => !value)
+        .map(([key]) => key);
+
+    if (missing.length > 0) {
+        console.error(`Missing required environment variables: ${missing.join(', ')}`);
+        process.exit(1);
+    }
+
+    // Validate API key format
+    if (!process.env.BREVO_API_KEY.startsWith('xkeysib-')) {
+        console.error('Invalid API key format. Must start with "xkeysib-"');
+        process.exit(1);
+    }
+}
+
+validateEnvironmentVariables();
 
 // Debug what we get from Brevo
 console.log("Brevo object:", Object.keys(SibApiV3Sdk));
@@ -40,10 +70,17 @@ app.post("/api/send-email", async(req, res) => {
         // Configure API key authorization
         let apiKey = apiInstance.authentications["apiKey"];
 
-        // Check if API key is available
+        // Check if API key is available and properly formatted
         if (!process.env.BREVO_API_KEY) {
             throw new Error("Brevo API key is not configured");
         }
+
+        if (!process.env.BREVO_API_KEY.startsWith("xkeysib-")) {
+            throw new Error(
+                "Invalid Brevo API key format - must start with 'xkeysib-'"
+            );
+        }
+
         apiKey.apiKey = process.env.BREVO_API_KEY;
 
         // Create a new email object
@@ -52,7 +89,7 @@ app.post("/api/send-email", async(req, res) => {
         // Set up email data
         sendSmtpEmail.subject = "Welcome to SupNum!";
         sendSmtpEmail.htmlContent =
-            "<html><body><h1>Welcome to SupNum!</h1><p>Thank you for subscribing to our service. Version 2</p></body></html>";
+            "<html><body><h1>Welcome to SupNum!</h1><p>Thank you for subscribing to our service. Version 3</p></body></html>";
 
         // Use environment variables for sender information
         sendSmtpEmail.sender = {
@@ -80,14 +117,36 @@ app.post("/api/send-email", async(req, res) => {
             data: data,
         });
     } catch (error) {
-        console.error(
-            "Failed to send email:",
-            error.response ? error.response.text : error.message
-        );
+        // Detailed error logging
+        console.error("Email sending error details:", {
+            name: error.name,
+            message: error.message,
+            response: error.response,
+            stack: error.stack,
+        });
+
+        let errorMessage = "Failed to send email";
+
+        // Handle different types of errors
+        if (error.response) {
+            // Brevo API error response
+            errorMessage =
+                error.response.text || error.response.body || error.message;
+        } else if (error instanceof SibApiV3Sdk.ApiException) {
+            // Specific Brevo SDK error
+            errorMessage = `API Error: ${error.message}`;
+        } else {
+            // Generic error
+            errorMessage = error.message || "An unexpected error occurred";
+        }
+
         return res.status(500).json({
             success: false,
-            message: "Failed to send email",
-            error: error.response ? error.response.text : error.message,
+            message: errorMessage,
+            error: {
+                type: error.name,
+                details: errorMessage,
+            },
         });
     }
 });
