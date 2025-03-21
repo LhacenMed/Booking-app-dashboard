@@ -54,7 +54,6 @@ Backend tech stack:
 # OUR .env VARIABLES
 backend/.env:
 - DATABASE_URL
-- JWT_SECRET
 - API_KEYS
 - PORT
 - NODE_ENV
