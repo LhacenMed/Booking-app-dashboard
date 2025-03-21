@@ -52,7 +52,7 @@ app.post("/api/send-email", async(req, res) => {
         // Set up email data
         sendSmtpEmail.subject = "Welcome to SupNum!";
         sendSmtpEmail.htmlContent =
-            "<html><body><h1>Welcome to SupNum!</h1><p>Thank you for subscribing to our service.</p></body></html>";
+            "<html><body><h1>Welcome to SupNum!</h1><p>Thank you for subscribing to our service. Version 2</p></body></html>";
 
         // Use environment variables for sender information
         sendSmtpEmail.sender = {
