@@ -1,7 +1,15 @@
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const SibApiV3Sdk = require("@getbrevo/brevo");
+
+// Debug environment variables
+console.log("Environment check:", {
+    BREVO_API_KEY: process.env.BREVO_API_KEY ? "Present" : "Missing",
+    SENDER_EMAIL: process.env.SENDER_EMAIL ? "Present" : "Missing",
+    SENDER_NAME: process.env.SENDER_NAME ? "Present" : "Missing",
+});
 
 // Debug what we get from Brevo
 console.log("Brevo object:", Object.keys(SibApiV3Sdk));
@@ -31,9 +39,12 @@ app.post("/api/send-email", async(req, res) => {
 
         // Configure API key authorization
         let apiKey = apiInstance.authentications["apiKey"];
-        apiKey.apiKey =
-            process.env.BREVO_API_KEY ||
-            "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";
+
+        // Check if API key is available
+        if (!process.env.BREVO_API_KEY) {
+            throw new Error("Brevo API key is not configured");
+        }
+        apiKey.apiKey = process.env.BREVO_API_KEY;
 
         // Create a new email object
         let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
@@ -43,10 +54,10 @@ app.post("/api/send-email", async(req, res) => {
         sendSmtpEmail.htmlContent =
             "<html><body><h1>Welcome to SupNum!</h1><p>Thank you for subscribing to our service.</p></body></html>";
 
-        // TODO: Replace with your verified sender email from Brevo dashboard
+        // Use environment variables for sender information
         sendSmtpEmail.sender = {
-            name: "elhassen .inc",
-            email: "2l7acenmed653@gmail.com", // Replace this with your verified sender email
+            name: process.env.SENDER_NAME || "SupNum",
+            email: process.env.SENDER_EMAIL,
         };
 
         sendSmtpEmail.to = [{
@@ -55,8 +66,8 @@ app.post("/api/send-email", async(req, res) => {
         }, ];
 
         sendSmtpEmail.replyTo = {
-            email: "2l7acenmed653@gmail.com", // Replace this with your verified sender email
-            name: "elhassen .inc",
+            email: process.env.SENDER_EMAIL,
+            name: process.env.SENDER_NAME || "SupNum Support",
         };
 
         // Send the email
