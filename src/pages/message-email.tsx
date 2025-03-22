@@ -2,7 +2,10 @@ import { Button } from "@heroui/react";
 import React, { useState, useEffect } from "react";
 import { db } from "../../FirebaseConfig";
 import { auth } from "../../FirebaseConfig";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
+} from "firebase/auth";
 import {
   collection,
   addDoc,
@@ -159,6 +162,49 @@ export default function MessageEmail() {
     }
   };
 
+  // Check if email exists in Firebase Auth
+  const checkEmailExists = async (email: string) => {
+    try {
+      console.log("🔍 Checking if email exists:", email);
+
+      // Fetch all registered users
+      const response = await fetch("/api/list-users");
+      const data = await response.json();
+      if (data.success) {
+        console.log("\n📋 All registered users in Firebase Auth:");
+        data.users.forEach(
+          (user: {
+            email: string;
+            creationTime: string;
+            emailVerified: boolean;
+          }) => {
+            console.log(`- ${user.email}`);
+            console.log(`  Created: ${user.creationTime}`);
+            console.log(`  Verified: ${user.emailVerified ? "✅" : "❌"}`);
+            console.log("  ---");
+          }
+        );
+      }
+
+      // Check in Firebase Auth
+      const methods = await fetchSignInMethodsForEmail(auth, email);
+      console.log("🔐 Firebase Auth check results:");
+      console.log(`- Email: ${email}`);
+      console.log(
+        `- Sign-in methods available: ${methods.length ? methods.join(", ") : "none"}`
+      );
+      console.log(
+        `- Status: ${methods.length > 0 ? "✅ Registered" : "❌ Not registered"}`
+      );
+
+      const exists = methods.length > 0;
+      return exists;
+    } catch (error) {
+      console.error("❌ Error checking email:", error);
+      throw new Error("Failed to check email availability");
+    }
+  };
+
   const handleCreateAccount = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -219,10 +265,18 @@ export default function MessageEmail() {
     }
 
     try {
-      // First verify the email
+      // First, verify email with Reoon
       const isEmailValid = await verifyEmail(email);
       if (!isEmailValid) {
         throw new Error("This email address appears to be invalid or risky");
+      }
+
+      // Then check if email already exists in Firebase Auth
+      const emailExists = await checkEmailExists(email);
+      if (emailExists) {
+        throw new Error(
+          "This email is already registered. Please use a different email or login."
+        );
       }
 
       // Generate verification code

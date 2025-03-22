@@ -4,6 +4,13 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const SibApiV3Sdk = require("@getbrevo/brevo");
+const admin = require("firebase-admin");
+
+// Initialize Firebase Admin
+const serviceAccount = require("./firebase-admin-key.json"); // You'll need to place your key file here
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+});
 
 // Debug environment variables
 console.log("Environment check:", {
@@ -109,6 +116,38 @@ app.post("/api/send-email", async(req, res) => {
             success: false,
             message: "Failed to send verification code",
             error: error.message,
+        });
+    }
+});
+
+// Add new endpoint to list all users
+app.get("/api/list-users", async(req, res) => {
+    try {
+        const listUsersResult = await admin.auth().listUsers();
+        const users = listUsersResult.users.map(userRecord => ({
+            email: userRecord.email,
+            emailVerified: userRecord.emailVerified,
+            disabled: userRecord.disabled,
+            creationTime: userRecord.metadata.creationTime
+        }));
+
+        console.log('👥 All registered users in Firebase Auth:');
+        users.forEach(user => {
+            console.log(`- Email: ${user.email}`);
+            console.log(`  Created: ${user.creationTime}`);
+            console.log(`  Verified: ${user.emailVerified ? '✅' : '❌'}`);
+            console.log('  ---');
+        });
+
+        return res.status(200).json({
+            success: true,
+            users: users
+        });
+    } catch (error) {
+        console.error('Error listing users:', error);
+        return res.status(500).json({
+            success: false,
+            error: error.message
         });
     }
 });
