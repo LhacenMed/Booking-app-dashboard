@@ -1,6 +1,7 @@
 import { Button } from "@heroui/react";
-// EmailForm.jsx
 import React, { useState, useEffect } from "react";
+import { db } from "../../FirebaseConfig";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function MessageEmail() {
   const [email, setEmail] = useState("");
@@ -20,6 +21,7 @@ export default function MessageEmail() {
         setServerStatus(
           data.message === "Server is running!" ? "running" : "error"
         );
+        console.log(data);
       } catch (error) {
         console.error("Server check failed:", error);
         setServerStatus("error");
@@ -27,6 +29,49 @@ export default function MessageEmail() {
     };
     checkServer();
   }, []);
+
+  // Function to verify email with Reoon API
+  const verifyEmail = async (emailToVerify: string) => {
+    try {
+      const apiUrl = `https://emailverifier.reoon.com/api/v1/verify?email=${encodeURIComponent(emailToVerify)}&key=wVePmWpyOj86YD5qIFbbUu58gAcHBFi1&mode=power`;
+
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to verify email");
+      }
+
+      const data = await response.json();
+      console.log("Reoon API Response:", data);
+
+      return data.status === "safe";
+    } catch (error) {
+      console.error("Email verification error:", error);
+      throw new Error("Failed to verify email address");
+    }
+  };
+
+  // Function to store email in Firestore
+  const storeEmailInFirestore = async (email: string) => {
+    try {
+      const companiesRef = collection(db, "companies");
+      const docRef = await addDoc(companiesRef, {
+        email,
+        createdAt: serverTimestamp(),
+        status: "verified", // You can add more fields as needed
+      });
+      console.log("Email stored in Firestore with ID:", docRef.id);
+      return docRef.id;
+    } catch (error) {
+      console.error("Firestore error:", error);
+      throw new Error("Failed to store email in database");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,6 +87,17 @@ export default function MessageEmail() {
     }
 
     try {
+      // First verify the email
+      const isEmailValid = await verifyEmail(email);
+
+      if (!isEmailValid) {
+        throw new Error("This email address appears to be invalid or risky");
+      }
+
+      // Store the verified email in Firestore
+      await storeEmailInFirestore(email);
+
+      // If email is valid and stored, proceed with sending
       const response = await fetch("/api/send-email", {
         method: "POST",
         headers: {
@@ -61,14 +117,16 @@ export default function MessageEmail() {
         throw new Error(data.error || data.message || "Failed to send email");
       }
 
-      setMessage(data.message);
+      setMessage(
+        "Email verified, stored, and welcome message sent successfully!"
+      );
       setEmail(""); // Clear the input after successful send
     } catch (error) {
       console.error("Error:", error);
       setMessage(
         error instanceof Error
           ? error.message
-          : "An error occurred while sending the email."
+          : "An error occurred while processing your request."
       );
       setIsError(true);
     } finally {
@@ -122,7 +180,7 @@ export default function MessageEmail() {
                 : ""
             }`}
           >
-            {isLoading ? "Sending..." : "Send Email"}
+            {isLoading ? "Processing..." : "Send Email"}
           </Button>
         </form>
 
