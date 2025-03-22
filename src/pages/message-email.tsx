@@ -4,7 +4,6 @@ import { db } from "../../FirebaseConfig";
 import { auth } from "../../FirebaseConfig";
 import {
   createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
 } from "firebase/auth";
 import {
   collection,
@@ -169,36 +168,52 @@ export default function MessageEmail() {
 
       // Fetch all registered users
       const response = await fetch("/api/list-users");
-      const data = await response.json();
-      if (data.success) {
-        console.log("\n📋 All registered users in Firebase Auth:");
-        data.users.forEach(
-          (user: {
-            email: string;
-            creationTime: string;
-            emailVerified: boolean;
-          }) => {
-            console.log(`- ${user.email}`);
-            console.log(`  Created: ${user.creationTime}`);
-            console.log(`  Verified: ${user.emailVerified ? "✅" : "❌"}`);
-            console.log("  ---");
-          }
-        );
+
+      type FirebaseUser = {
+        email: string;
+        creationTime: string;
+        emailVerified: boolean;
+      };
+
+      type ApiResponse = {
+        success: boolean;
+        users: FirebaseUser[];
+      };
+
+      const data = (await response.json()) as ApiResponse;
+
+      if (!data.success || !Array.isArray(data.users)) {
+        console.log("\n❌ Failed to fetch users");
+        return false;
       }
 
-      // Check in Firebase Auth
-      const methods = await fetchSignInMethodsForEmail(auth, email);
-      console.log("🔐 Firebase Auth check results:");
-      console.log(`- Email: ${email}`);
-      console.log(
-        `- Sign-in methods available: ${methods.length ? methods.join(", ") : "none"}`
-      );
-      console.log(
-        `- Status: ${methods.length > 0 ? "✅ Registered" : "❌ Not registered"}`
-      );
+      console.log("\n📋 All registered users in Firebase Auth:");
+      const users = data.users as FirebaseUser[];
 
-      const exists = methods.length > 0;
-      return exists;
+      for (const user of users) {
+        console.log(`- ${user.email}`);
+        console.log(`  Created: ${user.creationTime}`);
+        console.log(`  Verified: ${user.emailVerified ? "✅" : "❌"}`);
+        console.log("  ---");
+
+        if (user.email === email) {
+          try {
+            const creationDate = new Date(user.creationTime);
+            if (!isNaN(creationDate.getTime())) {
+              console.log("\n✅ Found user with valid creation date:");
+              console.log(`- Email: ${user.email}`);
+              console.log(`- Created: ${user.creationTime}`);
+              console.log(`- Verified: ${user.emailVerified ? "✅" : "❌"}`);
+              return true;
+            }
+          } catch (error) {
+            console.log("\n❌ Invalid creation date format");
+          }
+        }
+      }
+
+      console.log("\n❌ No valid user found in Firebase Auth");
+      return false;
     } catch (error) {
       console.error("❌ Error checking email:", error);
       throw new Error("Failed to check email availability");
