@@ -1,6 +1,8 @@
 import { Button } from "@heroui/react";
 import React, { useState, useEffect } from "react";
 import { db } from "../../FirebaseConfig";
+import { auth } from "../../FirebaseConfig";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
   addDoc,
@@ -17,7 +19,7 @@ const generateVerificationCode = () => {
 };
 
 // Step indicator component
-const StepIndicator = ({ currentStep }: { currentStep: 1 | 2 }) => (
+const StepIndicator = ({ currentStep }: { currentStep: 1 | 2 | 3 }) => (
   <div className="flex items-center justify-center mb-6">
     <div className="flex items-center">
       <div
@@ -35,6 +37,14 @@ const StepIndicator = ({ currentStep }: { currentStep: 1 | 2 }) => (
       >
         2
       </div>
+      <div className="w-12 h-1 mx-2 bg-gray-200"></div>
+      <div
+        className={`flex items-center justify-center w-8 h-8 rounded-full ${
+          currentStep === 3 ? "bg-black text-white" : "bg-gray-200"
+        }`}
+      >
+        3
+      </div>
     </div>
   </div>
 );
@@ -42,10 +52,11 @@ const StepIndicator = ({ currentStep }: { currentStep: 1 | 2 }) => (
 export default function MessageEmail() {
   const [email, setEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [serverStatus, setServerStatus] = useState<
     "checking" | "running" | "error"
   >("checking");
@@ -136,14 +147,58 @@ export default function MessageEmail() {
         verifiedAt: serverTimestamp(),
       });
 
-      setMessage("Email verified successfully!");
-      setShowCodeInput(false);
-      setVerificationCode("");
-      setEmail("");
+      setMessage("Email verified successfully! Please create your password.");
+      setCurrentStep(3);
     } catch (error) {
       setIsError(true);
       setMessage(
         error instanceof Error ? error.message : "Verification failed"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateAccount = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage("");
+    setIsError(false);
+
+    try {
+      // Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      // Update Firestore document with user ID
+      const companiesRef = collection(db, "companies");
+      const q = query(
+        companiesRef,
+        where("email", "==", email),
+        where("status", "==", "verified")
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        await updateDoc(querySnapshot.docs[0].ref, {
+          userId: userCredential.user.uid,
+          status: "active",
+        });
+      }
+
+      setMessage("Account created successfully!");
+      // Reset all states
+      setEmail("");
+      setVerificationCode("");
+      setPassword("");
+      setCurrentStep(1);
+    } catch (error) {
+      setIsError(true);
+      setMessage(
+        error instanceof Error ? error.message : "Failed to create account"
       );
     } finally {
       setIsLoading(false);
@@ -195,7 +250,7 @@ export default function MessageEmail() {
       }
 
       setMessage("Verification code sent to your email!");
-      setShowCodeInput(true);
+      setCurrentStep(2);
     } catch (error) {
       console.error("Error:", error);
       setMessage(
@@ -204,7 +259,6 @@ export default function MessageEmail() {
           : "An error occurred while processing your request."
       );
       setIsError(true);
-      setShowCodeInput(false);
     } finally {
       setIsLoading(false);
     }
@@ -218,10 +272,14 @@ export default function MessageEmail() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
-        <StepIndicator currentStep={showCodeInput ? 2 : 1} />
+        <StepIndicator currentStep={currentStep} />
 
         <h2 className="text-2xl font-bold text-center mb-6">
-          {showCodeInput ? "Enter Verification Code" : "Send Email"}
+          {currentStep === 1
+            ? "Send Email"
+            : currentStep === 2
+              ? "Enter Verification Code"
+              : "Create Password"}
         </h2>
 
         {serverStatus === "checking" && (
@@ -236,7 +294,7 @@ export default function MessageEmail() {
           </div>
         )}
 
-        {!showCodeInput ? (
+        {currentStep === 1 ? (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label
@@ -269,7 +327,7 @@ export default function MessageEmail() {
               {isLoading ? "Processing..." : "Send Code"}
             </Button>
           </form>
-        ) : (
+        ) : currentStep === 2 ? (
           <form onSubmit={handleVerifyCode} className="space-y-4">
             <div className="space-y-2">
               <label
@@ -300,6 +358,38 @@ export default function MessageEmail() {
               }`}
             >
               {isLoading ? "Verifying..." : "Verify Code"}
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleCreateAccount} className="space-y-4">
+            <div className="space-y-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Create Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter password (min. 6 characters)"
+                disabled={isLoading}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
         )}
