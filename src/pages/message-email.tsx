@@ -3,6 +3,11 @@ import React, { useState, useEffect } from "react";
 import { db } from "../../FirebaseConfig";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
+// Simple function to generate 6-digit code
+const generateVerificationCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
 export default function MessageEmail() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -56,16 +61,16 @@ export default function MessageEmail() {
     }
   };
 
-  // Function to store email in Firestore
-  const storeEmailInFirestore = async (email: string) => {
+  // Store email and verification code in Firestore
+  const storeEmailInFirestore = async (email: string, code: string) => {
     try {
       const companiesRef = collection(db, "companies");
       const docRef = await addDoc(companiesRef, {
         email,
+        verificationCode: code,
         createdAt: serverTimestamp(),
-        status: "verified", // You can add more fields as needed
+        status: "pending_verification",
       });
-      console.log("Email stored in Firestore with ID:", docRef.id);
       return docRef.id;
     } catch (error) {
       console.error("Firestore error:", error);
@@ -89,38 +94,36 @@ export default function MessageEmail() {
     try {
       // First verify the email
       const isEmailValid = await verifyEmail(email);
-
       if (!isEmailValid) {
         throw new Error("This email address appears to be invalid or risky");
       }
 
-      // Store the verified email in Firestore
-      await storeEmailInFirestore(email);
+      // Generate verification code
+      const verificationCode = generateVerificationCode();
 
-      // If email is valid and stored, proceed with sending
+      // Store email and code in Firestore
+      await storeEmailInFirestore(email, verificationCode);
+
+      // Send verification code email
       const response = await fetch("/api/send-email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          subject: "Your Verification Code",
+          code: verificationCode,
+        }),
       });
 
-      let data;
-      try {
-        data = await response.json();
-      } catch (error) {
-        throw new Error("Invalid response from server");
-      }
-
+      const data = await response.json();
       if (!response.ok || !data.success) {
-        throw new Error(data.error || data.message || "Failed to send email");
+        throw new Error(data.error || "Failed to send verification code");
       }
 
-      setMessage(
-        "Email verified, stored, and welcome message sent successfully!"
-      );
-      setEmail(""); // Clear the input after successful send
+      setMessage("Verification code sent to your email!");
+      setEmail("");
     } catch (error) {
       console.error("Error:", error);
       setMessage(

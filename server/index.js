@@ -55,43 +55,32 @@ app.get("/api/test", (req, res) => {
 
 app.post("/api/send-email", async(req, res) => {
     try {
-        const { email } = req.body;
+        const { email, code } = req.body;
 
-        if (!email) {
+        if (!email || !code) {
             return res.status(400).json({
                 success: false,
-                message: "Email is required",
+                message: "Email and verification code are required",
             });
         }
 
-        // Initialize API instance
         let apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-
-        // Configure API key authorization
         let apiKey = apiInstance.authentications["apiKey"];
-
-        // Check if API key is available and properly formatted
-        if (!process.env.BREVO_API_KEY) {
-            throw new Error("Brevo API key is not configured");
-        }
-
-        if (!process.env.BREVO_API_KEY.startsWith("xkeysib-")) {
-            throw new Error(
-                "Invalid Brevo API key format - must start with 'xkeysib-'"
-            );
-        }
-
         apiKey.apiKey = process.env.BREVO_API_KEY;
 
-        // Create a new email object
         let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
 
-        // Set up email data
-        sendSmtpEmail.subject = "Welcome to SupNum!";
-        sendSmtpEmail.htmlContent =
-            "<html><body><h1>Welcome to SupNum!</h1><p>Thank you for subscribing to our service. Version 3</p></body></html>";
+        // Set up verification code email
+        sendSmtpEmail.subject = "Your Verification Code";
+        sendSmtpEmail.htmlContent = `
+            <html>
+                <body>
+                    <h1>Your Verification Code</h1>
+                    <p>Here is your verification code: <strong>${code}</strong></p>
+                    <p>This code will expire in 10 minutes.</p>
+                </body>
+            </html>`;
 
-        // Use environment variables for sender information
         sendSmtpEmail.sender = {
             name: process.env.SENDER_NAME || "SupNum",
             email: process.env.SENDER_EMAIL,
@@ -107,46 +96,19 @@ app.post("/api/send-email", async(req, res) => {
             name: process.env.SENDER_NAME || "SupNum Support",
         };
 
-        // Send the email
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log("Email sent successfully. Response:", data);
+        console.log("Verification code sent successfully");
 
         return res.status(200).json({
             success: true,
-            message: "Email sent successfully!",
-            data: data,
+            message: "Verification code sent successfully!",
         });
     } catch (error) {
-        // Detailed error logging
-        console.error("Email sending error details:", {
-            name: error.name,
-            message: error.message,
-            response: error.response,
-            stack: error.stack,
-        });
-
-        let errorMessage = "Failed to send email";
-
-        // Handle different types of errors
-        if (error.response) {
-            // Brevo API error response
-            errorMessage =
-                error.response.text || error.response.body || error.message;
-        } else if (error instanceof SibApiV3Sdk.ApiException) {
-            // Specific Brevo SDK error
-            errorMessage = `API Error: ${error.message}`;
-        } else {
-            // Generic error
-            errorMessage = error.message || "An unexpected error occurred";
-        }
-
+        console.error("Email sending error:", error);
         return res.status(500).json({
             success: false,
-            message: errorMessage,
-            error: {
-                type: error.name,
-                details: errorMessage,
-            },
+            message: "Failed to send verification code",
+            error: error.message,
         });
     }
 });
