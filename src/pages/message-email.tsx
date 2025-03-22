@@ -1,18 +1,51 @@
 import { Button } from "@heroui/react";
 import React, { useState, useEffect } from "react";
 import { db } from "../../FirebaseConfig";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+} from "firebase/firestore";
 
 // Simple function to generate 6-digit code
 const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// Step indicator component
+const StepIndicator = ({ currentStep }: { currentStep: 1 | 2 }) => (
+  <div className="flex items-center justify-center mb-6">
+    <div className="flex items-center">
+      <div
+        className={`flex items-center justify-center w-8 h-8 rounded-full ${
+          currentStep === 1 ? "bg-black text-white" : "bg-gray-200"
+        }`}
+      >
+        1
+      </div>
+      <div className="w-12 h-1 mx-2 bg-gray-200"></div>
+      <div
+        className={`flex items-center justify-center w-8 h-8 rounded-full ${
+          currentStep === 2 ? "bg-black text-white" : "bg-gray-200"
+        }`}
+      >
+        2
+      </div>
+    </div>
+  </div>
+);
+
 export default function MessageEmail() {
   const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [showCodeInput, setShowCodeInput] = useState(false);
   const [serverStatus, setServerStatus] = useState<
     "checking" | "running" | "error"
   >("checking");
@@ -78,6 +111,45 @@ export default function MessageEmail() {
     }
   };
 
+  // Verify the code against Firestore
+  const verifyCode = async (inputCode: string) => {
+    try {
+      setIsLoading(true);
+      const companiesRef = collection(db, "companies");
+      const q = query(
+        companiesRef,
+        where("email", "==", email),
+        where("status", "==", "pending_verification"),
+        where("verificationCode", "==", inputCode)
+      );
+
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        throw new Error("Invalid verification code");
+      }
+
+      // Update the document status to verified
+      const docRef = querySnapshot.docs[0].ref;
+      await updateDoc(docRef, {
+        status: "verified",
+        verifiedAt: serverTimestamp(),
+      });
+
+      setMessage("Email verified successfully!");
+      setShowCodeInput(false);
+      setVerificationCode("");
+      setEmail("");
+    } catch (error) {
+      setIsError(true);
+      setMessage(
+        error instanceof Error ? error.message : "Verification failed"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -123,7 +195,7 @@ export default function MessageEmail() {
       }
 
       setMessage("Verification code sent to your email!");
-      setEmail("");
+      setShowCodeInput(true);
     } catch (error) {
       console.error("Error:", error);
       setMessage(
@@ -132,15 +204,25 @@ export default function MessageEmail() {
           : "An error occurred while processing your request."
       );
       setIsError(true);
+      setShowCodeInput(false);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleVerifyCode = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    verifyCode(verificationCode);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-center mb-6">Send Email</h2>
+        <StepIndicator currentStep={showCodeInput ? 2 : 1} />
+
+        <h2 className="text-2xl font-bold text-center mb-6">
+          {showCodeInput ? "Enter Verification Code" : "Send Email"}
+        </h2>
 
         {serverStatus === "checking" && (
           <div className="text-center text-gray-600 mb-4">
@@ -154,38 +236,73 @@ export default function MessageEmail() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your email"
-              disabled={isLoading || serverStatus !== "running"}
-            />
-          </div>
+        {!showCodeInput ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter your email"
+                disabled={isLoading || serverStatus !== "running"}
+              />
+            </div>
 
-          <Button
-            type="submit"
-            disabled={isLoading || serverStatus !== "running"}
-            className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 ${
-              isLoading || serverStatus !== "running"
-                ? "opacity-50 cursor-not-allowed"
-                : ""
-            }`}
-          >
-            {isLoading ? "Processing..." : "Send Email"}
-          </Button>
-        </form>
+            <Button
+              type="submit"
+              disabled={isLoading || serverStatus !== "running"}
+              className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 ${
+                isLoading || serverStatus !== "running"
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
+              }`}
+            >
+              {isLoading ? "Processing..." : "Send Code"}
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyCode} className="space-y-4">
+            <div className="space-y-2">
+              <label
+                htmlFor="code"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Verification Code
+              </label>
+              <input
+                id="code"
+                type="text"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                required
+                maxLength={6}
+                pattern="\d{6}"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter 6-digit code"
+                disabled={isLoading}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 ${
+                isLoading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              {isLoading ? "Verifying..." : "Verify Code"}
+            </Button>
+          </form>
+        )}
 
         {message && (
           <div
