@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /transportation_companies/{companyId} {
+      // Allow reading if document is in verification state or belongs to the user
+      allow read: if 
+        resource.data.email_status == 'pending_verification' ||
+        (request.auth != null && (
+          resource.data.email == request.auth.token.email ||
+          resource.data.authUID == request.auth.uid
+        ));
+      
+      // Allow creating new document during initial signup
+      allow create: if 
+        request.resource.data.keys().hasAll(['email', 'verificationCode', 'createdAt', 'email_status', 'userId']) &&
+        request.resource.data.email_status == 'pending_verification';
+      
+      // Allow updating document
+      allow update: if
+        // During email verification
+        (resource.data.email_status == 'pending_verification' &&
+         request.resource.data.email_status == 'verified') ||
+        // During final signup (adding company details)
+        (resource.data.email_status == 'verified' &&
+         request.auth != null &&
+         resource.data.email == request.auth.token.email);
+        
+      // Allow access to subcollections
+      match /{subcollection}/{document} {
+        allow read, write: if 
+          request.auth != null && 
+          get(/databases/$(database)/documents/transportation_companies/$(companyId)).data.authUID == request.auth.uid;
+      }
+    }
+  }
+} 

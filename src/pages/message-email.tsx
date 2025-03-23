@@ -10,12 +10,41 @@ import {
   where,
   getDocs,
   updateDoc,
+  doc,
+  setDoc,
+  GeoPoint,
+  Timestamp,
 } from "firebase/firestore";
+import { ImageUploadPreview } from "@/components/ImageUploadPreview";
+import { FileUpload } from "@/components/ui/file-upload";
+import { addAccountToLocalStorage } from "@/utils/localAccounts";
 
 // Simple function to generate 6-digit code
 const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
+
+interface CompanyData {
+  name: string;
+  location: GeoPoint;
+  phoneNumber: string;
+  logoPublicId: string;
+  logoUrl: string;
+  businessLicensePublicId?: string;
+  businessLicenseUrl?: string;
+  creditBalance?: number;
+  status?: "pending" | "approved" | "rejected" | null;
+}
+
+interface LoadingState {
+  submit: boolean;
+  // Add other loading states as needed
+}
+
+interface LocationInput {
+  latitude: string;
+  longitude: string;
+}
 
 const SignupFlow = () => {
   // Form state
@@ -26,14 +55,37 @@ const SignupFlow = () => {
   const [angelListUrl, setAngelListUrl] = useState("");
   const [linkedInUrl, setLinkedInUrl] = useState("");
 
+  // Company Information State
+  const [companyData, setCompanyData] = useState<CompanyData>({
+    name: "",
+    location: new GeoPoint(0, 0),
+    phoneNumber: "",
+    logoPublicId: "",
+    logoUrl: "",
+    businessLicensePublicId: "",
+    businessLicenseUrl: "",
+    creditBalance: 0,
+    status: "pending",
+  });
+
+  const [locationInput, setLocationInput] = useState<LocationInput>({
+    latitude: "",
+    longitude: "",
+  });
+
+  const [isLoading, setIsLoading] = useState<LoadingState>({
+    submit: false,
+    // Initialize other loading states here
+  });
+
   // UI state
   const [currentStep, setCurrentStep] = useState(1);
   const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [serverStatus, setServerStatus] = useState<
-    "checking" | "running" | "error"
-  >("checking");
+  const [serverStatus, setServerStatus] = useState<"running" | "error">(
+    "running"
+  );
+  const [files, setFiles] = useState<File[]>([]);
 
   // Check if server is running
   useEffect(() => {
@@ -82,16 +134,39 @@ const SignupFlow = () => {
   // Store email and verification code in Firestore
   const storeEmailInFirestore = async (email: string, code: string) => {
     try {
-      const companiesRef = collection(db, "companies");
-      const docRef = await addDoc(companiesRef, {
+      console.log("Starting to store email in Firestore:", { email, code });
+      
+      // Generate a UID that will be used throughout the signup process
+      const uid = doc(collection(db, "transportation_companies")).id;
+      
+      const docData = {
         email,
         verificationCode: code,
         createdAt: serverTimestamp(),
-        status: "pending_verification",
-      });
-      return docRef.id;
+        email_status: "pending_verification",
+        userId: uid // Store the UID that will be used later
+      };
+      
+      console.log("Document data to be stored:", docData);
+      console.log("Document path:", `transportation_companies/${uid}`);
+      
+      // Create document with the generated UID
+      await setDoc(doc(db, "transportation_companies", uid), docData);
+      console.log("Successfully stored email, doc ID:", uid);
+      
+      // Store the UID in localStorage for later use
+      localStorage.setItem('signupUID', uid);
+      
+      return uid;
     } catch (error) {
-      console.error("Firestore error:", error);
+      console.error("Detailed Firestore error:", error);
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+        if ('code' in error) {
+          console.error("Error code:", (error as any).code);
+        }
+      }
       throw new Error("Failed to store email in database");
     }
   };
@@ -99,16 +174,22 @@ const SignupFlow = () => {
   // Verify the code against Firestore
   const verifyCode = async (inputCode: string) => {
     try {
-      setIsLoading(true);
-      const companiesRef = collection(db, "companies");
+      console.log("Verifying code:", { email, inputCode });
+      setIsLoading((prev) => ({ ...prev, submit: true }));
+      const companiesRef = collection(db, "transportation_companies");
       const q = query(
         companiesRef,
         where("email", "==", email),
-        where("status", "==", "pending_verification"),
+        where("email_status", "==", "pending_verification"),
         where("verificationCode", "==", inputCode)
       );
 
+      console.log("Executing Firestore query...");
       const querySnapshot = await getDocs(q);
+      console.log("Query results:", {
+        empty: querySnapshot.empty,
+        size: querySnapshot.size,
+      });
 
       if (querySnapshot.empty) {
         throw new Error("Invalid verification code");
@@ -116,20 +197,23 @@ const SignupFlow = () => {
 
       // Update the document status to verified
       const docRef = querySnapshot.docs[0].ref;
+      console.log("Updating document status...");
       await updateDoc(docRef, {
-        status: "verified",
+        email_status: "verified",
         verifiedAt: serverTimestamp(),
       });
+      console.log("Document status updated successfully");
 
       setMessage("Email verified successfully! Please create your password.");
       setCurrentStep(2);
     } catch (error) {
+      console.error("Verification error:", error);
       setIsError(true);
       setMessage(
         error instanceof Error ? error.message : "Verification failed"
       );
     } finally {
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, submit: false }));
     }
   };
 
@@ -192,67 +276,285 @@ const SignupFlow = () => {
     }
   };
 
-  const handleCreateAccount = async () => {
-    setIsLoading(true);
+  const handleFileUpload = async (file: File, type: "logo" | "license") => {
+    try {
+      setIsLoading((prev) => ({ ...prev, submit: true }));
+      setMessage("");
+      setIsError(false);
+
+      if (!file.type.startsWith("image/")) {
+        setMessage("Please upload an image file");
+        setIsError(true);
+        return;
+      }
+
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        setMessage("File size should be less than 5MB");
+        setIsError(true);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "booking-app");
+      formData.append("cloud_name", "dwctkor2s");
+
+      const response = await fetch(
+        "https://api.cloudinary.com/v1_1/dwctkor2s/image/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(
+          data.error?.message || `Upload failed: ${response.statusText}`
+        );
+      }
+
+      if (data.public_id && data.secure_url) {
+        if (type === "logo") {
+          setCompanyData((prev) => ({
+            ...prev,
+            logoPublicId: data.public_id,
+            logoUrl: data.secure_url,
+          }));
+        } else {
+          setCompanyData((prev) => ({
+            ...prev,
+            businessLicensePublicId: data.public_id,
+            businessLicenseUrl: data.secure_url,
+          }));
+        }
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Error uploading file. Please try again."
+      );
+      setIsError(true);
+    } finally {
+      setIsLoading((prev) => ({ ...prev, submit: false }));
+    }
+  };
+
+  const handleLocationChange = (field: keyof LocationInput, value: string) => {
+    if (!/^-?\d*\.?\d*$/.test(value) && value !== "") return;
+
+    setLocationInput((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    const lat =
+      field === "latitude" ? Number(value) : Number(locationInput.latitude);
+    const lng =
+      field === "longitude" ? Number(value) : Number(locationInput.longitude);
+
+    if (!isNaN(lat) && !isNaN(lng)) {
+      setCompanyData((prev) => ({
+        ...prev,
+        location: new GeoPoint(lat, lng),
+      }));
+    }
+  };
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setMessage("Geolocation is not supported by your browser");
+      setIsError(true);
+      return;
+    }
+
+    setIsLoading((prev) => ({ ...prev, submit: true }));
+    setMessage("");
+    setIsError(false);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLocationInput({
+          latitude: latitude.toFixed(6),
+          longitude: longitude.toFixed(6),
+        });
+        setCompanyData((prev) => ({
+          ...prev,
+          location: new GeoPoint(latitude, longitude),
+        }));
+        setIsLoading((prev) => ({ ...prev, submit: false }));
+      },
+      (error) => {
+        let errorMessage = "Failed to get your location";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Please allow location access to continue";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out";
+            break;
+          default:
+            errorMessage = "An unknown error occurred";
+        }
+        setMessage(errorMessage);
+        setIsError(true);
+        setIsLoading((prev) => ({ ...prev, submit: false }));
+      }
+    );
+  };
+
+  const handleCreateAccount = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    setIsLoading((prev) => ({ ...prev, submit: true }));
     setMessage("");
     setIsError(false);
 
     try {
-      // Create Firebase Auth user
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
+      console.log("Starting account creation process...");
+      console.log("Form data:", {
         email,
-        password
-      );
+        companyData,
+        locationInput,
+        socialLinks: { twitterHandle, angelListUrl, linkedInUrl },
+      });
 
-      // Update Firestore document with user ID
-      const companiesRef = collection(db, "companies");
-      const q = query(
-        companiesRef,
-        where("email", "==", email),
-        where("status", "==", "verified")
-      );
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        await updateDoc(querySnapshot.docs[0].ref, {
-          userId: userCredential.user.uid,
-          status: "active",
-          twitterHandle,
-          angelListUrl,
-          linkedInUrl,
-        });
+      if (!email || !password) {
+        throw new Error("Email and password are required");
       }
 
+      if (!companyData.name || !companyData.phoneNumber || !companyData.logoUrl) {
+        throw new Error("Company details are incomplete");
+      }
+
+      // Get the UID we stored earlier
+      const existingUID = localStorage.getItem('signupUID');
+      if (!existingUID) {
+        throw new Error("Session expired. Please start the signup process again.");
+      }
+
+      // Create Firebase Auth user with the same UID
+      console.log("Creating Firebase Auth user...");
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+      console.log("Firebase Auth user created:", uid);
+
+      // Create GeoPoint from validated coordinates
+      const latitude = Number(locationInput.latitude);
+      const longitude = Number(locationInput.longitude);
+
+      if (isNaN(latitude) || isNaN(longitude)) {
+        throw new Error("Invalid location coordinates");
+      }
+
+      const geoPoint = new GeoPoint(latitude, longitude);
+
+      // Update the existing document with company details
+      const companyDocData = {
+        name: companyData.name,
+        location: geoPoint,
+        phoneNumber: companyData.phoneNumber,
+        logo: {
+          publicId: companyData.logoPublicId,
+          url: companyData.logoUrl,
+          uploadedAt: new Date().toISOString(),
+        },
+        businessLicense: companyData.businessLicensePublicId
+          ? {
+              publicId: companyData.businessLicensePublicId,
+              url: companyData.businessLicenseUrl,
+              uploadedAt: new Date().toISOString(),
+            }
+          : null,
+        creditBalance: 0,
+        status: "pending",
+        updatedAt: Timestamp.now(),
+        socialLinks: {
+          twitter: twitterHandle || "",
+          angelList: angelListUrl || "",
+          linkedIn: linkedInUrl || "",
+        },
+        authUID: uid // Store the Firebase Auth UID
+      };
+
+      console.log("Updating company data in Firestore...");
+      console.log("Document path:", `transportation_companies/${existingUID}`);
+      console.log("Company data:", companyDocData);
+
+      // Update the existing document
+      const companyRef = doc(db, "transportation_companies", existingUID);
+      await updateDoc(companyRef, companyDocData);
+      console.log("Company data updated successfully");
+
+      // Create empty subcollections
+      console.log("Creating trips subcollection...");
+      const tripsCollectionRef = collection(companyRef, "trips");
+      await setDoc(doc(tripsCollectionRef, "placeholder"), {
+        createdAt: Timestamp.now(),
+        placeholder: true,
+      });
+
+      // Create empty seats subcollection
+      console.log("Creating seats subcollection...");
+      const seatsCollectionRef = collection(companyRef, "seats");
+      await setDoc(doc(seatsCollectionRef, "placeholder"), {
+        createdAt: Timestamp.now(),
+        placeholder: true,
+      });
+
+      // Save to local storage
+      console.log("Saving to local storage...");
+      addAccountToLocalStorage({
+        id: existingUID,
+        name: companyData.name,
+        email: email,
+        logo: {
+          publicId: companyData.logoPublicId,
+          url: companyData.logoUrl,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+
+      // Clean up the signup UID from localStorage
+      localStorage.removeItem('signupUID');
+
       setMessage("Account created successfully!");
-      // Reset all states
-      setEmail("");
-      setVerificationCode("");
-      setPassword("");
-      setTwitterHandle("");
-      setAngelListUrl("");
-      setLinkedInUrl("");
-      setCurrentStep(1);
+      console.log("Account creation completed successfully!");
+
+      // Redirect to dashboard
+      window.location.href = "/dashboard";
     } catch (error) {
+      console.error("Account creation error:", error);
+      if (error instanceof Error) {
+        console.error("Error details:", error.message);
+        if ("code" in error) {
+          console.error("Error code:", (error as any).code);
+        }
+      }
       setIsError(true);
-      setMessage(
-        error instanceof Error ? error.message : "Failed to create account"
-      );
+      setMessage(error instanceof Error ? error.message : "Failed to create account");
     } finally {
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, submit: false }));
     }
   };
 
   const handleSubmitEmail = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsLoading((prev) => ({ ...prev, submit: true }));
     setMessage("");
     setIsError(false);
 
     if (serverStatus !== "running") {
       setMessage("Server is not running. Please try again later.");
       setIsError(true);
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, submit: false }));
       return;
     }
 
@@ -306,7 +608,7 @@ const SignupFlow = () => {
       );
       setIsError(true);
     } finally {
-      setIsLoading(false);
+      setIsLoading((prev) => ({ ...prev, submit: false }));
     }
   };
 
@@ -325,13 +627,43 @@ const SignupFlow = () => {
     setCurrentStep(3);
   };
 
-  const handleSkipInvite = () => {
-    setCurrentStep(4);
-  };
-
-  const handleCompleteSignup = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitCompanyDetails = (e: React.FormEvent) => {
     e.preventDefault();
-    handleCreateAccount();
+
+    // Validate company details
+    if (
+      !companyData.name ||
+      !locationInput.latitude ||
+      !locationInput.longitude ||
+      !companyData.phoneNumber ||
+      !companyData.logoPublicId ||
+      !companyData.logoUrl
+    ) {
+      setMessage(
+        "Please fill in all required company information and upload a logo"
+      );
+      setIsError(true);
+      return;
+    }
+
+    // Validate location coordinates
+    const latitude = Number(locationInput.latitude);
+    const longitude = Number(locationInput.longitude);
+
+    if (
+      isNaN(latitude) ||
+      isNaN(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      setMessage("Please enter valid location coordinates");
+      setIsError(true);
+      return;
+    }
+
+    setCurrentStep(4);
   };
 
   // Render different content based on the current step
@@ -384,19 +716,19 @@ const SignupFlow = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading || serverStatus !== "running"}
+                disabled={isLoading.submit || serverStatus !== "running"}
               />
             </div>
             <button
               type="submit"
               className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
-                isLoading || serverStatus !== "running"
+                isLoading.submit || serverStatus !== "running"
                   ? "opacity-50 cursor-not-allowed"
                   : ""
               }`}
-              disabled={isLoading || serverStatus !== "running"}
+              disabled={isLoading.submit || serverStatus !== "running"}
             >
-              {isLoading ? "Processing..." : "Continue"}
+              {isLoading.submit ? "Processing..." : "Continue"}
             </button>
           </form>
         </>
@@ -453,17 +785,17 @@ const SignupFlow = () => {
                 required
                 maxLength={6}
                 pattern="\d{6}"
-                disabled={isLoading}
+                disabled={isLoading.submit}
               />
             </div>
             <button
               type="submit"
               className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
-                isLoading ? "opacity-50 cursor-not-allowed" : ""
+                isLoading.submit ? "opacity-50 cursor-not-allowed" : ""
               }`}
-              disabled={isLoading}
+              disabled={isLoading.submit}
             >
-              {isLoading ? "Verifying..." : "Verify Code"}
+              {isLoading.submit ? "Verifying..." : "Verify Code"}
             </button>
           </form>
         </>
@@ -524,23 +856,23 @@ const SignupFlow = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                disabled={isLoading}
+                disabled={isLoading.submit}
               />
             </div>
             <button
               type="submit"
               className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
-                isLoading ? "opacity-50 cursor-not-allowed" : ""
+                isLoading.submit ? "opacity-50 cursor-not-allowed" : ""
               }`}
-              disabled={isLoading}
+              disabled={isLoading.submit}
             >
-              {isLoading ? "Processing..." : "Continue"}
+              {isLoading.submit ? "Processing..." : "Continue"}
             </button>
           </form>
         </>
       );
     } else if (currentStep === 3) {
-      // Invite team step
+      // Company Details step
       return (
         <>
           <div className="flex justify-center mb-6">
@@ -553,28 +885,14 @@ const SignupFlow = () => {
                 xmlns="http://www.w3.org/2000/svg"
               >
                 <path
-                  d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21"
+                  d="M19 21V19C19 17.9391 18.5786 16.9217 17.8284 16.1716C17.0783 15.4214 16.0609 15 15 15H9C7.93913 15 6.92172 15.4214 6.17157 16.1716C5.42143 16.9217 5 17.9391 5 19V21"
                   stroke="#111827"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
                 <path
-                  d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z"
-                  stroke="#111827"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13"
-                  stroke="#111827"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M16 3.13C16.8604 3.3503 17.623 3.8507 18.1676 4.55231C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89317 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88"
+                  d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z"
                   stroke="#111827"
                   strokeWidth="2"
                   strokeLinecap="round"
@@ -585,41 +903,127 @@ const SignupFlow = () => {
           </div>
 
           <h1 className="text-3xl font-bold text-center mb-2">
-            Invite your team
+            Company Details
           </h1>
           <p className="text-gray-500 text-center mb-8">
-            Start collaborating with your team.
+            Tell us about your company
           </p>
 
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Team members
-              </label>
-              <input
-                type="email"
-                className="w-full py-2 px-3 border border-gray-300 rounded-md"
-                placeholder="Enter email addresses"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Separate multiple emails with commas
-              </p>
+          <form onSubmit={handleSubmitCompanyDetails} className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Company Logo
+                </label>
+                <FileUpload
+                  onChange={(files) => {
+                    setFiles(files);
+                    if (files[0]) handleFileUpload(files[0], "logo");
+                  }}
+                  type="logo"
+                  setCompanyData={setCompanyData}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  className="w-full py-2 px-3 border border-gray-300 rounded-md"
+                  value={companyData.name}
+                  onChange={(e) =>
+                    setCompanyData({ ...companyData, name: e.target.value })
+                  }
+                  placeholder="Enter company name"
+                  required
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Location
+                  </label>
+                  <button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                    disabled={isLoading.submit}
+                  >
+                    {isLoading.submit
+                      ? "Getting location..."
+                      : "Use current location"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    className="w-full py-2 px-3 border border-gray-300 rounded-md"
+                    value={locationInput.latitude}
+                    onChange={(e) =>
+                      handleLocationChange("latitude", e.target.value)
+                    }
+                    placeholder="Latitude"
+                    required
+                  />
+                  <input
+                    type="text"
+                    className="w-full py-2 px-3 border border-gray-300 rounded-md"
+                    value={locationInput.longitude}
+                    onChange={(e) =>
+                      handleLocationChange("longitude", e.target.value)
+                    }
+                    placeholder="Longitude"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  className="w-full py-2 px-3 border border-gray-300 rounded-md"
+                  value={companyData.phoneNumber}
+                  onChange={(e) =>
+                    setCompanyData({
+                      ...companyData,
+                      phoneNumber: e.target.value,
+                    })
+                  }
+                  placeholder="Enter phone number"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Business License (Optional)
+                </label>
+                <FileUpload
+                  onChange={(files) => {
+                    if (files[0]) handleFileUpload(files[0], "license");
+                  }}
+                  type="license"
+                  setCompanyData={setCompanyData}
+                />
+              </div>
             </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={handleSkipInvite}
-                className="flex-1 py-2 bg-white border border-gray-300 text-gray-700 rounded-md font-medium"
-              >
-                Skip
-              </button>
-              <button
-                onClick={() => setCurrentStep(4)}
-                className="flex-1 py-2 bg-blue-600 text-white rounded-md font-medium"
-              >
-                Invite & Continue
-              </button>
-            </div>
-          </div>
+
+            <button
+              type="submit"
+              className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
+                isLoading.submit ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              disabled={isLoading.submit}
+            >
+              {isLoading.submit ? "Processing..." : "Continue"}
+            </button>
+          </form>
         </>
       );
     } else if (currentStep === 4) {
@@ -653,7 +1057,7 @@ const SignupFlow = () => {
             Share posts to your social accounts.
           </p>
 
-          <form onSubmit={handleCompleteSignup} className="space-y-6">
+          <form onSubmit={handleCreateAccount} className="space-y-6">
             {/* Twitter input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -683,7 +1087,7 @@ const SignupFlow = () => {
                   placeholder="twitter.com/@example"
                   value={twitterHandle}
                   onChange={(e) => setTwitterHandle(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isLoading.submit}
                 />
               </div>
             </div>
@@ -723,7 +1127,7 @@ const SignupFlow = () => {
                   placeholder="angel.co/company/example"
                   value={angelListUrl}
                   onChange={(e) => setAngelListUrl(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isLoading.submit}
                 />
               </div>
             </div>
@@ -776,7 +1180,7 @@ const SignupFlow = () => {
                   placeholder="linkedin.com/company/example"
                   value={linkedInUrl}
                   onChange={(e) => setLinkedInUrl(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isLoading.submit}
                 />
               </div>
             </div>
@@ -785,11 +1189,11 @@ const SignupFlow = () => {
             <button
               type="submit"
               className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
-                isLoading ? "opacity-50 cursor-not-allowed" : ""
+                isLoading.submit ? "opacity-50 cursor-not-allowed" : ""
               }`}
-              disabled={isLoading}
+              disabled={isLoading.submit}
             >
-              {isLoading ? "Creating Account..." : "Complete sign up"}
+              {isLoading.submit ? "Creating Account..." : "Complete sign up"}
             </button>
           </form>
         </>
@@ -931,12 +1335,12 @@ const SignupFlow = () => {
               <p
                 className={`font-medium ${currentStep === 3 ? "text-gray-900" : "text-gray-500"}`}
               >
-                Invite your team
+                Company Details
               </p>
               <p
                 className={`text-sm ${currentStep === 3 ? "text-gray-500" : "text-gray-400"}`}
               >
-                Start collaborating with your team
+                Tell us about your company
               </p>
             </div>
           </div>
