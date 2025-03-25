@@ -3,33 +3,68 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /transportation_companies/{companyId} {
-      // Allow reading if document is in verification state or belongs to the user
+      // Allow reading if the document exists and either:
+      // 1. It's in the verification process (no authUID yet)
+      // 2. It belongs to the authenticated user
       allow read: if 
-        resource.data.email_status == 'pending_verification' ||
-        (request.auth != null && (
-          resource.data.email == request.auth.token.email ||
-          resource.data.authUID == request.auth.uid
-        ));
+        exists(/databases/$(database)/documents/transportation_companies/$(companyId)) &&
+        (
+          !resource.data.keys().hasAny(['authUID']) ||
+          (request.auth != null && resource.data.authUID == request.auth.uid)
+        );
       
-      // Allow creating new document during initial signup
+      // Allow creating new company document during initial signup
+      // Only requires email and createdAt fields
       allow create: if 
-        request.resource.data.keys().hasAll(['email', 'verificationCode', 'createdAt', 'email_status', 'userId']) &&
-        request.resource.data.email_status == 'pending_verification';
+        request.resource.data.keys().hasAll(['email', 'createdAt']) &&
+        !request.resource.data.keys().hasAny(['authUID']) &&
+        request.resource.data.keys().size() == 2;
       
-      // Allow updating document
+      // Allow updating document when:
+      // 1. Adding company details after auth (must include authUID)
+      // 2. Document doesn't have authUID yet (during verification process)
       allow update: if
-        // During email verification
-        (resource.data.email_status == 'pending_verification' &&
-         request.resource.data.email_status == 'verified') ||
-        // During final signup (adding company details)
-        (resource.data.email_status == 'verified' &&
-         request.auth != null &&
-         resource.data.email == request.auth.token.email);
+        !resource.data.keys().hasAny(['authUID']) ||
+        (
+          request.auth != null &&
+          resource.data.authUID == request.auth.uid
+        );
+
+      // Allow deletion during verification process (before authUID is set)
+      allow delete: if
+        !resource.data.keys().hasAny(['authUID']);
+
+      // Rules for the email_verification_token subcollection
+      match /email_verification_token/{tokenId} {
+        // Function to validate token ID format
+        function isValidTokenId() {
+          return tokenId.matches('^[0-9]+_[a-z0-9]{9}$');
+        }
+
+        // Allow creating verification token
+        allow create: if
+          isValidTokenId() &&
+          request.resource.data.keys().hasAll(['email', 'verificationCode', 'expiresAt', 'status', 'tokenId']) &&
+          request.resource.data.status == 'pending_verification' &&
+          request.resource.data.tokenId == tokenId;
         
-      // Allow access to subcollections
+        // Allow reading token during verification
+        allow read: if
+          isValidTokenId();
+        
+        // Allow updating token status and deletion
+        allow update, delete: if
+          isValidTokenId() &&
+          (
+            !get(/databases/$(database)/documents/transportation_companies/$(companyId)).data.keys().hasAny(['authUID']) ||
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'verifiedAt'])
+          );
+      }
+      
+      // Rules for other subcollections (trips, seats, etc.)
       match /{subcollection}/{document} {
-        allow read, write: if 
-          request.auth != null && 
+        allow read, write: if
+          request.auth != null &&
           get(/databases/$(database)/documents/transportation_companies/$(companyId)).data.authUID == request.auth.uid;
       }
     }

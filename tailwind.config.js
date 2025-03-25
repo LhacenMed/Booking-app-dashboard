@@ -30,10 +30,15 @@ module.exports = {
                         opacity: "1",
                     },
                 },
+                "caret-blink": {
+                    "0%,70%,100%": { opacity: "1" },
+                    "20%,50%": { opacity: "0" },
+                },
             },
             animation: {
                 "float-slow": "float-slow 4s ease-in-out infinite",
                 slideDown: "slideDown 0.5s ease-out forwards",
+                "caret-blink": "caret-blink 1.25s ease-out infinite",
             },
             backgroundImage: {
                 "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

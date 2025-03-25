@@ -14,6 +14,8 @@ import {
   setDoc,
   GeoPoint,
   Timestamp,
+  getDoc,
+  deleteDoc,
 } from "firebase/firestore";
 // import { ImageUploadPreview } from "@/components/ImageUploadPreview";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";
@@ -23,10 +25,32 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SignupSidebar } from "@/components/Sidebar/SignupSidebar";
 // import { FileUpload } from "@/components/ui/file-upload";
 import { ImageUploadPreview } from "@/components/ui/ImageUploadPreview";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { REGEXP_ONLY_DIGITS, REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Spinner } from "@heroui/react";
 
 // Simple function to generate 6-digit code
 const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Add this helper function at the top level, after the generateVerificationCode function
+const generateCustomCompanyId = (email: string) => {
+  // Get first 5 letters of email (before @), convert to uppercase
+  const prefix = email.split("@")[0].slice(0, 5).toUpperCase();
+
+  // Generate 8 random numbers (including possible leading zeros)
+  const numbers = Array.from({ length: 8 }, () =>
+    Math.floor(Math.random() * 10)
+  ).join("");
+
+  return `${prefix}-${numbers}`;
 };
 
 interface CompanyData {
@@ -109,6 +133,27 @@ const SignupFlow = () => {
     isVisible: boolean;
   } | null>(null);
 
+  // Add timer state
+  const [resendTimer, setResendTimer] = useState<number>(0);
+
+  // Add useEffect for the timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  // Format time function
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
   // Check if server is running
   useEffect(() => {
     const checkServer = async () => {
@@ -158,28 +203,53 @@ const SignupFlow = () => {
     try {
       console.log("Starting to store email in Firestore:", { email, code });
 
-      // Generate a UID that will be used throughout the signup process
-      const uid = doc(collection(db, "transportation_companies")).id;
+      // Generate custom company ID
+      const customId = generateCustomCompanyId(email);
+      console.log("Generated custom company ID:", customId);
 
-      const docData = {
+      // Create the main company document with minimal data
+      const companyDocData = {
         email,
-        verificationCode: code,
         createdAt: serverTimestamp(),
-        email_status: "pending_verification",
-        userId: uid, // Store the UID that will be used later
       };
 
-      console.log("Document data to be stored:", docData);
-      console.log("Document path:", `transportation_companies/${uid}`);
+      // Create the main document with custom ID
+      await setDoc(
+        doc(db, "transportation_companies", customId),
+        companyDocData
+      );
+      console.log("Created main company document:", customId);
 
-      // Create document with the generated UID
-      await setDoc(doc(db, "transportation_companies", uid), docData);
-      console.log("Successfully stored email, doc ID:", uid);
+      // Generate a unique ID for the verification token
+      const tokenId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Store the UID in localStorage for later use
-      localStorage.setItem("signupUID", uid);
+      // Create verification token in subcollection
+      const tokenData = {
+        email,
+        verificationCode: code,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes from now
+        status: "pending_verification",
+        tokenId, // Store the token ID in the document for reference
+      };
 
-      return uid;
+      // Add to email_verification_token subcollection with unique ID
+      await setDoc(
+        doc(
+          db,
+          "transportation_companies",
+          customId,
+          "email_verification_token",
+          tokenId
+        ),
+        tokenData
+      );
+      console.log("Created verification token:", tokenId);
+
+      // Store both IDs in localStorage for later use
+      localStorage.setItem("signupUID", customId);
+      localStorage.setItem("verificationTokenId", tokenId);
+
+      return customId;
     } catch (error) {
       console.error("Detailed Firestore error:", error);
       if (error instanceof Error) {
@@ -193,53 +263,165 @@ const SignupFlow = () => {
     }
   };
 
+  // Add this function after storeEmailInFirestore
+  const resendVerificationCode = async () => {
+    try {
+      setIsLoading((prev) => ({ ...prev, verification: true }));
+
+      // Get the stored IDs
+      const uid = localStorage.getItem("signupUID");
+      const tokenId = localStorage.getItem("verificationTokenId");
+
+      if (!uid || !tokenId) {
+        throw new Error("Session expired. Please start over.");
+      }
+
+      // Generate new verification code
+      const newCode = generateVerificationCode();
+
+      // Update the verification token document
+      const tokenRef = doc(
+        db,
+        "transportation_companies",
+        uid,
+        "email_verification_token",
+        tokenId
+      );
+      await updateDoc(tokenRef, {
+        verificationCode: newCode,
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // Reset to 5 minutes from now
+        status: "pending_verification",
+      });
+
+      // Send new verification code email
+      const response = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          subject: "Your New Verification Code",
+          code: newCode,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to send verification code");
+      }
+
+      // Reset timer to 5 minutes
+      setResendTimer(300);
+
+      showMessage("New verification code sent to your email!", false);
+    } catch (error) {
+      console.error("Error resending code:", error);
+      showMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to resend verification code",
+        true
+      );
+    } finally {
+      setIsLoading((prev) => ({ ...prev, verification: false }));
+    }
+  };
+
   // Verify the code against Firestore
   const verifyCode = async (inputCode: string) => {
     try {
       console.log("Verifying code:", { email, inputCode });
       setIsLoading((prev) => ({ ...prev, verification: true }));
-      const companiesRef = collection(db, "transportation_companies");
-      const q = query(
-        companiesRef,
-        where("email", "==", email),
-        where("email_status", "==", "pending_verification"),
-        where("verificationCode", "==", inputCode)
+
+      // Get the UIDs from localStorage
+      const uid = localStorage.getItem("signupUID");
+      const tokenId = localStorage.getItem("verificationTokenId");
+
+      if (!uid || !tokenId) {
+        throw new Error("Session expired. Please start over.");
+      }
+
+      // Get the verification token document
+      const tokenDoc = await getDoc(
+        doc(
+          db,
+          "transportation_companies",
+          uid,
+          "email_verification_token",
+          tokenId
+        )
       );
 
-      console.log("Executing Firestore query...");
-      const querySnapshot = await getDocs(q);
-      console.log("Query results:", {
-        empty: querySnapshot.empty,
-        size: querySnapshot.size,
-      });
+      if (!tokenDoc.exists()) {
+        throw new Error("Verification token not found");
+      }
 
-      if (querySnapshot.empty) {
+      const tokenData = tokenDoc.data();
+
+      // Check if token is expired
+      if (tokenData.expiresAt.toDate() < new Date()) {
+        // Delete the verification token document first
+        await deleteDoc(tokenDoc.ref);
+        console.log("Deleted expired verification token");
+
+        // Then delete the main company document
+        const companyRef = doc(db, "transportation_companies", uid);
+        await deleteDoc(companyRef);
+        console.log("Deleted company document due to expired token");
+
+        // Clean up localStorage
+        localStorage.removeItem("signupUID");
+        localStorage.removeItem("verificationTokenId");
+
+        throw new Error("Verification code has expired. Please start over.");
+      }
+
+      // Check if code matches
+      if (
+        tokenData.verificationCode !== inputCode ||
+        tokenData.email !== email
+      ) {
         throw new Error("Invalid verification code");
       }
 
-      // Update the document status to verified
-      const docRef = querySnapshot.docs[0].ref;
-      console.log("Updating document status...");
-      await updateDoc(docRef, {
-        email_status: "verified",
-        verifiedAt: serverTimestamp(),
-      });
-      console.log("Document status updated successfully");
+      // Delete the verification token document
+      await deleteDoc(tokenDoc.ref);
+
+      // Clean up localStorage
+      localStorage.removeItem("verificationTokenId");
 
       showMessage(
         "Email verified successfully! Please create your password.",
         false
       );
       setCurrentStep(2);
+      setResendTimer(0);
     } catch (error) {
       console.error("Verification error:", error);
       showMessage(
         error instanceof Error ? error.message : "Verification failed",
         true
       );
+
+      // If the error was due to expiration, go back to step 1
+      if (error instanceof Error && error.message.includes("expired")) {
+        setCurrentStep(1);
+        setVerificationCode("");
+        setResendTimer(0);
+        // setEmail("");
+      }
     } finally {
       setIsLoading((prev) => ({ ...prev, verification: false }));
     }
+  };
+
+  const handleVerifyCode = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading((prev) => ({ ...prev, verification: true }));
+    verifyCode(verificationCode).finally(() => {
+      setIsLoading((prev) => ({ ...prev, verification: false }));
+    });
   };
 
   // Check if email exists in Firebase Auth
@@ -302,7 +484,24 @@ const SignupFlow = () => {
     }
   };
 
-  const handleFileUpload = async (file: File, type: "logo" | "license") => {
+  const handleFileUpload = async (
+    file: File | null,
+    type: "logo" | "license"
+  ) => {
+    if (!file) {
+      // Clear the relevant image data
+      if (type === "logo") {
+        setCompanyData((prev) => ({ ...prev, logoPublicId: "", logoUrl: "" }));
+      } else {
+        setCompanyData((prev) => ({
+          ...prev,
+          businessLicensePublicId: "",
+          businessLicenseUrl: "",
+        }));
+      }
+      return;
+    }
+
     try {
       const loadingKey = type === "logo" ? "logoUpload" : "licenseUpload";
       setIsLoading((prev) => ({ ...prev, [loadingKey]: true }));
@@ -568,14 +767,7 @@ const SignupFlow = () => {
         placeholder: true,
       });
 
-      // Create empty seats subcollection
-      console.log("Creating seats subcollection...");
-      const seatsCollectionRef = collection(companyRef, "seats");
-      await setDoc(doc(seatsCollectionRef, "placeholder"), {
-        createdAt: Timestamp.now(),
-        placeholder: true,
-      });
-
+      // Remove seats subcollection creation
       // Save to local storage
       console.log("Saving to local storage...");
       addAccountToLocalStorage({
@@ -664,6 +856,9 @@ const SignupFlow = () => {
         throw new Error(data.error || "Failed to send verification code");
       }
 
+      // Start the 5-minute timer (300 seconds)
+      setResendTimer(300);
+
       showMessage("Verification code sent to your email!", false);
       setCurrentStep(1.5);
     } catch (error) {
@@ -677,14 +872,6 @@ const SignupFlow = () => {
     } finally {
       setIsLoading((prev) => ({ ...prev, emailSubmit: false }));
     }
-  };
-
-  const handleVerifyCode = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading((prev) => ({ ...prev, verification: true }));
-    verifyCode(verificationCode).finally(() => {
-      setIsLoading((prev) => ({ ...prev, verification: false }));
-    });
   };
 
   const handleSubmitPassword = (e: React.FormEvent<HTMLFormElement>) => {
@@ -806,7 +993,7 @@ const SignupFlow = () => {
                 className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
                   isLoading.emailSubmit || serverStatus !== "running"
                     ? "opacity-50 cursor-not-allowed"
-                    : ""
+                    : "hover:bg-blue-700"
                 }`}
                 disabled={isLoading.emailSubmit || serverStatus !== "running"}
               >
@@ -824,67 +1011,115 @@ const SignupFlow = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="w-full max-w-sm mx-auto"
           >
-            <div className="flex justify-center mb-6">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M22 11.08V12C21.9988 14.1564 21.3005 16.2547 20.0093 17.9818C18.7182 19.709 16.9033 20.9725 14.8354 21.5839C12.7674 22.1953 10.5573 22.1219 8.53447 21.3746C6.51168 20.6273 4.78465 19.2461 3.61096 17.4371C2.43727 15.628 1.87979 13.4881 2.02168 11.3363C2.16356 9.18455 2.99721 7.13631 4.39828 5.49706C5.79935 3.85781 7.69279 2.71537 9.79619 2.24013C11.8996 1.7649 14.1003 1.98232 16.07 2.85999"
-                    stroke="#111827"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M22 4L12 14.01L9 11.01"
-                    stroke="#111827"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-xl font-semibold text-center mb-2">
               Verify your email
             </h1>
-            <p className="text-gray-500 text-center mb-8">
-              We've sent a code to your email.
+            <p className="text-sm text-gray-600 text-center mb-8">
+              We sent a code to {email}
             </p>
 
             <form onSubmit={handleVerifyCode} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Verification Code
-                </label>
-                <input
-                  type="text"
-                  className="w-full py-2 px-3 border border-gray-300 rounded-md"
-                  placeholder="Enter 6-digit code"
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value)}
-                  required
+              <div className="flex flex-col items-center gap-4">
+                <InputOTP
                   maxLength={6}
-                  pattern="\d{6}"
+                  value={verificationCode}
+                  onChange={(value) => {
+                    setVerificationCode(value);
+                    // Auto-submit when all 6 digits are entered
+                    if (value.length === 6) {
+                      verifyCode(value);
+                    }
+                  }}
+                  pattern={REGEXP_ONLY_DIGITS}
                   disabled={isLoading.verification}
-                />
+                  className="gap-2"
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot
+                      index={0}
+                      className="w-14 h-14 text-2xl border-gray-300"
+                    />
+                    <InputOTPSlot
+                      index={1}
+                      className="w-14 h-14 text-2xl border-gray-300"
+                    />
+                    <InputOTPSlot
+                      index={2}
+                      className="w-14 h-14 text-2xl border-gray-300"
+                    />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot
+                      index={3}
+                      className="w-14 h-14 text-2xl border-gray-300"
+                    />
+                    <InputOTPSlot
+                      index={4}
+                      className="w-14 h-14 text-2xl border-gray-300"
+                    />
+                    <InputOTPSlot
+                      index={5}
+                      className="w-14 h-14 text-2xl border-gray-300"
+                    />
+                  </InputOTPGroup>
+                </InputOTP>
+
+                <button
+                  type="submit"
+                  className={`w-full py-3 bg-blue-600 text-white rounded-lg font-medium ${
+                    isLoading.verification
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-blue-700"
+                  }`}
+                  disabled={
+                    isLoading.verification || verificationCode.length !== 6
+                  }
+                >
+                  {isLoading.verification ? "Verifying..." : "Verify"}
+                </button>
+
+                <div className="flex flex-col items-center gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentStep(1);
+                      setEmail("");
+                      localStorage.removeItem("signupUID");
+                      localStorage.removeItem("verificationTokenId");
+                    }}
+                    className="w-full py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
+                  >
+                    Change email
+                  </button>
+
+                  <p className="text-sm text-gray-600">
+                    Didn't get a code?{" "}
+                    <button
+                      type="button"
+                      disabled={resendTimer > 0}
+                      className={`font-medium ${
+                        resendTimer > 0
+                          ? "text-gray-400 cursor-not-allowed"
+                          : "text-gray-900 hover:underline"
+                      }`}
+                      onClick={() => {
+                        setVerificationCode("");
+                        resendVerificationCode();
+                      }}
+                    >
+                      Click to resend
+                      {resendTimer > 0 && (
+                        <span className="text-xs text-gray-400 ml-1">
+                          ({formatTime(resendTimer)})
+                        </span>
+                      )}
+                    </button>
+                  </p>
+                </div>
               </div>
-              <button
-                type="submit"
-                className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
-                  isLoading.verification ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-                disabled={isLoading.verification}
-              >
-                {isLoading.verification ? "Verifying..." : "Verify Code"}
-              </button>
             </form>
           </motion.div>
         );
@@ -976,14 +1211,14 @@ const SignupFlow = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="w-full max-w-xl mx-auto h-[calc(100vh-12rem)] flex flex-col justify-center"
+            className="w-full flex flex-col justify-center"
           >
             <form
               onSubmit={handleSubmitCompanyDetails}
-              className="grid grid-cols-2 gap-x-6 gap-y-4"
+              className="grid grid-cols-2 gap-x-6 gap-y-4 w-full"
             >
-              {/* Left Column */}
-              <div className="col-span-2 lg:col-span-1 space-y-4">
+              {/* Top Column */}
+              <div className="col-span-2 lg:col-span-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Company Name
@@ -999,7 +1234,10 @@ const SignupFlow = () => {
                     required
                   />
                 </div>
+              </div>
 
+              {/* Middle Column */}
+              <div className="col-span-1">
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="block text-sm font-medium text-gray-700">
@@ -1039,57 +1277,55 @@ const SignupFlow = () => {
                     />
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    className="w-full h-10 px-3 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    value={companyData.phoneNumber}
-                    onChange={(e) =>
-                      setCompanyData({
-                        ...companyData,
-                        phoneNumber: e.target.value,
-                      })
-                    }
-                    placeholder="Enter company phone number"
-                    required
-                  />
-                </div>
               </div>
 
-              {/* Right Column */}
-              <div className="col-span-2 lg:col-span-1 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Company Logo
-                  </label>
-                  <ImageUploadPreview
-                    onFileSelect={(file) => handleFileUpload(file, "logo")}
-                    previewUrl={companyData.logoUrl}
-                    publicId={companyData.logoPublicId}
-                    required={true}
-                    isLoading={isLoading.logoUpload}
-                  />
-                </div>
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  value={companyData.phoneNumber}
+                  onChange={(e) =>
+                    setCompanyData({
+                      ...companyData,
+                      phoneNumber: e.target.value,
+                    })
+                  }
+                  placeholder="Enter company phone number"
+                  required
+                />
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Business License (Optional)
-                  </label>
-                  <ImageUploadPreview
-                    onFileSelect={(file) => handleFileUpload(file, "license")}
-                    previewUrl={companyData.businessLicenseUrl}
-                    publicId={companyData.businessLicensePublicId}
-                    isLoading={isLoading.licenseUpload}
-                  />
-                </div>
+              {/* Bottom Column */}
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Company Logo
+                </label>
+                <ImageUploadPreview
+                  onFileSelect={(file) => handleFileUpload(file, "logo")}
+                  previewUrl={companyData.logoUrl}
+                  publicId={companyData.logoPublicId}
+                  required={true}
+                  isLoading={isLoading.logoUpload}
+                />
+              </div>
+
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Business License (Optional)
+                </label>
+                <ImageUploadPreview
+                  onFileSelect={(file) => handleFileUpload(file, "license")}
+                  previewUrl={companyData.businessLicenseUrl}
+                  publicId={companyData.businessLicensePublicId}
+                  isLoading={isLoading.licenseUpload}
+                />
               </div>
 
               {/* Full-width button at the bottom */}
-              <div className="col-span-2 mt-2">
+              <div className="col-span-2 mt-4">
                 <button
                   type="submit"
                   className="w-full h-10 bg-black text-white rounded-md font-medium hover:bg-black/90 transition-colors"
@@ -1340,10 +1576,22 @@ const SignupFlow = () => {
       <div className="ml-96 flex-1 min-h-screen overflow-y-auto relative">
         <div className="flex flex-col items-center min-h-screen">
           <div className="flex-1 flex items-center justify-center w-full p-8">
-            <div className="w-full max-w-md">
+            <motion.div
+              className="w-full"
+              animate={{
+                maxWidth: currentStep === 3 ? "64rem" : "28rem",
+                paddingLeft: currentStep === 3 ? "2rem" : "0rem",
+                paddingRight: currentStep === 3 ? "2rem" : "0rem",
+              }}
+              transition={{
+                duration: 0.3,
+                ease: "easeInOut",
+                delay: currentStep === 3 ? 0.2 : 0,
+              }}
+            >
               {/* Step content */}
               {renderStepContent()}
-            </div>
+            </motion.div>
           </div>
 
           {/* Step indicators */}
