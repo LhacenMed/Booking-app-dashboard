@@ -32,7 +32,7 @@ export default function SignUpTest() {
     setMessage("");
 
     try {
-      const apiUrl = `https://emailverifier.reoon.com/api/v1/verify?email=${encodeURIComponent(email)}&key=wVePmWpyOj86YD5qIFbbUu58gAcHBFi1&mode=power`;
+      const apiUrl = `https://emailverifier.reoon.com/api/v1/verify?email=${encodeURIComponent(email)}&key=HLxt5vq4ZXmBAjTdnTsx50OChXNgN4NU&mode=power`;
 
       const response = await fetch(apiUrl, {
         method: "GET",

@@ -4,7 +4,7 @@ import { auth } from "../../FirebaseConfig";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
-  addDoc,
+  // addDoc,
   serverTimestamp,
   query,
   where,
@@ -15,9 +15,12 @@ import {
   GeoPoint,
   Timestamp,
 } from "firebase/firestore";
-import { ImageUploadPreview } from "@/components/ImageUploadPreview";
+// import { ImageUploadPreview } from "@/components/ImageUploadPreview";
 import { FileUpload } from "@/components/ui/file-upload";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";
+// import { LoadingOverlay } from "@/components/ui/loading-overlay";
+import { Notification } from "@/components/ui/notification";
+import { motion } from "framer-motion";
 
 // Simple function to generate 6-digit code
 const generateVerificationCode = () => {
@@ -80,12 +83,19 @@ const SignupFlow = () => {
 
   // UI state
   const [currentStep, setCurrentStep] = useState(1);
-  const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  // const [message, setMessage] = useState("");
+  // const [isError, setIsError] = useState(false);
   const [serverStatus, setServerStatus] = useState<"running" | "error">(
     "running"
   );
-  const [files, setFiles] = useState<File[]>([]);
+
+  // Update notification state
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "informative" | "success" | "warning" | "danger";
+    isVisible: boolean;
+  } | null>(null);
 
   // Check if server is running
   useEffect(() => {
@@ -108,7 +118,7 @@ const SignupFlow = () => {
   // Function to verify email with Reoon API
   const verifyEmail = async (emailToVerify: string) => {
     try {
-      const apiUrl = `https://emailverifier.reoon.com/api/v1/verify?email=${encodeURIComponent(emailToVerify)}&key=wVePmWpyOj86YD5qIFbbUu58gAcHBFi1&mode=power`;
+      const apiUrl = `https://emailverifier.reoon.com/api/v1/verify?email=${encodeURIComponent(emailToVerify)}&key=HLxt5vq4ZXmBAjTdnTsx50OChXNgN4NU&mode=power`;
 
       const response = await fetch(apiUrl, {
         method: "GET",
@@ -135,35 +145,35 @@ const SignupFlow = () => {
   const storeEmailInFirestore = async (email: string, code: string) => {
     try {
       console.log("Starting to store email in Firestore:", { email, code });
-      
+
       // Generate a UID that will be used throughout the signup process
       const uid = doc(collection(db, "transportation_companies")).id;
-      
+
       const docData = {
         email,
         verificationCode: code,
         createdAt: serverTimestamp(),
         email_status: "pending_verification",
-        userId: uid // Store the UID that will be used later
+        userId: uid, // Store the UID that will be used later
       };
-      
+
       console.log("Document data to be stored:", docData);
       console.log("Document path:", `transportation_companies/${uid}`);
-      
+
       // Create document with the generated UID
       await setDoc(doc(db, "transportation_companies", uid), docData);
       console.log("Successfully stored email, doc ID:", uid);
-      
+
       // Store the UID in localStorage for later use
-      localStorage.setItem('signupUID', uid);
-      
+      localStorage.setItem("signupUID", uid);
+
       return uid;
     } catch (error) {
       console.error("Detailed Firestore error:", error);
       if (error instanceof Error) {
         console.error("Error message:", error.message);
         console.error("Error stack:", error.stack);
-        if ('code' in error) {
+        if ("code" in error) {
           console.error("Error code:", (error as any).code);
         }
       }
@@ -204,13 +214,16 @@ const SignupFlow = () => {
       });
       console.log("Document status updated successfully");
 
-      setMessage("Email verified successfully! Please create your password.");
+      showMessage(
+        "Email verified successfully! Please create your password.",
+        false
+      );
       setCurrentStep(2);
     } catch (error) {
       console.error("Verification error:", error);
-      setIsError(true);
-      setMessage(
-        error instanceof Error ? error.message : "Verification failed"
+      showMessage(
+        error instanceof Error ? error.message : "Verification failed",
+        true
       );
     } finally {
       setIsLoading((prev) => ({ ...prev, submit: false }));
@@ -243,14 +256,15 @@ const SignupFlow = () => {
         return false;
       }
 
-      console.log("\n📋 All registered users in Firebase Auth:");
+      // console.log("\n📋 All registered users in Firebase Auth:");
       const users = data.users as FirebaseUser[];
 
       for (const user of users) {
-        console.log(`- ${user.email}`);
-        console.log(`  Created: ${user.creationTime}`);
-        console.log(`  Verified: ${user.emailVerified ? "✅" : "❌"}`);
-        console.log("  ---");
+        //TODO: Uncomment this when we have a way to view the users in the database
+        // console.log(`- ${user.email}`);
+        // console.log(`  Created: ${user.creationTime}`);
+        // console.log(`  Verified: ${user.emailVerified ? "✅" : "❌"}`);
+        // console.log("  ---");
 
         if (user.email === email) {
           try {
@@ -279,19 +293,16 @@ const SignupFlow = () => {
   const handleFileUpload = async (file: File, type: "logo" | "license") => {
     try {
       setIsLoading((prev) => ({ ...prev, submit: true }));
-      setMessage("");
-      setIsError(false);
+      setNotification(null);
 
       if (!file.type.startsWith("image/")) {
-        setMessage("Please upload an image file");
-        setIsError(true);
+        showMessage("Please upload an image file", true);
         return;
       }
 
       const maxSize = 5 * 1024 * 1024;
       if (file.size > maxSize) {
-        setMessage("File size should be less than 5MB");
-        setIsError(true);
+        showMessage("File size should be less than 5MB", true);
         return;
       }
 
@@ -332,12 +343,12 @@ const SignupFlow = () => {
         }
       }
     } catch (error) {
-      setMessage(
+      showMessage(
         error instanceof Error
           ? error.message
-          : "Error uploading file. Please try again."
+          : "Error uploading file. Please try again.",
+        true
       );
-      setIsError(true);
     } finally {
       setIsLoading((prev) => ({ ...prev, submit: false }));
     }
@@ -366,14 +377,11 @@ const SignupFlow = () => {
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setMessage("Geolocation is not supported by your browser");
-      setIsError(true);
+      showMessage("Geolocation is not supported by your browser", true);
       return;
     }
 
     setIsLoading((prev) => ({ ...prev, submit: true }));
-    setMessage("");
-    setIsError(false);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -386,27 +394,24 @@ const SignupFlow = () => {
           ...prev,
           location: new GeoPoint(latitude, longitude),
         }));
-        setIsLoading((prev) => ({ ...prev, submit: false }));
       },
-      (error) => {
-        let errorMessage = "Failed to get your location";
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = "Please allow location access to continue";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = "Location information is unavailable";
-            break;
-          case error.TIMEOUT:
-            errorMessage = "Location request timed out";
-            break;
-          default:
-            errorMessage = "An unknown error occurred";
+        (error) => {
+          let errorMessage = "Failed to get your location";
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Please allow location access to continue";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out";
+              break;
+            default:
+              errorMessage = "An unknown error occurred";
+          }
+          showMessage(errorMessage, true);
         }
-        setMessage(errorMessage);
-        setIsError(true);
-        setIsLoading((prev) => ({ ...prev, submit: false }));
-      }
     );
   };
 
@@ -414,8 +419,7 @@ const SignupFlow = () => {
     e.preventDefault();
 
     setIsLoading((prev) => ({ ...prev, submit: true }));
-    setMessage("");
-    setIsError(false);
+    setNotification(null);
 
     try {
       console.log("Starting account creation process...");
@@ -430,19 +434,29 @@ const SignupFlow = () => {
         throw new Error("Email and password are required");
       }
 
-      if (!companyData.name || !companyData.phoneNumber || !companyData.logoUrl) {
+      if (
+        !companyData.name ||
+        !companyData.phoneNumber ||
+        !companyData.logoUrl
+      ) {
         throw new Error("Company details are incomplete");
       }
 
       // Get the UID we stored earlier
-      const existingUID = localStorage.getItem('signupUID');
+      const existingUID = localStorage.getItem("signupUID");
       if (!existingUID) {
-        throw new Error("Session expired. Please start the signup process again.");
+        throw new Error(
+          "Session expired. Please start the signup process again."
+        );
       }
 
       // Create Firebase Auth user with the same UID
       console.log("Creating Firebase Auth user...");
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       const uid = userCredential.user.uid;
       console.log("Firebase Auth user created:", uid);
 
@@ -481,7 +495,7 @@ const SignupFlow = () => {
           angelList: angelListUrl || "",
           linkedIn: linkedInUrl || "",
         },
-        authUID: uid // Store the Firebase Auth UID
+        authUID: uid, // Store the Firebase Auth UID
       };
 
       console.log("Updating company data in Firestore...");
@@ -523,9 +537,9 @@ const SignupFlow = () => {
       });
 
       // Clean up the signup UID from localStorage
-      localStorage.removeItem('signupUID');
+      localStorage.removeItem("signupUID");
 
-      setMessage("Account created successfully!");
+      showMessage("Account created successfully!", false);
       console.log("Account creation completed successfully!");
 
       // Redirect to dashboard
@@ -538,8 +552,10 @@ const SignupFlow = () => {
           console.error("Error code:", (error as any).code);
         }
       }
-      setIsError(true);
-      setMessage(error instanceof Error ? error.message : "Failed to create account");
+      showMessage(
+        error instanceof Error ? error.message : "Failed to create account",
+        true
+      );
     } finally {
       setIsLoading((prev) => ({ ...prev, submit: false }));
     }
@@ -548,12 +564,10 @@ const SignupFlow = () => {
   const handleSubmitEmail = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading((prev) => ({ ...prev, submit: true }));
-    setMessage("");
-    setIsError(false);
+    setNotification(null);
 
     if (serverStatus !== "running") {
-      setMessage("Server is not running. Please try again later.");
-      setIsError(true);
+      showMessage("Server is not running. Please try again later.", true);
       setIsLoading((prev) => ({ ...prev, submit: false }));
       return;
     }
@@ -597,16 +611,16 @@ const SignupFlow = () => {
         throw new Error(data.error || "Failed to send verification code");
       }
 
-      setMessage("Verification code sent to your email!");
+      showMessage("Verification code sent to your email!", false);
       setCurrentStep(1.5);
     } catch (error) {
       console.error("Error:", error);
-      setMessage(
+      showMessage(
         error instanceof Error
           ? error.message
-          : "An error occurred while processing your request."
+          : "An error occurred while processing your request.",
+        true
       );
-      setIsError(true);
     } finally {
       setIsLoading((prev) => ({ ...prev, submit: false }));
     }
@@ -620,8 +634,7 @@ const SignupFlow = () => {
   const handleSubmitPassword = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (password.length < 6) {
-      setMessage("Password must be at least 6 characters long");
-      setIsError(true);
+      showMessage("Password must be at least 6 characters long", true);
       return;
     }
     setCurrentStep(3);
@@ -639,10 +652,10 @@ const SignupFlow = () => {
       !companyData.logoPublicId ||
       !companyData.logoUrl
     ) {
-      setMessage(
-        "Please fill in all required company information and upload a logo"
+      showMessage(
+        "Please fill in all required company information and upload a logo",
+        true
       );
-      setIsError(true);
       return;
     }
 
@@ -658,8 +671,7 @@ const SignupFlow = () => {
       longitude < -180 ||
       longitude > 180
     ) {
-      setMessage("Please enter valid location coordinates");
-      setIsError(true);
+      showMessage("Please enter valid location coordinates", true);
       return;
     }
 
@@ -921,6 +933,8 @@ const SignupFlow = () => {
                     if (files[0]) handleFileUpload(files[0], "logo");
                   }}
                   type="logo"
+                  label="Upload Company Logo"
+                  description="Drop your company logo here"
                   setCompanyData={setCompanyData}
                 />
               </div>
@@ -1009,6 +1023,8 @@ const SignupFlow = () => {
                     if (files[0]) handleFileUpload(files[0], "license");
                   }}
                   type="license"
+                  label="Upload Business License"
+                  description="Drop your business license here"
                   setCompanyData={setCompanyData}
                 />
               </div>
@@ -1201,10 +1217,33 @@ const SignupFlow = () => {
     }
   };
 
+  // Update showMessage function
+  const showMessage = (message: string, isError: boolean) => {
+    setNotification({
+      message,
+      type: isError ? "danger" : "success",
+      isVisible: true,
+    });
+  };
+
   return (
     <div className="flex h-screen bg-white">
+      {/* Add Notification component */}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          isVisible={notification.isVisible}
+          onClose={() =>
+            setNotification((prev) =>
+              prev ? { ...prev, isVisible: false } : null
+            )
+          }
+        />
+      )}
+
       {/* Left sidebar */}
-      <div className="w-96 border-r border-gray-200 p-8">
+      <div className="fixed top-0 left-0 h-screen w-96 border-r border-gray-200 p-8 bg-gray-50 overflow-hidden">
         <div className="flex items-center mb-12">
           <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center mr-2">
             <span className="text-white text-sm">U</span>
@@ -1399,39 +1438,77 @@ const SignupFlow = () => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          {/* Error/Success messages */}
-          {message && (
-            <div
-              className={`mb-6 p-4 rounded-md ${
-                isError
-                  ? "bg-red-50 text-red-700"
-                  : "bg-green-50 text-green-700"
-              }`}
-            >
-              {message}
+      <div className="ml-96 flex-1 min-h-screen overflow-y-auto relative">
+        <div className="flex flex-col items-center min-h-screen">
+          <div className="flex-1 flex items-center justify-center w-full p-8">
+            <div className="w-full max-w-md">
+              {/* Step content */}
+              {renderStepContent()}
             </div>
-          )}
+          </div>
 
-          {/* Step content */}
-          {renderStepContent()}
-        </div>
-
-        {/* Step indicators */}
-        <div className="absolute bottom-8 flex space-x-2">
+          {/* Step indicators */}
           <div
-            className={`w-2 h-2 rounded-full ${currentStep === 1 || currentStep === 1.5 ? "bg-blue-600" : "bg-gray-200"}`}
-          ></div>
-          <div
-            className={`w-2 h-2 rounded-full ${currentStep === 2 ? "bg-blue-600" : "bg-gray-200"}`}
-          ></div>
-          <div
-            className={`w-2 h-2 rounded-full ${currentStep === 3 ? "bg-blue-600" : "bg-gray-200"}`}
-          ></div>
-          <div
-            className={`w-2 h-2 rounded-full ${currentStep === 4 ? "bg-blue-600" : "bg-gray-200"}`}
-          ></div>
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-10"
+            style={{ marginLeft: "192px" }}
+          >
+            <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-full shadow-lg">
+              <motion.div
+                className={`h-2 rounded-full bg-blue-600 transition-colors`}
+                animate={{
+                  width:
+                    currentStep === 1 || currentStep === 1.5
+                      ? "2rem"
+                      : "0.5rem",
+                  backgroundColor:
+                    currentStep === 1 || currentStep === 1.5
+                      ? "#2563EB"
+                      : "#E5E7EB",
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                }}
+              />
+              <motion.div
+                className={`h-2 rounded-full bg-blue-600 transition-colors`}
+                animate={{
+                  width: currentStep === 2 ? "2rem" : "0.5rem",
+                  backgroundColor: currentStep === 2 ? "#2563EB" : "#E5E7EB",
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                }}
+              />
+              <motion.div
+                className={`h-2 rounded-full bg-blue-600 transition-colors`}
+                animate={{
+                  width: currentStep === 3 ? "2rem" : "0.5rem",
+                  backgroundColor: currentStep === 3 ? "#2563EB" : "#E5E7EB",
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                }}
+              />
+              <motion.div
+                className={`h-2 rounded-full bg-blue-600 transition-colors`}
+                animate={{
+                  width: currentStep === 4 ? "2rem" : "0.5rem",
+                  backgroundColor: currentStep === 4 ? "#2563EB" : "#E5E7EB",
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

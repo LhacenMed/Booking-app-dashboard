@@ -1,13 +1,16 @@
 import "@/styles/globals.css";
 import "@/styles/mouse-follower.css";
-import MouseFollower from "mouse-follower";
-import gsap from "gsap";
-import { useEffect } from "react";
-import { useSmoothScroll } from "@/hooks/useSmoothScroll";
+// import MouseFollower from "mouse-follower";
+// import gsap from "gsap";
+// import { useEffect } from "react";
+// import { useSmoothScroll } from "@/hooks/useSmoothScroll";
 import type { NavigateOptions } from "react-router-dom";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+// import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useState, useEffect } from "react";
+import { Spinner } from "@heroui/react";
 
 declare module "@react-types/shared" {
   interface RouterConfig {
@@ -26,6 +29,32 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate app initialization
+    const initApp = async () => {
+      try {
+        // Add any initialization logic here
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Minimum loading time
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initApp();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <Spinner />
+        </div>
+      </div>
+    );
+  }
+
   // Initialize smooth scroll
   // useSmoothScroll();
 
