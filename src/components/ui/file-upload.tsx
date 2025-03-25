@@ -1,5 +1,5 @@
 import { cn } from "../../../lib/utils";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useId } from "react";
 import { motion } from "motion/react";
 import { IconUpload, IconX } from "@tabler/icons-react";
 import { useDropzone } from "react-dropzone";
@@ -25,20 +25,29 @@ const secondaryVariant = {
   },
 };
 
-export const FileUpload = ({
-  onChange,
-  type = "logo",
-  setCompanyData,
-}: {
+export interface FileUploadProps {
   onChange?: (files: File[]) => void;
   type: "logo" | "license";
   setCompanyData: (prev: any) => void;
+  initialPreview?: string;
+  label?: string;
+  description?: string;
+}
+
+export const FileUpload: React.FC<FileUploadProps> = ({
+  onChange,
+  type,
+  setCompanyData,
+  initialPreview,
+  label = "Upload file",
+  description = "Drag and drop your file here or click to upload",
 }) => {
   const [files, setFiles] = useState<File[]>([]);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(initialPreview || null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uniqueId = useId();
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -115,13 +124,14 @@ export const FileUpload = ({
         return;
       }
 
-      // Only proceed with preview and upload if validation passes
-      const objectUrl = URL.createObjectURL(fileToAdd);
-      setPreview(objectUrl);
-      setFiles([fileToAdd]);
-      onChange && onChange([fileToAdd]);
-
       try {
+        setIsLoading(true);
+        // Create preview before upload attempt
+        const objectUrl = URL.createObjectURL(fileToAdd);
+        setPreview(objectUrl);
+        setFiles([fileToAdd]);
+        onChange && onChange([fileToAdd]);
+
         await handleFileUpload(fileToAdd);
       } catch (error) {
         // If upload fails, clear the preview and file state
@@ -146,12 +156,15 @@ export const FileUpload = ({
             businessLicenseUrl: "",
           }));
         }
+      } finally {
+        setIsLoading(false);
       }
     }
   };
 
   const handleUnselectFile = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (preview) {
       URL.revokeObjectURL(preview);
       setPreview(null);
@@ -181,11 +194,11 @@ export const FileUpload = ({
   // Clean up preview URL when component unmounts
   React.useEffect(() => {
     return () => {
-      if (preview) {
+      if (preview && !initialPreview) {
         URL.revokeObjectURL(preview);
       }
     };
-  }, [preview]);
+  }, [preview, initialPreview]);
 
   const handleClick = () => {
     if (files.length === 0) {
@@ -200,6 +213,7 @@ export const FileUpload = ({
     onDrop: handleFileChange,
     onDropRejected: (error) => {
       console.log(error);
+      setError("File upload rejected. Please check file type and size.");
     },
     maxFiles: 1,
   });
@@ -216,7 +230,7 @@ export const FileUpload = ({
       >
         <input
           ref={fileInputRef}
-          id="file-upload-handle"
+          id={`file-upload-${uniqueId}`}
           type="file"
           accept="image/*"
           onChange={(e) => handleFileChange(Array.from(e.target.files || []))}
@@ -227,7 +241,7 @@ export const FileUpload = ({
         </div>
         <div className="flex flex-col items-center justify-center">
           <p className="relative z-20 font-sans font-bold text-neutral-700 dark:text-neutral-300 text-base">
-            Upload file
+            {label}
           </p>
           {error && (
             <p className="relative z-20 font-sans text-sm text-red-500 mt-1">
@@ -235,16 +249,14 @@ export const FileUpload = ({
             </p>
           )}
           <p className="relative z-20 font-sans font-normal text-neutral-400 dark:text-neutral-400 text-base mt-2">
-            {files.length === 0
-              ? "Drag and drop your file here or click to upload"
-              : "File selected"}
+            {files.length === 0 ? description : "File selected"}
           </p>
           <div className="relative w-full mt-10 max-w-xl mx-auto">
             {files.length > 0 &&
               files.map((file, idx) => (
                 <motion.div
-                  key={"file" + idx}
-                  layoutId="file-upload"
+                  key={`${uniqueId}-file-${idx}`}
+                  layoutId={`file-upload-${uniqueId}`}
                   className={cn(
                     "relative overflow-hidden z-40 bg-white dark:bg-neutral-900 flex items-start justify-between md:h-24 p-4 mt-4 w-full mx-auto rounded-md",
                     "shadow-sm"
@@ -318,7 +330,7 @@ export const FileUpload = ({
               ))}
             {!files.length && (
               <motion.div
-                layoutId="file-upload"
+                layoutId={`file-upload-${uniqueId}`}
                 variants={mainVariant}
                 transition={{
                   type: "spring",

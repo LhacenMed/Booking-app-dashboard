@@ -13,7 +13,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../../FirebaseConfig";
 import { useNavigate } from "react-router-dom";
 import { doc, setDoc, collection } from "firebase/firestore";
-import { ImageUploadPreview } from "@/components/ImageUploadPreview";
+import { ImageUploadPreview } from "@/components/ui/ImageUploadPreview";
 import { FileUpload } from "@/components/ui/file-upload";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";
 import { GeoPoint, Timestamp } from "firebase/firestore";
