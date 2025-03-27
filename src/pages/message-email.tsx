@@ -668,10 +668,10 @@ const SignupFlow = () => {
         lng >= -180 &&
         lng <= 180
       ) {
-        setCompanyData((prev) => ({
-          ...prev,
-          location: new GeoPoint(lat, lng),
-        }));
+      setCompanyData((prev) => ({
+        ...prev,
+        location: new GeoPoint(lat, lng),
+      }));
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -1022,119 +1022,115 @@ const SignupFlow = () => {
   const renderStepContent = () => {
     const content = (step: number) => {
       if (step === 1) {
-        return (
-          <motion.div
-            key="step-1"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="w-full h-screen flex items-center"
-            onAnimationComplete={() => {
-              emailInputRef.current?.focus();
-            }}
-          >
-            <form onSubmit={handleSubmitEmail} className="w-full">
-              <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
-                <div className="flex flex-col">
-                  <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
-                    Please enter your work email
-                  </h1>
+      return (
+        <motion.div
+          key="step-1"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="w-full h-screen flex items-center"
+          onAnimationComplete={() => {
+            emailInputRef.current?.focus();
+          }}
+        >
+          <form onSubmit={handleSubmitEmail} className="w-full">
+            <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
+              <div className="flex flex-col">
+                <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
+                  Please enter your work email
+                </h1>
 
-                  <div className="w-full">
-                    <motion.div
-                      animate={
-                        notification?.type === "danger"
-                          ? {
-                              x: [0, -4, 4, -2, 2, -1, 1, 0],
-                            }
-                          : {}
-                      }
-                      transition={{
-                        duration: 0.3,
-                        ease: "easeOut",
-                      }}
-                      className="w-full relative"
-                    >
-                      <CustomInput
-                        ref={emailInputRef}
-                        type="email"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          if (notification?.type === "danger") {
-                            setNotification(null);
+                <div className="w-full">
+                  <motion.div
+                    animate={
+                      notification?.type === "danger"
+                        ? {
+                            x: [0, -4, 4, -2, 2, -1, 1, 0],
                           }
-                        }}
-                        onSuggestionSelect={(suggestion) => {
-                          setEmail(suggestion);
-                        }}
-                        suggestions={getEmailHistory()}
-                        onInvalid={(e) => {
-                          e.preventDefault();
-                        }}
-                        required
-                        disabled={
-                          isLoading.emailSubmit || serverStatus !== "running"
+                        : {}
+                    }
+                    transition={{
+                      duration: 0.3,
+                      ease: "easeOut",
+                    }}
+                    className="w-full relative"
+                  >
+                    <CustomInput
+                      ref={emailInputRef}
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (notification?.type === "danger") {
+                          setNotification(null);
                         }
-                        error={
-                          notification?.type === "danger"
-                            ? notification.message
-                            : undefined
-                        }
-                        placeholder="jana@ollie.com"
-                        className="pr-8"
-                      />
-                    </motion.div>
-                  </div>
-
-                  <p className="text-blue-600 text-base font-ot ot-regular mt-4">
-                    We'll send you a verification code
-                  </p>
+                      }}
+                      onSuggestionSelect={(suggestion) => {
+                        setEmail(suggestion);
+                      }}
+                      suggestions={getEmailHistory()}
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                      }}
+                      required
+                      disabled={
+                        isLoading.emailSubmit || serverStatus !== "running"
+                      }
+                      error={
+                        notification?.type === "danger"
+                          ? notification.message
+                          : undefined
+                      }
+                      placeholder="jana@ollie.com"
+                      className="pr-8"
+                    />
+                  </motion.div>
                 </div>
-              </div>
 
-              <div className="fixed bottom-8 right-8 z-50">
-                <button
-                  type="submit"
-                  className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
-                    isLoading.emailSubmit ||
-                    serverStatus !== "running" ||
-                    !email
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:bg-black/90"
-                  }`}
-                  disabled={
-                    isLoading.emailSubmit ||
-                    serverStatus !== "running" ||
-                    !email
-                  }
-                >
-                  Continue
-                  {isLoading.emailSubmit ? (
-                    <Spinner size="sm" color="white" />
-                  ) : (
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M1 8H15M15 8L8 1M15 8L8 15"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </button>
+                <p className="text-blue-600 text-base font-ot ot-regular mt-4">
+                  We'll send you a verification code
+                </p>
               </div>
-            </form>
-          </motion.div>
-        );
+            </div>
+
+            <div className="fixed bottom-8 right-8 z-50">
+              <button
+                type="submit"
+                className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
+                  isLoading.emailSubmit || serverStatus !== "running" || !email
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-black/90"
+                }`}
+                disabled={
+                  isLoading.emailSubmit || serverStatus !== "running" || !email
+                }
+              >
+                Continue
+                {isLoading.emailSubmit ? (
+                  <Spinner size="sm" color="white" />
+                ) : (
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M1 8H15M15 8L8 1M15 8L8 15"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      );
       } else if (step === 1.5) {
         // Verification code step
         return (
@@ -1185,26 +1181,26 @@ const SignupFlow = () => {
                         <InputOTPGroup>
                           <InputOTPSlot
                             index={0}
-                            className="w-14 h-14 text-2xl border-gray-300"
+                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
                           />
                           <InputOTPSlot
                             index={1}
-                            className="w-14 h-14 text-2xl border-gray-300"
+                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
                           />
                           <InputOTPSlot
                             index={2}
-                            className="w-14 h-14 text-2xl border-gray-300"
+                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
                           />
                         </InputOTPGroup>
                         <InputOTPSeparator />
                         <InputOTPGroup>
                           <InputOTPSlot
                             index={3}
-                            className="w-14 h-14 text-2xl border-gray-300"
+                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
                           />
                           <InputOTPSlot
                             index={4}
-                            className="w-14 h-14 text-2xl border-gray-300"
+                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
                           />
                           <InputOTPSlot
                             index={5}
@@ -1219,12 +1215,12 @@ const SignupFlow = () => {
                     <p className="text-blue-600 text-base font-ot ot-regular">
                       We sent a code to {email}
                     </p>
-                    <p className="font-ot ot-regular">
+                    <div>
                       <button
                         type="button"
-                        disabled={resendTimer > 0}
-                        className={`px-3 py-1.5 rounded-lg bg-gray-100 inline-flex items-center gap-1.5 ${
-                          resendTimer > 0
+                        disabled={resendTimer > 0 || isLoading.verification}
+                        className={`px-3 py-1.5 rounded-lg font-ot ot-regular bg-gray-100 inline-flex items-center gap-1.5 ${
+                          resendTimer > 0 || isLoading.verification
                             ? "text-gray-400 cursor-not-allowed"
                             : "text-gray-900 hover:bg-gray-200"
                         }`}
@@ -1233,28 +1229,51 @@ const SignupFlow = () => {
                           resendVerificationCode();
                         }}
                       >
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 512 513.11"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="opacity-70"
-                        >
-                          <path
-                            fillRule="nonzero"
-                            d="M210.48 160.8c0-14.61 11.84-26.46 26.45-26.46s26.45 11.85 26.45 26.46v110.88l73.34 32.24c13.36 5.88 19.42 21.47 13.54 34.82-5.88 13.35-21.47 19.41-34.82 13.54l-87.8-38.6c-10.03-3.76-17.16-13.43-17.16-24.77V160.8zM5.4 168.54c-.76-2.25-1.23-4.64-1.36-7.13l-4-73.49c-.75-14.55 10.45-26.95 25-27.69 14.55-.75 26.95 10.45 27.69 25l.74 13.6a254.258 254.258 0 0136.81-38.32c17.97-15.16 38.38-28.09 61.01-38.18 64.67-28.85 134.85-28.78 196.02-5.35 60.55 23.2 112.36 69.27 141.4 132.83.77 1.38 1.42 2.84 1.94 4.36 27.86 64.06 27.53 133.33 4.37 193.81-23.2 60.55-69.27 112.36-132.83 141.39a26.24 26.24 0 01-12.89 3.35c-14.61 0-26.45-11.84-26.45-26.45 0-11.5 7.34-21.28 17.59-24.92 7.69-3.53 15.06-7.47 22.09-11.8.8-.66 1.65-1.28 2.55-1.86 11.33-7.32 22.1-15.7 31.84-25.04.64-.61 1.31-1.19 2-1.72 20.66-20.5 36.48-45.06 46.71-71.76 18.66-48.7 18.77-104.46-4.1-155.72l-.01-.03C418.65 122.16 377.13 85 328.5 66.37c-48.7-18.65-104.46-18.76-155.72 4.1a203.616 203.616 0 00-48.4 30.33c-9.86 8.32-18.8 17.46-26.75 27.29l3.45-.43c14.49-1.77 27.68 8.55 29.45 23.04 1.77 14.49-8.55 27.68-23.04 29.45l-73.06 9c-13.66 1.66-26.16-7.41-29.03-20.61zM283.49 511.5c20.88-2.34 30.84-26.93 17.46-43.16-5.71-6.93-14.39-10.34-23.29-9.42-15.56 1.75-31.13 1.72-46.68-.13-9.34-1.11-18.45 2.72-24.19 10.17-12.36 16.43-2.55 39.77 17.82 42.35 19.58 2.34 39.28 2.39 58.88.19zm-168.74-40.67c7.92 5.26 17.77 5.86 26.32 1.74 18.29-9.06 19.97-34.41 3.01-45.76-12.81-8.45-25.14-18.96-35.61-30.16-9.58-10.2-25.28-11.25-36.11-2.39a26.436 26.436 0 00-2.55 38.5c13.34 14.2 28.66 27.34 44.94 38.07zM10.93 331.97c2.92 9.44 10.72 16.32 20.41 18.18 19.54 3.63 36.01-14.84 30.13-33.82-4.66-15-7.49-30.26-8.64-45.93-1.36-18.33-20.21-29.62-37.06-22.33C5.5 252.72-.69 262.86.06 274.14c1.42 19.66 5.02 39 10.87 57.83z"
-                            fill="currentColor"
-                          />
-                        </svg>
-                        Send again
-                        {resendTimer > 0 && (
-                          <span className="text-xs text-gray-400 ml-1">
-                            ({formatTime(resendTimer)})
-                          </span>
+                        {isLoading.verification ? (
+                          <>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 512 513.11"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="opacity-70"
+                            >
+                              <path
+                                fillRule="nonzero"
+                                d="M210.48 160.8c0-14.61 11.84-26.46 26.45-26.46s26.45 11.85 26.45 26.46v110.88l73.34 32.24c13.36 5.88 19.42 21.47 13.54 34.82-5.88 13.35-21.47 19.41-34.82 13.54l-87.8-38.6c-10.03-3.76-17.16-13.43-17.16-24.77V160.8zM5.4 168.54c-.76-2.25-1.23-4.64-1.36-7.13l-4-73.49c-.75-14.55 10.45-26.95 25-27.69 14.55-.75 26.95 10.45 27.69 25l.74 13.6a254.258 254.258 0 0136.81-38.32c17.97-15.16 38.38-28.09 61.01-38.18 64.67-28.85 134.85-28.78 196.02-5.35 60.55 23.2 112.36 69.27 141.4 132.83.77 1.38 1.42 2.84 1.94 4.36 27.86 64.06 27.53 133.33 4.37 193.81-23.2 60.55-69.27 112.36-132.83 141.39a26.24 26.24 0 01-12.89 3.35c-14.61 0-26.45-11.84-26.45-26.45 0-11.5 7.34-21.28 17.59-24.92 7.69-3.53 15.06-7.47 22.09-11.8.8-.66 1.65-1.28 2.55-1.86 11.33-7.32 22.1-15.7 31.84-25.04.64-.61 1.31-1.19 2-1.72 20.66-20.5 36.48-45.06 46.71-71.76 18.66-48.7 18.77-104.46-4.1-155.72l-.01-.03C418.65 122.16 377.13 85 328.5 66.37c-48.7-18.65-104.46-18.76-155.72 4.1a203.616 203.616 0 00-48.4 30.33c-9.86 8.32-18.8 17.46-26.75 27.29l3.45-.43c14.49-1.77 27.68 8.55 29.45 23.04 1.77 14.49-8.55 27.68-23.04 29.45l-73.06 9c-13.66 1.66-26.16-7.41-29.03-20.61zM283.49 511.5c20.88-2.34 30.84-26.93 17.46-43.16-5.71-6.93-14.39-10.34-23.29-9.42-15.56 1.75-31.13 1.72-46.68-.13-9.34-1.11-18.45 2.72-24.19 10.17-12.36 16.43-2.55 39.77 17.82 42.35 19.58 2.34 39.28 2.39 58.88.19zm-168.74-40.67c7.92 5.26 17.77 5.86 26.32 1.74 18.29-9.06 19.97-34.41 3.01-45.76-12.81-8.45-25.14-18.96-35.61-30.16-9.58-10.2-25.28-11.25-36.11-2.39a26.436 26.436 0 00-2.55 38.5c13.34 14.2 28.66 27.34 44.94 38.07zM10.93 331.97c2.92 9.44 10.72 16.32 20.41 18.18 19.54 3.63 36.01-14.84 30.13-33.82-4.66-15-7.49-30.26-8.64-45.93-1.36-18.33-20.21-29.62-37.06-22.33C5.5 252.72-.69 262.86.06 274.14c1.42 19.66 5.02 39 10.87 57.83z"
+                                fill="currentColor"
+                              />
+                            </svg>
+                            Sending...
+                            <Spinner size="sm" color="default" />
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 512 513.11"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="opacity-70"
+                            >
+                              <path
+                                fillRule="nonzero"
+                                d="M210.48 160.8c0-14.61 11.84-26.46 26.45-26.46s26.45 11.85 26.45 26.46v110.88l73.34 32.24c13.36 5.88 19.42 21.47 13.54 34.82-5.88 13.35-21.47 19.41-34.82 13.54l-87.8-38.6c-10.03-3.76-17.16-13.43-17.16-24.77V160.8zM5.4 168.54c-.76-2.25-1.23-4.64-1.36-7.13l-4-73.49c-.75-14.55 10.45-26.95 25-27.69 14.55-.75 26.95 10.45 27.69 25l.74 13.6a254.258 254.258 0 0136.81-38.32c17.97-15.16 38.38-28.09 61.01-38.18 64.67-28.85 134.85-28.78 196.02-5.35 60.55 23.2 112.36 69.27 141.4 132.83.77 1.38 1.42 2.84 1.94 4.36 27.86 64.06 27.53 133.33 4.37 193.81-23.2 60.55-69.27 112.36-132.83 141.39a26.24 26.24 0 01-12.89 3.35c-14.61 0-26.45-11.84-26.45-26.45 0-11.5 7.34-21.28 17.59-24.92 7.69-3.53 15.06-7.47 22.09-11.8.8-.66 1.65-1.28 2.55-1.86 11.33-7.32 22.1-15.7 31.84-25.04.64-.61 1.31-1.19 2-1.72 20.66-20.5 36.48-45.06 46.71-71.76 18.66-48.7 18.77-104.46-4.1-155.72l-.01-.03C418.65 122.16 377.13 85 328.5 66.37c-48.7-18.65-104.46-18.76-155.72 4.1a203.616 203.616 0 00-48.4 30.33c-9.86 8.32-18.8 17.46-26.75 27.29l3.45-.43c14.49-1.77 27.68 8.55 29.45 23.04 1.77 14.49-8.55 27.68-23.04 29.45l-73.06 9c-13.66 1.66-26.16-7.41-29.03-20.61zM283.49 511.5c20.88-2.34 30.84-26.93 17.46-43.16-5.71-6.93-14.39-10.34-23.29-9.42-15.56 1.75-31.13 1.72-46.68-.13-9.34-1.11-18.45 2.72-24.19 10.17-12.36 16.43-2.55 39.77 17.82 42.35 19.58 2.34 39.28 2.39 58.88.19zm-168.74-40.67c7.92 5.26 17.77 5.86 26.32 1.74 18.29-9.06 19.97-34.41 3.01-45.76-12.81-8.45-25.14-18.96-35.61-30.16-9.58-10.2-25.28-11.25-36.11-2.39a26.436 26.436 0 00-2.55 38.5c13.34 14.2 28.66 27.34 44.94 38.07zM10.93 331.97c2.92 9.44 10.72 16.32 20.41 18.18 19.54 3.63 36.01-14.84 30.13-33.82-4.66-15-7.49-30.26-8.64-45.93-1.36-18.33-20.21-29.62-37.06-22.33C5.5 252.72-.69 262.86.06 274.14c1.42 19.66 5.02 39 10.87 57.83z"
+                                fill="currentColor"
+                              />
+                            </svg>
+                            Send again
+                            {resendTimer > 0 && (
+                              <span className="text-xs text-gray-400 ml-1">
+                                ({formatTime(resendTimer)})
+                              </span>
+                            )}
+                          </>
                         )}
                       </button>
-                    </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1697,7 +1716,7 @@ const SignupFlow = () => {
                       xmlns="http://www.w3.org/2000/svg"
                     >
                       <path
-                        d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"
+                        d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 1 23 3z"
                         stroke="#6B7280"
                         strokeWidth="2"
                         strokeLinecap="round"
