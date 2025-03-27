@@ -49,7 +49,7 @@ function validateEnvironmentVariables() {
 validateEnvironmentVariables();
 
 // Debug what we get from Brevo
-console.log("Brevo object:", Object.keys(SibApiV3Sdk));
+// console.log("Brevo object:", Object.keys(SibApiV3Sdk));
 
 const app = express();
 app.use(bodyParser.json());

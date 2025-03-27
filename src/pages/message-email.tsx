@@ -6,9 +6,9 @@ import {
   collection,
   // addDoc,
   serverTimestamp,
-  query,
-  where,
-  getDocs,
+  // query,
+  // where,
+  // getDocs,
   updateDoc,
   doc,
   setDoc,
@@ -31,8 +31,11 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { REGEXP_ONLY_DIGITS, REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
+import { Input } from "@heroui/react";
+// import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+import CustomInput from "@/components/ui/CustomInput";
 import { Spinner } from "@heroui/react";
 
 // Simple function to generate 6-digit code
@@ -51,6 +54,26 @@ const generateCustomCompanyId = (email: string) => {
   ).join("");
 
   return `${prefix}-${numbers}`;
+};
+
+// Add these functions after the generateCustomCompanyId function
+const EMAIL_HISTORY_KEY = "email_history";
+const MAX_EMAIL_HISTORY = 5;
+
+const getEmailHistory = (): string[] => {
+  if (typeof window === "undefined") return [];
+  const history = localStorage.getItem(EMAIL_HISTORY_KEY);
+  return history ? JSON.parse(history) : [];
+};
+
+const addToEmailHistory = (email: string) => {
+  if (typeof window === "undefined") return;
+  const history = getEmailHistory();
+  const newHistory = [email, ...history.filter((e) => e !== email)].slice(
+    0,
+    MAX_EMAIL_HISTORY
+  );
+  localStorage.setItem(EMAIL_HISTORY_KEY, JSON.stringify(newHistory));
 };
 
 interface CompanyData {
@@ -119,14 +142,13 @@ const SignupFlow = () => {
 
   // UI state
   const [currentStep, setCurrentStep] = useState(1);
-  const [files, setFiles] = useState<File[]>([]);
-  // const [message, setMessage] = useState("");
-  // const [isError, setIsError] = useState(false);
   const [serverStatus, setServerStatus] = useState<"running" | "error">(
     "running"
   );
-
-  // Update notification state
+  const [showPassword, setShowPassword] = useState(false);
+  // const [files, setFiles] = useState<File[]>([]);
+  // const [message, setMessage] = useState("");
+  // const [isError, setIsError] = useState(false);
   const [notification, setNotification] = useState<{
     message: string;
     type: "informative" | "success" | "warning" | "danger";
@@ -135,6 +157,15 @@ const SignupFlow = () => {
 
   // Add timer state
   const [resendTimer, setResendTimer] = useState<number>(0);
+
+  // Add these state variables near the other state declarations
+  const [passwordRules, setPasswordRules] = useState({
+    minLength: false,
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecial: false,
+  });
 
   // Add useEffect for the timer
   useEffect(() => {
@@ -811,6 +842,23 @@ const SignupFlow = () => {
     setIsLoading((prev) => ({ ...prev, emailSubmit: true }));
     setNotification(null);
 
+    if (!email || email.length === 0) {
+      setIsLoading((prev) => ({ ...prev, emailSubmit: false }));
+      showMessage("Please enter your email address", true);
+      return;
+    }
+
+    // Email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setIsLoading((prev) => ({ ...prev, emailSubmit: false }));
+      showMessage("Please enter a valid email address", true);
+      return;
+    }
+
+    // Add email to history after successful submission
+    addToEmailHistory(email);
+
     if (serverStatus !== "running") {
       showMessage("Server is not running. Please try again later.", true);
       setIsLoading((prev) => ({ ...prev, emailSubmit: false }));
@@ -874,12 +922,32 @@ const SignupFlow = () => {
     }
   };
 
+  // Add this function before handleSubmitPassword
+  const validatePassword = (value: string) => {
+    setPasswordRules({
+      minLength: value.length >= 8,
+      hasUppercase: /[A-Z]/.test(value),
+      hasLowercase: /[a-z]/.test(value),
+      hasNumber: /[0-9]/.test(value),
+      hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(value),
+    });
+  };
+
   const handleSubmitPassword = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading((prev) => ({ ...prev, passwordSubmit: true }));
 
-    if (password.length < 6) {
-      showMessage("Password must be at least 6 characters long", true);
+    if (!password || password.length === 0) {
+      setIsLoading((prev) => ({ ...prev, passwordSubmit: false }));
+      showMessage("Please enter a password", true);
+      return;
+    }
+
+    // Check if all password rules are met
+    const isPasswordValid = Object.values(passwordRules).every((rule) => rule);
+
+    if (!isPasswordValid) {
+      showMessage("Please meet all password requirements", true);
       setIsLoading((prev) => ({ ...prev, passwordSubmit: false }));
       return;
     }
@@ -930,7 +998,6 @@ const SignupFlow = () => {
   const renderStepContent = () => {
     const content = (step: number) => {
       if (step === 1) {
-        // Email step
         return (
           <motion.div
             key="step-1"
@@ -938,67 +1005,99 @@ const SignupFlow = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="w-full h-screen flex items-center"
           >
-            <div className="flex justify-center mb-6">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M20 4H4C2.89543 4 2 4.89543 2 6V18C2 19.1046 2.89543 20 4 20H20C21.1046 20 22 19.1046 22 18V6C22 4.89543 21.1046 4 20 4Z"
-                    stroke="#111827"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M22 6L12 13L2 6"
-                    stroke="#111827"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+            <form onSubmit={handleSubmitEmail} className="w-full">
+              <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
+                <div className="flex flex-col">
+                  <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
+                    Please enter your work email
+                  </h1>
+
+                  <div className="w-full">
+                    <motion.div
+                      animate={
+                        notification?.type === "danger"
+                          ? {
+                              x: [0, -4, 4, -2, 2, -1, 1, 0],
+                            }
+                          : {}
+                      }
+                      transition={{
+                        duration: 0.3,
+                        ease: "easeOut",
+                      }}
+                      className="w-full relative"
+                    >
+                      <CustomInput
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (notification?.type === "danger") {
+                            setNotification(null);
+                          }
+                        }}
+                        onSuggestionSelect={(suggestion) => {
+                          setEmail(suggestion);
+                        }}
+                        suggestions={getEmailHistory()}
+                        onInvalid={(e) => {
+                          e.preventDefault();
+                        }}
+                        required
+                        disabled={
+                          isLoading.emailSubmit || serverStatus !== "running"
+                        }
+                        error={
+                          notification?.type === "danger"
+                            ? notification.message
+                            : undefined
+                        }
+                        placeholder="jana@ollie.com"
+                        className="pr-8"
+                      />
+                    </motion.div>
+                  </div>
+
+                  <p className="text-blue-600 text-base font-ot ot-regular mt-4">
+                    We'll send you a magic link
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <h1 className="text-3xl font-bold text-center mb-2">
-              Your details
-            </h1>
-            <p className="text-gray-500 text-center mb-8">
-              Please provide your email to get started.
-            </p>
-
-            <form onSubmit={handleSubmitEmail} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="w-full py-2 px-3 border border-gray-300 rounded-md"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
+              <div className="fixed bottom-8 right-8">
+                <button
+                  type="submit"
+                  className={`px-4 py-3 bg-black text-white rounded-lg font-ot ot-regular flex items-center gap-3 ${
+                    isLoading.emailSubmit || serverStatus !== "running"
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-black/90"
+                  }`}
                   disabled={isLoading.emailSubmit || serverStatus !== "running"}
-                />
+                >
+                  {isLoading.emailSubmit ? "Processing..." : "Send link"}
+                  {isLoading.emailSubmit ? (
+                    <Spinner size="sm" color="white" />
+                  ) : (
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M1 8H15M15 8L8 1M15 8L8 15"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </button>
               </div>
-              <button
-                type="submit"
-                className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
-                  isLoading.emailSubmit || serverStatus !== "running"
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-blue-700"
-                }`}
-                disabled={isLoading.emailSubmit || serverStatus !== "running"}
-              >
-                {isLoading.emailSubmit ? "Processing..." : "Continue"}
-              </button>
             </form>
           </motion.div>
         );
@@ -1169,24 +1268,112 @@ const SignupFlow = () => {
               Choose a password
             </h1>
             <p className="text-gray-500 text-center mb-8">
-              Must be at least 6 characters.
+              Must be at least 8 characters.
             </p>
 
             <form onSubmit={handleSubmitPassword} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  className="w-full py-2 px-3 border border-gray-300 rounded-md"
-                  placeholder="Enter password (min. 6 characters)"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  disabled={isLoading.passwordSubmit}
-                />
+                <motion.div
+                  animate={
+                    notification?.type === "danger"
+                      ? {
+                          x: [0, -4, 4, -2, 2, -1, 1, 0],
+                        }
+                      : {}
+                  }
+                  transition={{
+                    duration: 0.3,
+                    ease: "easeOut",
+                  }}
+                >
+                  <Input
+                    label="Password"
+                    type={showPassword ? "text" : "password"}
+                    variant="bordered"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      validatePassword(e.target.value);
+                      // Clear error state when user modifies the password
+                      if (notification?.type === "danger") {
+                        setNotification(null);
+                      }
+                    }}
+                    onInvalid={(e) => {
+                      e.preventDefault();
+                    }}
+                    required
+                    disabled={isLoading.passwordSubmit}
+                    isInvalid={notification?.type === "danger"}
+                    errorMessage={
+                      notification?.type === "danger"
+                        ? notification.message
+                        : undefined
+                    }
+                    endContent={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="focus:outline-none"
+                      >
+                        {showPassword ? (
+                          <EyeOffIcon className="w-5 h-5 text-gray-500" />
+                        ) : (
+                          <EyeIcon className="w-5 h-5 text-gray-500" />
+                        )}
+                      </button>
+                    }
+                  />
+                </motion.div>
+
+                {/* Password Rules Container */}
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">
+                    Password must have:
+                  </h3>
+                  <ul className="space-y-2">
+                    <li className="text-sm flex items-center gap-2">
+                      <span
+                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.minLength ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+                      >
+                        {passwordRules.minLength ? "✓" : "·"}
+                      </span>
+                      At least 8 characters
+                    </li>
+                    <li className="text-sm flex items-center gap-2">
+                      <span
+                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasUppercase ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+                      >
+                        {passwordRules.hasUppercase ? "✓" : "·"}
+                      </span>
+                      One uppercase letter
+                    </li>
+                    <li className="text-sm flex items-center gap-2">
+                      <span
+                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasLowercase ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+                      >
+                        {passwordRules.hasLowercase ? "✓" : "·"}
+                      </span>
+                      One lowercase letter
+                    </li>
+                    <li className="text-sm flex items-center gap-2">
+                      <span
+                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasNumber ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+                      >
+                        {passwordRules.hasNumber ? "✓" : "·"}
+                      </span>
+                      One number
+                    </li>
+                    <li className="text-sm flex items-center gap-2">
+                      <span
+                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasSpecial ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+                      >
+                        {passwordRules.hasSpecial ? "✓" : "·"}
+                      </span>
+                      One special character (!@#$%^&*(),.?":{}|&lt;&gt;)
+                    </li>
+                  </ul>
+                </div>
               </div>
               <button
                 type="submit"
@@ -1553,7 +1740,7 @@ const SignupFlow = () => {
       )}
 
       {/* Left sidebar */}
-      <SignupSidebar currentStep={currentStep} />
+      {/* <SignupSidebar currentStep={currentStep} /> */}
 
       {/* Dev Jump Button */}
       {process.env.NODE_ENV === "development" && (
@@ -1573,21 +1760,27 @@ const SignupFlow = () => {
       )}
 
       {/* Main content */}
-      <div className="ml-96 flex-1 min-h-screen overflow-y-auto relative">
+      <div className="flex-1 min-h-screen overflow-y-auto relative">
+        {/* Logo */}
+        <div className="absolute top-8 left-8 flex items-center">
+          <img src="/images/qatalog-logo.svg" alt="Qatalog" className="h-8" />
+          <span className="text-md text-gray-500 ml-3">Logo</span>
+        </div>
+
         <div className="flex flex-col items-center min-h-screen">
           <div className="flex-1 flex items-center justify-center w-full p-8">
             <motion.div
-              className="w-full"
-              animate={{
-                maxWidth: currentStep === 3 ? "64rem" : "28rem",
-                paddingLeft: currentStep === 3 ? "2rem" : "0rem",
-                paddingRight: currentStep === 3 ? "2rem" : "0rem",
-              }}
-              transition={{
-                duration: 0.3,
-                ease: "easeInOut",
-                delay: currentStep === 3 ? 0.2 : 0,
-              }}
+              className="w-full max-w-3xl"
+              // animate={{
+              //   maxWidth: currentStep === 3 ? "64rem" : "28rem",
+              //   paddingLeft: currentStep === 3 ? "2rem" : "0rem",
+              //   paddingRight: currentStep === 3 ? "2rem" : "0rem",
+              // }}
+              // transition={{
+              //   duration: 0.3,
+              //   ease: "easeInOut",
+              //   delay: currentStep === 3 ? 0.2 : 0,
+              // }}
             >
               {/* Step content */}
               {renderStepContent()}
@@ -1595,10 +1788,7 @@ const SignupFlow = () => {
           </div>
 
           {/* Step indicators */}
-          <div
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-10"
-            style={{ marginLeft: "192px" }}
-          >
+          <div className="fixed bottom-8 z-10">
             <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-full shadow-lg">
               <motion.div
                 className={`h-2 rounded-full bg-blue-600 transition-colors`}
