@@ -14,6 +14,11 @@
     }
 }
 
+::selection {
+    background-color: #0000002b;
+    color: #000;
+}
+
 .animate-highlight {
     animation: highlight 1s ease-in-out infinite;
 }

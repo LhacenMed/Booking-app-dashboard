@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { db } from "../../FirebaseConfig";
 import { auth } from "../../FirebaseConfig";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -32,11 +32,12 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
-import { Input } from "@heroui/react";
+// import { Input } from "@heroui/react";
 // import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+// import { EyeIcon, EyeOffIcon } from "lucide-react";
 import CustomInput from "@/components/ui/CustomInput";
 import { Spinner } from "@heroui/react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 // Simple function to generate 6-digit code
 const generateVerificationCode = () => {
@@ -166,6 +167,29 @@ const SignupFlow = () => {
     hasNumber: false,
     hasSpecial: false,
   });
+
+  // Add these refs after the other state declarations
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const otpRef = useRef<React.ElementRef<typeof InputOTP>>(null);
+
+  // Add this useEffect after the other useEffect hooks
+  useEffect(() => {
+    const focusTimer = setTimeout(() => {
+      if (currentStep === 1) {
+        emailInputRef.current?.focus();
+      } else if (currentStep === 1.5) {
+        // Focus the OTP input using the ref
+        const otpInput = otpRef.current?.querySelector(
+          "input"
+        ) as HTMLInputElement;
+        if (otpInput) {
+          otpInput.focus();
+        }
+      }
+    }, 100); // Reduced delay since we're using ref now
+
+    return () => clearTimeout(focusTimer);
+  }, [currentStep]);
 
   // Add useEffect for the timer
   useEffect(() => {
@@ -1001,11 +1025,14 @@ const SignupFlow = () => {
         return (
           <motion.div
             key="step-1"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="w-full h-screen flex items-center"
+            onAnimationComplete={() => {
+              emailInputRef.current?.focus();
+            }}
           >
             <form onSubmit={handleSubmitEmail} className="w-full">
               <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
@@ -1030,6 +1057,7 @@ const SignupFlow = () => {
                       className="w-full relative"
                     >
                       <CustomInput
+                        ref={emailInputRef}
                         type="email"
                         value={email}
                         onChange={(e) => {
@@ -1061,22 +1089,28 @@ const SignupFlow = () => {
                   </div>
 
                   <p className="text-blue-600 text-base font-ot ot-regular mt-4">
-                    We'll send you a magic link
+                    We'll send you a verification code
                   </p>
                 </div>
               </div>
 
-              <div className="fixed bottom-8 right-8">
+              <div className="fixed bottom-8 right-8 z-50">
                 <button
                   type="submit"
-                  className={`px-4 py-3 bg-black text-white rounded-lg font-ot ot-regular flex items-center gap-3 ${
-                    isLoading.emailSubmit || serverStatus !== "running"
+                  className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
+                    isLoading.emailSubmit ||
+                    serverStatus !== "running" ||
+                    !email
                       ? "opacity-50 cursor-not-allowed"
                       : "hover:bg-black/90"
                   }`}
-                  disabled={isLoading.emailSubmit || serverStatus !== "running"}
+                  disabled={
+                    isLoading.emailSubmit ||
+                    serverStatus !== "running" ||
+                    !email
+                  }
                 >
-                  {isLoading.emailSubmit ? "Processing..." : "Send link"}
+                  Continue
                   {isLoading.emailSubmit ? (
                     <Spinner size="sm" color="white" />
                   ) : (
@@ -1106,81 +1140,114 @@ const SignupFlow = () => {
         return (
           <motion.div
             key="step-1.5"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="w-full max-w-sm mx-auto"
+            className="w-full h-screen flex items-center"
           >
-            <h1 className="text-xl font-semibold text-center mb-2">
-              Verify your email
-            </h1>
-            <p className="text-sm text-gray-600 text-center mb-8">
-              We sent a code to {email}
-            </p>
+            <form onSubmit={handleVerifyCode} className="w-full">
+              <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
+                <div className="flex flex-col">
+                  <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
+                    Enter the verification code
+                  </h1>
 
-            <form onSubmit={handleVerifyCode} className="space-y-6">
-              <div className="flex flex-col items-center gap-4">
-                <InputOTP
-                  maxLength={6}
-                  value={verificationCode}
-                  onChange={(value) => {
-                    setVerificationCode(value);
-                    // Auto-submit when all 6 digits are entered
-                    if (value.length === 6) {
-                      verifyCode(value);
-                    }
-                  }}
-                  pattern={REGEXP_ONLY_DIGITS}
-                  disabled={isLoading.verification}
-                  className="gap-2"
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot
-                      index={0}
-                      className="w-14 h-14 text-2xl border-gray-300"
-                    />
-                    <InputOTPSlot
-                      index={1}
-                      className="w-14 h-14 text-2xl border-gray-300"
-                    />
-                    <InputOTPSlot
-                      index={2}
-                      className="w-14 h-14 text-2xl border-gray-300"
-                    />
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    <InputOTPSlot
-                      index={3}
-                      className="w-14 h-14 text-2xl border-gray-300"
-                    />
-                    <InputOTPSlot
-                      index={4}
-                      className="w-14 h-14 text-2xl border-gray-300"
-                    />
-                    <InputOTPSlot
-                      index={5}
-                      className="w-14 h-14 text-2xl border-gray-300"
-                    />
-                  </InputOTPGroup>
-                </InputOTP>
+                  <div className="w-full">
+                    <motion.div
+                      animate={
+                        notification?.type === "danger"
+                          ? {
+                              x: [0, -4, 4, -2, 2, -1, 1, 0],
+                            }
+                          : {}
+                      }
+                      transition={{
+                        duration: 0.3,
+                        ease: "easeOut",
+                      }}
+                      className="w-full relative"
+                    >
+                      <InputOTP
+                        ref={otpRef}
+                        maxLength={6}
+                        value={verificationCode}
+                        onChange={(value) => {
+                          setVerificationCode(value);
+                          if (value.length === 6) {
+                            verifyCode(value);
+                          }
+                        }}
+                        pattern={REGEXP_ONLY_DIGITS}
+                        disabled={isLoading.verification}
+                        className="gap-2"
+                      >
+                        <InputOTPGroup>
+                          <InputOTPSlot
+                            index={0}
+                            className="w-14 h-14 text-2xl border-gray-300"
+                          />
+                          <InputOTPSlot
+                            index={1}
+                            className="w-14 h-14 text-2xl border-gray-300"
+                          />
+                          <InputOTPSlot
+                            index={2}
+                            className="w-14 h-14 text-2xl border-gray-300"
+                          />
+                        </InputOTPGroup>
+                        <InputOTPSeparator />
+                        <InputOTPGroup>
+                          <InputOTPSlot
+                            index={3}
+                            className="w-14 h-14 text-2xl border-gray-300"
+                          />
+                          <InputOTPSlot
+                            index={4}
+                            className="w-14 h-14 text-2xl border-gray-300"
+                          />
+                          <InputOTPSlot
+                            index={5}
+                            className="w-14 h-14 text-2xl border-gray-300"
+                          />
+                        </InputOTPGroup>
+                      </InputOTP>
+                    </motion.div>
+                  </div>
 
-                <button
-                  type="submit"
-                  className={`w-full py-3 bg-blue-600 text-white rounded-lg font-medium ${
-                    isLoading.verification
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:bg-blue-700"
-                  }`}
-                  disabled={
-                    isLoading.verification || verificationCode.length !== 6
-                  }
-                >
-                  {isLoading.verification ? "Verifying..." : "Verify"}
-                </button>
+                  <div className="flex flex-col gap-4 mt-4">
+                    <p className="text-blue-600 text-base font-ot ot-regular">
+                      We sent a code to {email}
+                    </p>
+                    <p className="text-sm text-gray-600 font-ot ot-regular">
+                      Didn't get a code?{" "}
+                      <button
+                        type="button"
+                        disabled={resendTimer > 0}
+                        className={`font-medium ${
+                          resendTimer > 0
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-gray-900 hover:underline"
+                        }`}
+                        onClick={() => {
+                          setVerificationCode("");
+                          resendVerificationCode();
+                        }}
+                      >
+                        Click to resend
+                        {resendTimer > 0 && (
+                          <span className="text-xs text-gray-400 ml-1">
+                            ({formatTime(resendTimer)})
+                          </span>
+                        )}
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-                <div className="flex flex-col items-center gap-2 w-full">
+              <div className="fixed bottom-8 right-8 z-50">
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => {
@@ -1189,34 +1256,58 @@ const SignupFlow = () => {
                       localStorage.removeItem("signupUID");
                       localStorage.removeItem("verificationTokenId");
                     }}
-                    className="w-full py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50"
+                    className="w-[120px] px-4 py-2 text-gray-600 hover:text-gray-900 font-ot ot-regular flex items-center justify-center gap-2"
                   >
-                    Change email
-                  </button>
-
-                  <p className="text-sm text-gray-600">
-                    Didn't get a code?{" "}
-                    <button
-                      type="button"
-                      disabled={resendTimer > 0}
-                      className={`font-medium ${
-                        resendTimer > 0
-                          ? "text-gray-400 cursor-not-allowed"
-                          : "text-gray-900 hover:underline"
-                      }`}
-                      onClick={() => {
-                        setVerificationCode("");
-                        resendVerificationCode();
-                      }}
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="rotate-180"
                     >
-                      Click to resend
-                      {resendTimer > 0 && (
-                        <span className="text-xs text-gray-400 ml-1">
-                          ({formatTime(resendTimer)})
-                        </span>
-                      )}
-                    </button>
-                  </p>
+                      <path
+                        d="M1 8H15M15 8L8 1M15 8L8 15"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
+                      isLoading.verification || verificationCode.length !== 6
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-black/90"
+                    }`}
+                    disabled={
+                      isLoading.verification || verificationCode.length !== 6
+                    }
+                  >
+                    Verify
+                    {isLoading.verification ? (
+                      <Spinner size="sm" color="white" />
+                    ) : (
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M1 8H15M15 8L8 1M15 8L8 15"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
             </form>
@@ -1286,10 +1377,7 @@ const SignupFlow = () => {
                     ease: "easeOut",
                   }}
                 >
-                  <Input
-                    label="Password"
-                    type={showPassword ? "text" : "password"}
-                    variant="bordered"
+                  <PasswordInput
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
@@ -1299,30 +1387,9 @@ const SignupFlow = () => {
                         setNotification(null);
                       }
                     }}
-                    onInvalid={(e) => {
-                      e.preventDefault();
-                    }}
-                    required
                     disabled={isLoading.passwordSubmit}
-                    isInvalid={notification?.type === "danger"}
-                    errorMessage={
-                      notification?.type === "danger"
-                        ? notification.message
-                        : undefined
-                    }
-                    endContent={
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="focus:outline-none"
-                      >
-                        {showPassword ? (
-                          <EyeOffIcon className="w-5 h-5 text-gray-500" />
-                        ) : (
-                          <EyeIcon className="w-5 h-5 text-gray-500" />
-                        )}
-                      </button>
-                    }
+                    error={notification?.type === "danger" ? notification.message : undefined}
+                    className="w-full"
                   />
                 </motion.div>
 
@@ -1799,7 +1866,7 @@ const SignupFlow = () => {
                       : "0.5rem",
                   backgroundColor:
                     currentStep === 1 || currentStep === 1.5
-                      ? "#2563EB"
+                      ? "#000"
                       : "#E5E7EB",
                 }}
                 transition={{
@@ -1812,7 +1879,7 @@ const SignupFlow = () => {
                 className={`h-2 rounded-full bg-blue-600 transition-colors`}
                 animate={{
                   width: currentStep === 2 ? "2rem" : "0.5rem",
-                  backgroundColor: currentStep === 2 ? "#2563EB" : "#E5E7EB",
+                  backgroundColor: currentStep === 2 ? "#000" : "#E5E7EB",
                 }}
                 transition={{
                   type: "spring",
@@ -1824,7 +1891,7 @@ const SignupFlow = () => {
                 className={`h-2 rounded-full bg-blue-600 transition-colors`}
                 animate={{
                   width: currentStep === 3 ? "2rem" : "0.5rem",
-                  backgroundColor: currentStep === 3 ? "#2563EB" : "#E5E7EB",
+                  backgroundColor: currentStep === 3 ? "#000" : "#E5E7EB",
                 }}
                 transition={{
                   type: "spring",
@@ -1836,7 +1903,7 @@ const SignupFlow = () => {
                 className={`h-2 rounded-full bg-blue-600 transition-colors`}
                 animate={{
                   width: currentStep === 4 ? "2rem" : "0.5rem",
-                  backgroundColor: currentStep === 4 ? "#2563EB" : "#E5E7EB",
+                  backgroundColor: currentStep === 4 ? "#000" : "#E5E7EB",
                 }}
                 transition={{
                   type: "spring",

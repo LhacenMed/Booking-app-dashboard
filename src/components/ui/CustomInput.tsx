@@ -15,7 +15,16 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
     const [activeSuggestion, setActiveSuggestion] = useState("");
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const localInputRef = useRef<HTMLInputElement>(null);
+    const inputRef =
+      (ref as React.RefObject<HTMLInputElement>) || localInputRef;
+
+    // Add useEffect for focus handling
+    useEffect(() => {
+      if (inputRef?.current) {
+        inputRef.current.focus();
+      }
+    }, []);
 
     // Handle input change and generate suggestions
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,7 +125,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       <div className="relative w-full">
         <div className="relative">
           <input
-            ref={ref || inputRef}
+            ref={inputRef}
             className={`
               w-full 
               text-[48px] 
@@ -141,6 +150,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
             onKeyDown={handleKeyDown}
             autoComplete="off"
             list={props.list}
+            autoFocus
           />
           {activeSuggestion && props.value && showSuggestions && (
             <div className="absolute inset-0 flex items-center pointer-events-none">
