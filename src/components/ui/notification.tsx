@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Alert } from "@heroui/react";
 
@@ -15,10 +15,15 @@ export const Notification: React.FC<NotificationProps> = ({
   isVisible,
   onClose,
 }) => {
+  const [isClosing, setIsClosing] = useState(false);
+
   useEffect(() => {
     if (onClose && isVisible) {
       const timer = setTimeout(() => {
-        onClose();
+        setIsClosing(true);
+        setTimeout(() => {
+          onClose();
+        }, 300); // Wait for animation to complete
       }, 5000); // Auto close after 5 seconds
 
       return () => clearTimeout(timer);
@@ -40,34 +45,43 @@ export const Notification: React.FC<NotificationProps> = ({
     }
   };
 
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose?.();
+    }, 300); // Wait for animation to complete
+  };
+
   return (
-    <AnimatePresence mode="wait">
-      {isVisible && (
-        <motion.div
-          key="notification"
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -100, opacity: 0 }}
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 30,
-            mass: 0.5,
-          }}
-          className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md backdrop-blur-md"
-        >
-          <Alert
-            color={getAlertColor(type)}
-            variant="flat"
-            radius="lg"
-            isClosable
-            onClose={onClose}
-            className="shadow-lg"
+    <div className="fixed inset-x-0 top-0 z-50 flex justify-center">
+      <AnimatePresence mode="wait">
+        {isVisible && (
+          <motion.div
+            key="notification"
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+              mass: 0.5,
+            }}
+            className="w-full max-w-md mx-4 mt-4"
           >
-            {message}
-          </Alert>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            <Alert
+              color={getAlertColor(type)}
+              variant="flat"
+              radius="lg"
+              isClosable
+              onClose={handleClose}
+              className="shadow-lg backdrop-blur-md bg-opacity-90"
+            >
+              {message}
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
