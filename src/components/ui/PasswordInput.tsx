@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Button, Input } from "@heroui/react";
+import { Input } from "@heroui/react";
 import lottie from "lottie-web";
 import eyeAnimation from "@/assets/lottie/eye-icon-dark.json";
 
