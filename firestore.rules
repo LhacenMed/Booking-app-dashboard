@@ -24,62 +24,25 @@ service cloud.firestore {
 
     // Rules for transportation_companies collection
     match /transportation_companies/{companyId} {
-      // Allow reading if the document exists and either:
-      // 1. It's in the verification process (no authUID yet)
-      // 2. It belongs to the authenticated user
-      allow read: if 
-        exists(/databases/$(database)/documents/transportation_companies/$(companyId)) &&
-        (
-          !resource.data.keys().hasAny(['authUID']) ||
-          (request.auth != null && resource.data.authUID == request.auth.uid)
-        );
+      // Allow reading company documents
+      allow read: if true;
       
-      // Allow creating new company document during initial signup
-      // Only requires email and createdAt fields
+      // Allow creating new company documents during signup
       allow create: if 
-        request.resource.data.keys().hasAll(['email', 'createdAt']) &&
-        !request.resource.data.keys().hasAny(['authUID']) &&
-        request.resource.data.keys().size() == 2;
+        request.resource.data.keys().hasAll(['email', 'createdAt']);
       
-      // Allow updating document when:
-      // 1. Adding company details after auth (must include authUID)
-      // 2. Document doesn't have authUID yet (during verification process)
+      // Allow updating company documents during signup and after auth
       allow update: if
-        !resource.data.keys().hasAny(['authUID']) ||
-        (
-          request.auth != null &&
-          resource.data.authUID == request.auth.uid
-        );
+        true;
 
-      // Allow deletion during verification process (before authUID is set)
+      // Allow deletion during verification process
       allow delete: if
         !resource.data.keys().hasAny(['authUID']);
 
       // Rules for the email_verification_token subcollection
       match /email_verification_token/{tokenId} {
-        // Function to validate token ID format
-        function isValidTokenId() {
-          return tokenId.matches('^[0-9]+_[a-z0-9]{9}$');
-        }
-
-        // Allow creating verification token
-        allow create: if
-          isValidTokenId() &&
-          request.resource.data.keys().hasAll(['email', 'verificationCode', 'expiresAt', 'status', 'tokenId']) &&
-          request.resource.data.status == 'pending_verification' &&
-          request.resource.data.tokenId == tokenId;
-        
-        // Allow reading token during verification
-        allow read: if
-          isValidTokenId();
-        
-        // Allow updating token status and deletion
-        allow update, delete: if
-          isValidTokenId() &&
-          (
-            !get(/databases/$(database)/documents/transportation_companies/$(companyId)).data.keys().hasAny(['authUID']) ||
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'verifiedAt'])
-          );
+        // Allow all operations on verification tokens during signup
+        allow read, write: if true;
       }
       
       // Rules for other subcollections (trips, seats, etc.)

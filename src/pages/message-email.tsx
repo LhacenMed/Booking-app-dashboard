@@ -300,24 +300,42 @@ const SignupFlow = () => {
   // Store email and verification code in Firestore
   const storeEmailInFirestore = async (email: string, code: string) => {
     try {
-      console.log("Starting to store email in Firestore:", { email, code });
-
-      // Generate custom company ID
-      const customId = generateCustomCompanyId(email);
-      console.log("Generated custom company ID:", customId);
-
-      // Create the main company document with minimal data
-      const companyDocData = {
+      console.log("Starting to store/update email in Firestore:", {
         email,
-        createdAt: serverTimestamp(),
-      };
+        code,
+      });
 
-      // Create the main document with custom ID
-      await setDoc(
-        doc(db, "transportation_companies", customId),
-        companyDocData
+      // First, check if the email already exists in transportation_companies
+      const transportationQuery = query(
+        collection(db, "transportation_companies"),
+        where("email", "==", email)
       );
-      console.log("Created main company document:", customId);
+
+      const querySnapshot = await getDocs(transportationQuery);
+      let companyId: string;
+
+      if (!querySnapshot.empty) {
+        // Email exists, use the existing document
+        companyId = querySnapshot.docs[0].id;
+        console.log("Found existing company document:", companyId);
+      } else {
+        // Email doesn't exist, create new document
+        companyId = generateCustomCompanyId(email);
+        console.log("Generated new company ID:", companyId);
+
+        // Create the main company document with minimal data
+        const companyDocData = {
+          email,
+          createdAt: serverTimestamp(),
+        };
+
+        // Create the main document with custom ID
+        await setDoc(
+          doc(db, "transportation_companies", companyId),
+          companyDocData
+        );
+        console.log("Created new company document:", companyId);
+      }
 
       // Generate a unique ID for the verification token
       const tokenId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -331,24 +349,39 @@ const SignupFlow = () => {
         tokenId, // Store the token ID in the document for reference
       };
 
-      // Add to email_verification_token subcollection with unique ID
+      // First, delete any existing verification tokens
+      const existingTokensQuery = query(
+        collection(
+          db,
+          "transportation_companies",
+          companyId,
+          "email_verification_token"
+        )
+      );
+      const existingTokens = await getDocs(existingTokensQuery);
+
+      // Delete all existing tokens in parallel
+      await Promise.all(existingTokens.docs.map((doc) => deleteDoc(doc.ref)));
+      console.log("Cleaned up existing verification tokens");
+
+      // Add new verification token to email_verification_token subcollection
       await setDoc(
         doc(
           db,
           "transportation_companies",
-          customId,
+          companyId,
           "email_verification_token",
           tokenId
         ),
         tokenData
       );
-      console.log("Created verification token:", tokenId);
+      console.log("Created new verification token:", tokenId);
 
       // Store both IDs in localStorage for later use
-      localStorage.setItem("signupUID", customId);
+      localStorage.setItem("signupUID", companyId);
       localStorage.setItem("verificationTokenId", tokenId);
 
-      return customId;
+      return companyId;
     } catch (error) {
       console.error("Detailed Firestore error:", error);
       if (error instanceof Error) {
@@ -1462,7 +1495,6 @@ const SignupFlow = () => {
                     type="button"
                     onClick={() => {
                       setCurrentStep(1);
-                      setEmail("");
                       localStorage.removeItem("signupUID");
                       localStorage.removeItem("verificationTokenId");
                     }}
