@@ -9,18 +9,38 @@ const InputOTP = React.forwardRef<
   React.ElementRef<typeof OTPInput>,
   React.ComponentPropsWithoutRef<typeof OTPInput> & {
     showSuccessAnimation?: boolean;
+    error?: boolean;
   }
->(({ className, containerClassName, showSuccessAnimation, ...props }, ref) => (
-  <OTPInput
-    ref={ref}
-    containerClassName={cn(
-      "flex items-center gap-2 has-[:disabled]:opacity-50",
-      containerClassName
-    )}
-    className={cn("disabled:cursor-not-allowed", className)}
-    {...props}
-  />
-));
+>(
+  (
+    { className, containerClassName, showSuccessAnimation, error, ...props },
+    ref
+  ) => (
+    <motion.div
+      animate={
+        error
+          ? {
+              x: [0, -4, 4, -2, 2, -1, 1, 0],
+            }
+          : {}
+      }
+      transition={{
+        duration: 0.5,
+        ease: "easeInOut",
+      }}
+    >
+      <OTPInput
+        ref={ref}
+        containerClassName={cn(
+          "flex items-center gap-2 has-[:disabled]:opacity-50",
+          containerClassName
+        )}
+        className={cn("disabled:cursor-not-allowed", className)}
+        {...props}
+      />
+    </motion.div>
+  )
+);
 InputOTP.displayName = "InputOTP";
 
 const InputOTPGroup = React.forwardRef<
@@ -45,7 +65,7 @@ const InputOTPSlot = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "relative flex h-14 w-14 items-center justify-center text-sm shadow-sm transition-all first:rounded-l-md last:rounded-r-md overflow-hidden",
+        "relative flex h-14 w-14 items-center justify-center text-2xl shadow-sm transition-all first:rounded-l-md last:rounded-r-md overflow-hidden",
         isActive && "z-10 ring-1 ring-gray-700",
         className
       )}
@@ -60,9 +80,8 @@ const InputOTPSlot = React.forwardRef<
                   "rgb(209 213 219)", // gray-300
                   "rgb(34 197 94)", // green-500
                   "rgb(34 197 94)", // green-500
-                  "rgb(209 213 219)", // gray-300
+                  "rgb(34 197 94)", // gray-300
                 ],
-                borderWidth: ["1px", "2px", "2px", "1px"],
               }
             : {}
         }
@@ -104,7 +123,7 @@ const InputOTPSlot = React.forwardRef<
                 }
               : { y: 0 }
           }
-          className="text-2xl font-ot ot-regular relative z-10"
+          className={"text-2xl font-ot ot-regular relative z-10"}
         >
           {char}
         </motion.div>

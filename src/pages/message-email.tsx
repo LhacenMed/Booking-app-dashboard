@@ -446,6 +446,12 @@ const SignupFlow = () => {
         throw new Error("Invalid verification code");
       }
 
+      // Show success animation
+      setShowSuccessAnimation(true);
+
+      // Wait for animation to complete before proceeding
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Delete the verification token document
       await deleteDoc(tokenDoc.ref);
 
@@ -471,10 +477,13 @@ const SignupFlow = () => {
         setVerificationCode("");
         setResendTimer(0);
         setOtpError(false);
-        // setEmail("");
       }
     } finally {
       setIsLoading((prev) => ({ ...prev, verification: false }));
+      // Reset success animation after a delay
+      setTimeout(() => {
+        setShowSuccessAnimation(false);
+      }, 1000);
     }
   };
 
@@ -1190,6 +1199,7 @@ const SignupFlow = () => {
                         disabled={isLoading.verification}
                         className="gap-2"
                         showSuccessAnimation={showSuccessAnimation}
+                        error={otpError}
                       >
                         <InputOTPGroup>
                           <InputOTPSlot
@@ -1197,7 +1207,7 @@ const SignupFlow = () => {
                             showSuccessAnimation={showSuccessAnimation}
                             className={`w-14 h-14 text-2xl font-ot ot-regular ${
                               otpError
-                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             }`}
                           />
@@ -1206,7 +1216,7 @@ const SignupFlow = () => {
                             showSuccessAnimation={showSuccessAnimation}
                             className={`w-14 h-14 text-2xl font-ot ot-regular ${
                               otpError
-                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             }`}
                           />
@@ -1215,7 +1225,7 @@ const SignupFlow = () => {
                             showSuccessAnimation={showSuccessAnimation}
                             className={`w-14 h-14 text-2xl font-ot ot-regular ${
                               otpError
-                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             }`}
                           />
@@ -1227,7 +1237,7 @@ const SignupFlow = () => {
                             showSuccessAnimation={showSuccessAnimation}
                             className={`w-14 h-14 text-2xl font-ot ot-regular ${
                               otpError
-                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             }`}
                           />
@@ -1236,7 +1246,7 @@ const SignupFlow = () => {
                             showSuccessAnimation={showSuccessAnimation}
                             className={`w-14 h-14 text-2xl font-ot ot-regular ${
                               otpError
-                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             }`}
                           />
@@ -1245,7 +1255,7 @@ const SignupFlow = () => {
                             showSuccessAnimation={showSuccessAnimation}
                             className={`w-14 h-14 text-2xl font-ot ot-regular ${
                               otpError
-                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             }`}
                           />
