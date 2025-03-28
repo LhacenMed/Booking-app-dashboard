@@ -97,6 +97,7 @@ interface LoadingState {
   logoUpload: boolean;
   licenseUpload: boolean;
   accountCreation: boolean;
+  resendingCode: boolean;
 }
 
 interface LocationInput {
@@ -112,6 +113,8 @@ const SignupFlow = () => {
   const [twitterHandle, setTwitterHandle] = useState("");
   const [angelListUrl, setAngelListUrl] = useState("");
   const [linkedInUrl, setLinkedInUrl] = useState("");
+  const [otpError, setOtpError] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   // Company Information State
   const [companyData, setCompanyData] = useState<CompanyData>({
@@ -139,6 +142,7 @@ const SignupFlow = () => {
     logoUpload: false,
     licenseUpload: false,
     accountCreation: false,
+    resendingCode: false,
   });
 
   // UI state
@@ -321,7 +325,7 @@ const SignupFlow = () => {
   // Add this function after storeEmailInFirestore
   const resendVerificationCode = async () => {
     try {
-      setIsLoading((prev) => ({ ...prev, verification: true }));
+      setIsLoading((prev) => ({ ...prev, resendingCode: true }));
 
       // Get the stored IDs
       const uid = localStorage.getItem("signupUID");
@@ -379,7 +383,7 @@ const SignupFlow = () => {
         true
       );
     } finally {
-      setIsLoading((prev) => ({ ...prev, verification: false }));
+      setIsLoading((prev) => ({ ...prev, resendingCode: false }));
     }
   };
 
@@ -388,6 +392,7 @@ const SignupFlow = () => {
     try {
       console.log("Verifying code:", { email, inputCode });
       setIsLoading((prev) => ({ ...prev, verification: true }));
+      setOtpError(false);
 
       // Get the UIDs from localStorage
       const uid = localStorage.getItem("signupUID");
@@ -437,6 +442,7 @@ const SignupFlow = () => {
         tokenData.verificationCode !== inputCode ||
         tokenData.email !== email
       ) {
+        setOtpError(true);
         throw new Error("Invalid verification code");
       }
 
@@ -464,6 +470,7 @@ const SignupFlow = () => {
         setCurrentStep(1);
         setVerificationCode("");
         setResendTimer(0);
+        setOtpError(false);
         // setEmail("");
       }
     } finally {
@@ -668,10 +675,10 @@ const SignupFlow = () => {
         lng >= -180 &&
         lng <= 180
       ) {
-      setCompanyData((prev) => ({
-        ...prev,
-        location: new GeoPoint(lat, lng),
-      }));
+        setCompanyData((prev) => ({
+          ...prev,
+          location: new GeoPoint(lat, lng),
+        }));
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -1022,115 +1029,119 @@ const SignupFlow = () => {
   const renderStepContent = () => {
     const content = (step: number) => {
       if (step === 1) {
-      return (
-        <motion.div
-          key="step-1"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="w-full h-screen flex items-center"
-          onAnimationComplete={() => {
-            emailInputRef.current?.focus();
-          }}
-        >
-          <form onSubmit={handleSubmitEmail} className="w-full">
-            <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
-              <div className="flex flex-col">
-                <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
-                  Please enter your work email
-                </h1>
+        return (
+          <motion.div
+            key="step-1"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="w-full h-screen flex items-center"
+            onAnimationComplete={() => {
+              emailInputRef.current?.focus();
+            }}
+          >
+            <form onSubmit={handleSubmitEmail} className="w-full">
+              <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
+                <div className="flex flex-col">
+                  <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
+                    Please enter your work email
+                  </h1>
 
-                <div className="w-full">
-                  <motion.div
-                    animate={
-                      notification?.type === "danger"
-                        ? {
-                            x: [0, -4, 4, -2, 2, -1, 1, 0],
-                          }
-                        : {}
-                    }
-                    transition={{
-                      duration: 0.3,
-                      ease: "easeOut",
-                    }}
-                    className="w-full relative"
-                  >
-                    <CustomInput
-                      ref={emailInputRef}
-                      type="email"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (notification?.type === "danger") {
-                          setNotification(null);
-                        }
-                      }}
-                      onSuggestionSelect={(suggestion) => {
-                        setEmail(suggestion);
-                      }}
-                      suggestions={getEmailHistory()}
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                      }}
-                      required
-                      disabled={
-                        isLoading.emailSubmit || serverStatus !== "running"
-                      }
-                      error={
+                  <div className="w-full">
+                    <motion.div
+                      animate={
                         notification?.type === "danger"
-                          ? notification.message
-                          : undefined
+                          ? {
+                              x: [0, -4, 4, -2, 2, -1, 1, 0],
+                            }
+                          : {}
                       }
-                      placeholder="jana@ollie.com"
-                      className="pr-8"
-                    />
-                  </motion.div>
+                      transition={{
+                        duration: 0.3,
+                        ease: "easeOut",
+                      }}
+                      className="w-full relative"
+                    >
+                      <CustomInput
+                        ref={emailInputRef}
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (notification?.type === "danger") {
+                            setNotification(null);
+                          }
+                        }}
+                        onSuggestionSelect={(suggestion) => {
+                          setEmail(suggestion);
+                        }}
+                        suggestions={getEmailHistory()}
+                        onInvalid={(e) => {
+                          e.preventDefault();
+                        }}
+                        required
+                        disabled={
+                          isLoading.emailSubmit || serverStatus !== "running"
+                        }
+                        error={
+                          notification?.type === "danger"
+                            ? notification.message
+                            : undefined
+                        }
+                        placeholder="jana@ollie.com"
+                        className="pr-8"
+                      />
+                    </motion.div>
+                  </div>
+
+                  <p className="text-blue-600 text-base font-ot ot-regular mt-4">
+                    We'll send you a verification code
+                  </p>
                 </div>
-
-                <p className="text-blue-600 text-base font-ot ot-regular mt-4">
-                  We'll send you a verification code
-                </p>
               </div>
-            </div>
 
-            <div className="fixed bottom-8 right-8 z-50">
-              <button
-                type="submit"
-                className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
-                  isLoading.emailSubmit || serverStatus !== "running" || !email
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-black/90"
-                }`}
-                disabled={
-                  isLoading.emailSubmit || serverStatus !== "running" || !email
-                }
-              >
-                Continue
-                {isLoading.emailSubmit ? (
-                  <Spinner size="sm" color="white" />
-                ) : (
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M1 8H15M15 8L8 1M15 8L8 15"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      );
+              <div className="fixed bottom-8 right-8 z-50">
+                <button
+                  type="submit"
+                  className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
+                    isLoading.emailSubmit ||
+                    serverStatus !== "running" ||
+                    !email
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-black/90"
+                  }`}
+                  disabled={
+                    isLoading.emailSubmit ||
+                    serverStatus !== "running" ||
+                    !email
+                  }
+                >
+                  Continue
+                  {isLoading.emailSubmit ? (
+                    <Spinner size="sm" color="white" />
+                  ) : (
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M1 8H15M15 8L8 1M15 8L8 15"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        );
       } else if (step === 1.5) {
         // Verification code step
         return (
@@ -1152,7 +1163,7 @@ const SignupFlow = () => {
                   <div className="w-full">
                     <motion.div
                       animate={
-                        notification?.type === "danger"
+                        notification?.type === "danger" || otpError
                           ? {
                               x: [0, -4, 4, -2, 2, -1, 1, 0],
                             }
@@ -1170,6 +1181,7 @@ const SignupFlow = () => {
                         value={verificationCode}
                         onChange={(value) => {
                           setVerificationCode(value);
+                          setOtpError(false);
                           if (value.length === 6) {
                             verifyCode(value);
                           }
@@ -1177,34 +1189,65 @@ const SignupFlow = () => {
                         pattern={REGEXP_ONLY_DIGITS}
                         disabled={isLoading.verification}
                         className="gap-2"
+                        showSuccessAnimation={showSuccessAnimation}
                       >
                         <InputOTPGroup>
                           <InputOTPSlot
                             index={0}
-                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
+                            showSuccessAnimation={showSuccessAnimation}
+                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                              otpError
+                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            }`}
                           />
                           <InputOTPSlot
                             index={1}
-                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
+                            showSuccessAnimation={showSuccessAnimation}
+                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                              otpError
+                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            }`}
                           />
                           <InputOTPSlot
                             index={2}
-                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
+                            showSuccessAnimation={showSuccessAnimation}
+                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                              otpError
+                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            }`}
                           />
                         </InputOTPGroup>
                         <InputOTPSeparator />
                         <InputOTPGroup>
                           <InputOTPSlot
                             index={3}
-                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
+                            showSuccessAnimation={showSuccessAnimation}
+                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                              otpError
+                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            }`}
                           />
                           <InputOTPSlot
                             index={4}
-                            className="w-14 h-14 text-2xl font-ot ot-regular border-gray-300"
+                            showSuccessAnimation={showSuccessAnimation}
+                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                              otpError
+                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            }`}
                           />
                           <InputOTPSlot
                             index={5}
-                            className="w-14 h-14 text-2xl border-gray-300"
+                            showSuccessAnimation={showSuccessAnimation}
+                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                              otpError
+                                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                            }`}
                           />
                         </InputOTPGroup>
                       </InputOTP>
@@ -1215,12 +1258,12 @@ const SignupFlow = () => {
                     <p className="text-blue-600 text-base font-ot ot-regular">
                       We sent a code to {email}
                     </p>
-                    <div>
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        disabled={resendTimer > 0 || isLoading.verification}
+                        disabled={resendTimer > 0 || isLoading.resendingCode}
                         className={`px-3 py-1.5 rounded-lg font-ot ot-regular bg-gray-100 inline-flex items-center gap-1.5 ${
-                          resendTimer > 0 || isLoading.verification
+                          resendTimer > 0 || isLoading.resendingCode
                             ? "text-gray-400 cursor-not-allowed"
                             : "text-gray-900 hover:bg-gray-200"
                         }`}
@@ -1229,7 +1272,7 @@ const SignupFlow = () => {
                           resendVerificationCode();
                         }}
                       >
-                        {isLoading.verification ? (
+                        {isLoading.resendingCode ? (
                           <>
                             <svg
                               width="14"
@@ -1273,6 +1316,17 @@ const SignupFlow = () => {
                           </>
                         )}
                       </button>
+
+                      {/* Add test button */}
+                      {process.env.NODE_ENV === "development" && (
+                        <button
+                          type="button"
+                          onClick={handleSuccessAnimation}
+                          className="px-3 py-1.5 rounded-lg font-ot ot-regular bg-green-100 text-green-700 hover:bg-green-200"
+                        >
+                          Success OTP
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1860,6 +1914,15 @@ const SignupFlow = () => {
       type: isError ? "danger" : "success",
       isVisible: true,
     });
+  };
+
+  // Add this function after other handlers
+  const handleSuccessAnimation = () => {
+    setShowSuccessAnimation(true);
+    // Reset the animation after it completes
+    setTimeout(() => {
+      setShowSuccessAnimation(false);
+    }, 1000); // This should be longer than the total animation duration (0.3s + 0.5s delay)
   };
 
   return (
