@@ -6,9 +6,9 @@ import {
   collection,
   // addDoc,
   serverTimestamp,
-  // query,
-  // where,
-  // getDocs,
+  query,
+  where,
+  getDocs,
   updateDoc,
   doc,
   setDoc,
@@ -16,6 +16,8 @@ import {
   Timestamp,
   getDoc,
   deleteDoc,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 // import { ImageUploadPreview } from "@/components/ImageUploadPreview";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";
@@ -103,6 +105,35 @@ interface LoadingState {
 interface LocationInput {
   latitude: string;
   longitude: string;
+}
+
+// Add this interface before the SignupFlow component
+interface EmailVerificationData {
+  can_connect_smtp: boolean;
+  domain: string;
+  has_inbox_full: boolean;
+  is_catch_all: boolean;
+  is_deliverable: boolean;
+  is_disabled: boolean;
+  is_disposable: boolean;
+  is_free_email: boolean;
+  is_role_account: boolean;
+  is_safe_to_send: boolean;
+  is_spamtrap: boolean;
+  is_valid_syntax: boolean;
+  mx_accepts_mail: boolean;
+  mx_records: string[];
+  overall_score: number;
+  status: string;
+  username: string;
+  verification_mode: string;
+}
+
+interface CheckedEmailDoc {
+  email: string;
+  isValid: boolean;
+  checkedAt: Timestamp;
+  verificationData: EmailVerificationData;
 }
 
 const SignupFlow = () => {
@@ -234,7 +265,14 @@ const SignupFlow = () => {
   // Function to verify email with Reoon API
   const verifyEmail = async (emailToVerify: string) => {
     try {
-      const apiUrl = `https://emailverifier.reoon.com/api/v1/verify?email=${encodeURIComponent(emailToVerify)}&key=HLxt5vq4ZXmBAjTdnTsx50OChXNgN4NU&mode=power`;
+      // Check if API key is available
+      const apiKey = import.meta.env.VITE_REOON_API_KEY;
+      if (!apiKey) {
+        console.error("API Key not found in environment variables");
+        throw new Error("Reoon API key is not configured");
+      }
+
+      const apiUrl = `https://emailverifier.reoon.com/api/v1/verify?email=${encodeURIComponent(emailToVerify)}&key=${apiKey}&mode=power`;
 
       const response = await fetch(apiUrl, {
         method: "GET",
@@ -244,13 +282,15 @@ const SignupFlow = () => {
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error("API Response:", errorData);
         throw new Error("Failed to verify email");
       }
 
       const data = await response.json();
       console.log("Reoon API Response:", data);
 
-      return data.status === "safe";
+      return data;
     } catch (error) {
       console.error("Email verification error:", error);
       throw new Error("Failed to verify email address");
@@ -906,9 +946,83 @@ const SignupFlow = () => {
     }
 
     try {
-      // First, verify email with Reoon
-      const isEmailValid = await verifyEmail(email);
-      if (!isEmailValid) {
+      // First, check if we have a recent verification in Firestore
+      const checkedEmailsQuery = query(
+        collection(db, "checked_emails"),
+        where("email", "==", email),
+        orderBy("checkedAt", "desc"),
+        limit(1)
+      );
+
+      const querySnapshot = await getDocs(checkedEmailsQuery);
+      let emailVerificationData: EmailVerificationData | null = null;
+      let existingDocId: string | null = null;
+
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        const data = doc.data() as CheckedEmailDoc;
+        const checkedAt = data.checkedAt?.toDate();
+        existingDocId = doc.id;
+
+        // Check if the verification is less than 2 days old
+        const isRecent =
+          checkedAt &&
+          new Date().getTime() - checkedAt.getTime() < 2 * 24 * 60 * 60 * 1000;
+
+        if (isRecent) {
+          // Use the stored verification data
+          emailVerificationData = data.verificationData;
+          console.log(
+            "Using cached email verification result:",
+            emailVerificationData
+          );
+        }
+      }
+
+      // If we don't have recent verification data, verify with Reoon API and store results or update existing docs
+      if (!emailVerificationData) {
+        const verificationResult = await verifyEmail(email);
+        if (!verificationResult) {
+          throw new Error("Failed to verify email address");
+        }
+
+        // Store the verification result
+        emailVerificationData = verificationResult;
+
+        if (existingDocId) {
+          // Update existing document
+          const checkedEmailRef = doc(
+            collection(db, "checked_emails"),
+            existingDocId
+          );
+          await updateDoc(checkedEmailRef, {
+            isValid: verificationResult.status === "safe",
+            checkedAt: serverTimestamp(),
+            verificationData: verificationResult,
+          });
+          console.log(
+            "Updated existing email verification document:",
+            existingDocId
+          );
+        } else {
+          // Create new document with random ID if no existing document
+          const randomId = Math.random().toString(36).substring(2, 10);
+          const docId = `${randomId}_${email}`;
+          const checkedEmailRef = doc(collection(db, "checked_emails"), docId);
+          await setDoc(checkedEmailRef, {
+            email,
+            isValid: verificationResult.status === "safe",
+            checkedAt: serverTimestamp(),
+            verificationData: verificationResult,
+          });
+          console.log("Created new email verification document:", docId);
+        }
+      }
+
+      // At this point emailVerificationData is guaranteed to be non-null
+      // because we either got it from cache or just verified it
+      const verificationData = emailVerificationData!;
+      if (verificationData.status !== "safe") {
         throw new Error("This email address appears to be invalid or risky");
       }
 

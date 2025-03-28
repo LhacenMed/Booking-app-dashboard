@@ -2,6 +2,27 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Rules for checked_emails collection
+    match /checked_emails/{docId} {
+      // Function to validate document ID format (random8chars_email)
+      function isValidDocId() {
+        let parts = docId.split('_');
+        return parts.size() == 2 && 
+               parts[0].matches('^[A-Za-z0-9]{8}$') && // 8-character alphanumeric
+               parts[1].matches('^[^@]+@[^@]+\\.[^@]+$'); // Basic email format
+      }
+
+      // Allow creating and updating email verification results
+      allow create, update: if
+        isValidDocId() &&
+        request.resource.data.keys().hasAll(['email', 'isValid', 'checkedAt', 'verificationData']) &&
+        request.resource.data.email == docId.split('_')[1];
+      
+      // Allow reading email verification results
+      allow read: if true;
+    }
+
+    // Rules for transportation_companies collection
     match /transportation_companies/{companyId} {
       // Allow reading if the document exists and either:
       // 1. It's in the verification process (no authUID yet)
