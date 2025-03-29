@@ -1,11 +1,11 @@
 import { createBrowserRouter } from "react-router-dom";
 import LoginPage from "./pages/login";
-import SignUpPage from "./pages/signup";
-import SignUpTestPage from "./pages/signup-test";
+import SignUpTestPage0 from "./pages/signup-test0";
+import SignUpTestPage1 from "./pages/signup-test1";
 import DashboardPage from "./pages/dashboard";
 import IndexPage from "./pages/index";
 import DocsPage from "./pages/docs";
-import Home from "./pages/page";
+// import Home from "./pages/page";
 import PrivateRoute from "./components/PrivateRoute";
 import TeamPage from "./pages/team";
 import TripsPage from "./pages/trips";
@@ -14,6 +14,7 @@ import FinancePage from "./pages/finance";
 import { SeatManagement } from "./components/Trips/SeatManagement";
 import { AppLayout } from "./layouts/AppLayout";
 import { StatusProtectedRoute } from "@/components/ProtectedRoute/StatusProtectedRoute";
+import SignUpPage from "./pages/signup";
 import MessageEmail from "./pages/message-email";
 
 export const router = createBrowserRouter([
@@ -26,12 +27,16 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
-    path: "/signup",
-    element: <SignUpPage />,
+    path: "/signup-test0",
+    element: <SignUpTestPage0 />,
   },
   {
-    path: "/signup-test",
-    element: <SignUpTestPage />,
+    path: "/signup-test1",
+    element: <SignUpTestPage1 />,
+  },
+  {
+    path: "/signup",
+    element: <SignUpPage />,
   },
   {
     path: "/message-email",

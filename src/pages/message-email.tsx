@@ -39,7 +39,7 @@ import { REGEXP_ONLY_DIGITS } from "input-otp";
 // import { EyeIcon, EyeOffIcon } from "lucide-react";
 import CustomInput from "@/components/ui/CustomInput";
 import { Spinner } from "@heroui/react";
-import PasswordInput from "@/components/ui/PasswordInput";
+// import PasswordInput from "@/components/ui/PasswordInput";
 
 // Simple function to generate 6-digit code
 const generateVerificationCode = () => {
@@ -198,14 +198,19 @@ const SignupFlow = () => {
   const [passwordRules, setPasswordRules] = useState({
     minLength: false,
     hasUppercase: false,
-    hasLowercase: false,
     hasNumber: false,
-    hasSpecial: false,
   });
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordsMatch, setPasswordsMatch] = useState(false);
 
   // Add these refs after the other state declarations
   const emailInputRef = useRef<HTMLInputElement>(null);
   const otpRef = useRef<React.ElementRef<typeof InputOTP>>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
+  // Add a new ref for the first password input
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   // Add this useEffect after the other useEffect hooks
   useEffect(() => {
@@ -1109,19 +1114,64 @@ const SignupFlow = () => {
     }
   };
 
-  // Add this function before handleSubmitPassword
+  // Update validatePassword to NOT show confirm field automatically
   const validatePassword = (value: string) => {
-    setPasswordRules({
+    const rules = {
       minLength: value.length >= 8,
       hasUppercase: /[A-Z]/.test(value),
-      hasLowercase: /[a-z]/.test(value),
       hasNumber: /[0-9]/.test(value),
-      hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(value),
-    });
+    };
+
+    setPasswordRules(rules);
+    
+    // Only check if passwords match when confirm field is visible
+    if (showConfirmPassword) {
+      setPasswordsMatch(value === confirmPassword);
+    }
   };
 
+  // Add function to validate confirm password
+  const validateConfirmPassword = (value: string) => {
+    setConfirmPassword(value);
+    setPasswordsMatch(password === value);
+  };
+
+  // Add a handler for the edit password button
+  const handleEditPassword = () => {
+    setShowConfirmPassword(false);
+    setPasswordFocused(true);
+    // Focus the password input after hiding confirm password field
+    setTimeout(() => {
+      if (passwordInputRef.current) {
+        passwordInputRef.current.focus();
+      }
+    }, 100);
+  };
+
+  // Modify the handleSubmitPassword function to use the edit handler
   const handleSubmitPassword = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // If confirm password is not visible yet, show it instead of submitting
+    if (!showConfirmPassword) {
+      // Check if password meets requirements first
+      const isPasswordValid = Object.values(passwordRules).every((rule) => rule);
+      
+      if (!isPasswordValid) {
+        showMessage("Please meet all password requirements", true);
+        return;
+      }
+      
+      // Show confirm password field
+      setShowConfirmPassword(true);
+      
+      // Focus the confirm password input after it appears
+      setTimeout(() => {
+        confirmPasswordRef.current?.focus();
+      }, 100);
+      return;
+    }
+
     setIsLoading((prev) => ({ ...prev, passwordSubmit: true }));
 
     if (!password || password.length === 0) {
@@ -1135,6 +1185,13 @@ const SignupFlow = () => {
 
     if (!isPasswordValid) {
       showMessage("Please meet all password requirements", true);
+      setIsLoading((prev) => ({ ...prev, passwordSubmit: false }));
+      return;
+    }
+
+    // Check if passwords match
+    if (password !== confirmPassword) {
+      showMessage("Passwords do not match", true);
       setIsLoading((prev) => ({ ...prev, passwordSubmit: false }));
       return;
     }
@@ -1245,7 +1302,7 @@ const SignupFlow = () => {
                             ? notification.message
                             : undefined
                         }
-                        placeholder="jana@ollie.com"
+                        placeholder="panic@thedis.co"
                         className="pr-8"
                       />
                     </motion.div>
@@ -1596,145 +1653,276 @@ const SignupFlow = () => {
         return (
           <motion.div
             key="step-2"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="w-full h-screen flex items-center"
           >
-            <div className="flex justify-center mb-6">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
+            <form onSubmit={handleSubmitPassword} className="w-full">
+              <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
+                <div className="flex flex-col">
+                  <h1
+                    className={`text-xl font-ot ot-regular mb-4 ${showConfirmPassword ? "text-[#989898]" : "text-gray-900"}`}
+                  >
+                    Choose a password
+                  </h1>
+
+                  <div className="w-full">
+                    <motion.div
+                      animate={
+                        notification?.type === "danger"
+                          ? {
+                              x: [0, -4, 4, -2, 2, -1, 1, 0],
+                            }
+                          : {}
+                      }
+                      transition={{
+                        duration: 0.3,
+                        ease: "easeOut",
+                      }}
+                      className="w-full relative"
+                    >
+                      {showConfirmPassword && (
+                        <button
+                          type="button"
+                          onClick={handleEditPassword}
+                          className="absolute left-[-40px] top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 rounded-full z-10 transition-all group"
+                          aria-label="Edit password"
+                        >
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M18.5 2.50001C18.8978 2.10219 19.4374 1.87869 20 1.87869C20.5626 1.87869 21.1022 2.10219 21.5 2.50001C21.8978 2.89784 22.1213 3.4374 22.1213 4.00001C22.1213 4.56262 21.8978 5.10219 21.5 5.50001L12 15L8 16L9 12L18.5 2.50001Z"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <span className="absolute bottom-[-24px] left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                            Edit password
+                          </span>
+                        </button>
+                      )}
+                      <CustomInput
+                        ref={passwordInputRef}
+                        type="password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          validatePassword(e.target.value);
+                          if (notification?.type === "danger") {
+                            setNotification(null);
+                          }
+                        }}
+                        onFocus={() => setPasswordFocused(true)}
+                        onBlur={() => setPasswordFocused(false)}
+                        disabled={
+                          isLoading.passwordSubmit || showConfirmPassword
+                        }
+                        disableToggle={isLoading.passwordSubmit} // Only disable toggle when loading
+                        readOnly={showConfirmPassword} // Make input readonly instead of fully disabled when confirm is shown
+                        error={
+                          notification?.type === "danger"
+                            ? notification.message
+                            : undefined
+                        }
+                        placeholder="Enter your password"
+                        className={`w-full ${showConfirmPassword ? "text-[#989898]" : "text-gray-900"}`}
+                      />
+                    </motion.div>
+
+                    {/* Confirm Password Input */}
+                    <AnimatePresence>
+                      {showConfirmPassword && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, y: -20 }}
+                          animate={{ opacity: 1, height: "auto", y: 0 }}
+                          exit={{ opacity: 0, height: 0, y: -20 }}
+                          transition={{ duration: 0.3 }}
+                          className="mt-8 relative w-full"
+                        >
+                          <label className="block text-xl font-ot ot-regular text-gray-900 mb-4">
+                            Confirm your password
+                          </label>
+                          <CustomInput
+                            ref={confirmPasswordRef}
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => {
+                              validateConfirmPassword(e.target.value);
+                            }}
+                            disabled={isLoading.passwordSubmit}
+                            error={
+                              confirmPassword.length > 0 && !passwordsMatch
+                                ? "Passwords do not match"
+                                : undefined
+                            }
+                            placeholder="Re-enter your password"
+                            className="w-full"
+                          />
+                          {/* {confirmPassword.length > 0 && passwordsMatch && (
+                            <div className="absolute right-[-30px] top-[55%] -translate-y-1/2 flex items-center justify-center text-green-500">
+                              <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  d="M20 6L9 17L4 12"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </div>
+                          )} */}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Password Rules Container */}
+                  <AnimatePresence>
+                    {password.length > 0 && passwordFocused && (
+                      <motion.div
+                        className="absolute left-0 right-0 top-full mt-4 p-4 font-ot ot-regular bg-gray-50 rounded-lg border border-gray-200 z-10 shadow-md"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">
+                          Password must contain at least:
+                        </h3>
+                        <ul className="space-y-2">
+                          <li className="text-sm flex items-center gap-2">
+                            <span
+                              className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.minLength ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+                            >
+                              {passwordRules.minLength ? "✓" : "·"}
+                            </span>
+                            8 characters
+                          </li>
+                          <li className="text-sm flex items-center gap-2">
+                            <span
+                              className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasUppercase ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+                            >
+                              {passwordRules.hasUppercase ? "✓" : "·"}
+                            </span>
+                            One uppercase letter
+                          </li>
+                          <li className="text-sm flex items-center gap-2">
+                            <span
+                              className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasNumber ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+                            >
+                              {passwordRules.hasNumber ? "✓" : "·"}
+                            </span>
+                            One number
+                          </li>
+                        </ul>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              <div className="fixed bottom-8 right-8 z-50">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
+                      isLoading.passwordSubmit ||
+                      !password ||
+                      (!showConfirmPassword &&
+                        !Object.values(passwordRules).every((rule) => rule)) ||
+                      (showConfirmPassword && !passwordsMatch)
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-black/90"
+                    }`}
+                    disabled={
+                      isLoading.passwordSubmit ||
+                      !password ||
+                      (!showConfirmPassword &&
+                        !Object.values(passwordRules).every((rule) => rule)) ||
+                      (showConfirmPassword && !passwordsMatch)
+                    }
+                  >
+                    {showConfirmPassword ? "Continue" : "Next"}
+                    {isLoading.passwordSubmit ? (
+                      <Spinner size="sm" color="white" />
+                    ) : (
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M1 8H15M15 8L8 1M15 8L8 15"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Email info text */}
+              <div className="fixed bottom-8 left-8 z-10 flex items-center gap-2 text-sm text-gray-600">
                 <svg
-                  width="20"
-                  height="20"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  <rect
-                    x="3"
-                    y="11"
-                    width="18"
-                    height="11"
-                    rx="2"
-                    stroke="#111827"
+                  <path
+                    d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+                    stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
                   <path
-                    d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11"
-                    stroke="#111827"
+                    d="M12 3C16.9706 3 21 7.02944 21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3Z"
+                    stroke="currentColor"
                     strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
                   />
-                  <circle cx="12" cy="16" r="1" fill="#111827" />
                 </svg>
-              </div>
-            </div>
-
-            <h1 className="text-3xl font-bold text-center mb-2">
-              Choose a password
-            </h1>
-            <p className="text-gray-500 text-center mb-8">
-              Must be at least 8 characters.
-            </p>
-
-            <form onSubmit={handleSubmitPassword} className="space-y-6">
-              <div>
-                <motion.div
-                  animate={
-                    notification?.type === "danger"
-                      ? {
-                          x: [0, -4, 4, -2, 2, -1, 1, 0],
-                        }
-                      : {}
-                  }
-                  transition={{
-                    duration: 0.3,
-                    ease: "easeOut",
+                Signing up as {email}
+                <button
+                  onClick={() => {
+                    setCurrentStep(1);
+                    setEmail("");
+                    localStorage.removeItem("signupUID");
+                    localStorage.removeItem("verificationTokenId");
                   }}
+                  className="text-gray-500 hover:text-gray-700 underline"
                 >
-                  <PasswordInput
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      validatePassword(e.target.value);
-                      // Clear error state when user modifies the password
-                      if (notification?.type === "danger") {
-                        setNotification(null);
-                      }
-                    }}
-                    disabled={isLoading.passwordSubmit}
-                    error={
-                      notification?.type === "danger"
-                        ? notification.message
-                        : undefined
-                    }
-                    className="w-full"
-                  />
-                </motion.div>
-
-                {/* Password Rules Container */}
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    Password must have:
-                  </h3>
-                  <ul className="space-y-2">
-                    <li className="text-sm flex items-center gap-2">
-                      <span
-                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.minLength ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
-                      >
-                        {passwordRules.minLength ? "✓" : "·"}
-                      </span>
-                      At least 8 characters
-                    </li>
-                    <li className="text-sm flex items-center gap-2">
-                      <span
-                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasUppercase ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
-                      >
-                        {passwordRules.hasUppercase ? "✓" : "·"}
-                      </span>
-                      One uppercase letter
-                    </li>
-                    <li className="text-sm flex items-center gap-2">
-                      <span
-                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasLowercase ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
-                      >
-                        {passwordRules.hasLowercase ? "✓" : "·"}
-                      </span>
-                      One lowercase letter
-                    </li>
-                    <li className="text-sm flex items-center gap-2">
-                      <span
-                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasNumber ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
-                      >
-                        {passwordRules.hasNumber ? "✓" : "·"}
-                      </span>
-                      One number
-                    </li>
-                    <li className="text-sm flex items-center gap-2">
-                      <span
-                        className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasSpecial ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
-                      >
-                        {passwordRules.hasSpecial ? "✓" : "·"}
-                      </span>
-                      One special character (!@#$%^&*(),.?":{}|&lt;&gt;)
-                    </li>
-                  </ul>
-                </div>
+                  (logout)
+                </button>
               </div>
-              <button
-                type="submit"
-                className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
-                  isLoading.passwordSubmit
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-                disabled={isLoading.passwordSubmit}
-              >
-                {isLoading.passwordSubmit ? "Processing..." : "Continue"}
-              </button>
             </form>
           </motion.div>
         );
@@ -2097,115 +2285,151 @@ const SignupFlow = () => {
         />
       )}
 
-      {/* Left sidebar */}
-      {/* <SignupSidebar currentStep={currentStep} /> */}
-
-      {/* Dev Jump Button */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="fixed top-4 right-4 z-50">
-          <select
-            value={currentStep}
-            onChange={(e) => setCurrentStep(Number(e.target.value))}
-            className="bg-black/10 backdrop-blur-sm text-gray-800 px-4 py-2 rounded-md border border-gray-200"
-          >
-            <option value={1}>Step 1: Email</option>
-            <option value={1.5}>Step 1.5: Verification</option>
-            <option value={2}>Step 2: Password</option>
-            <option value={3}>Step 3: Company</option>
-            <option value={4}>Step 4: Socials</option>
-          </select>
+      {/* Server Error State */}
+      {serverStatus !== "running" && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center font-ot ot-medium">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="text-red-600"
+              >
+                <path
+                  d="M12 8V12M12 16H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <h1 className="text-2xl text-gray-900 mb-2">
+              Server Connection Error
+            </h1>
+            <p className="text-gray-600 max-w-md mx-auto">
+              We're unable to connect to our servers at the moment. Please check
+              your internet connection and try again later.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 px-4 py-2 bg-black text-white rounded-lg hover:bg-black/90 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Main content */}
-      <div className="flex-1 min-h-screen overflow-y-auto relative">
-        {/* Logo */}
-        <div className="absolute top-8 left-8 flex items-center">
-          <img src="/images/qatalog-logo.svg" alt="Qatalog" className="h-8" />
-          <span className="text-md text-gray-500 ml-3">Logo</span>
-        </div>
+      {/* Main content - Only show when server is running */}
+      {serverStatus === "running" && (
+        <>
+          {/* Left sidebar */}
+          {/* <SignupSidebar currentStep={currentStep} /> */}
 
-        <div className="flex flex-col items-center min-h-screen">
-          <div className="flex-1 flex items-center justify-center w-full p-8">
-            <motion.div
-              className="w-full max-w-3xl"
-              // animate={{
-              //   maxWidth: currentStep === 3 ? "64rem" : "28rem",
-              //   paddingLeft: currentStep === 3 ? "2rem" : "0rem",
-              //   paddingRight: currentStep === 3 ? "2rem" : "0rem",
-              // }}
-              // transition={{
-              //   duration: 0.3,
-              //   ease: "easeInOut",
-              //   delay: currentStep === 3 ? 0.2 : 0,
-              // }}
-            >
-              {/* Step content */}
-              {renderStepContent()}
-            </motion.div>
-          </div>
+          {/* Dev Jump Button */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="fixed top-4 right-4 z-50">
+              <select
+                value={currentStep}
+                onChange={(e) => setCurrentStep(Number(e.target.value))}
+                className="bg-black/10 backdrop-blur-sm text-gray-800 px-4 py-2 rounded-md border border-gray-200"
+              >
+                <option value={1}>Step 1: Email</option>
+                <option value={1.5}>Step 1.5: Verification</option>
+                <option value={2}>Step 2: Password</option>
+                <option value={3}>Step 3: Company</option>
+                <option value={4}>Step 4: Socials</option>
+              </select>
+            </div>
+          )}
 
-          {/* Step indicators */}
-          <div className="fixed bottom-8 z-10">
-            <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-full shadow-lg">
-              <motion.div
-                className={`h-2 rounded-full bg-blue-600 transition-colors`}
-                animate={{
-                  width:
-                    currentStep === 1 || currentStep === 1.5
-                      ? "2rem"
-                      : "0.5rem",
-                  backgroundColor:
-                    currentStep === 1 || currentStep === 1.5
-                      ? "#000"
-                      : "#E5E7EB",
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 30,
-                }}
+          {/* Main content */}
+          <div className="flex-1 min-h-screen overflow-y-auto relative">
+            {/* Logo */}
+            <div className="absolute top-8 left-8 flex items-center">
+              <img
+                src="/images/qatalog-logo.svg"
+                alt="Qatalog"
+                className="h-8"
               />
-              <motion.div
-                className={`h-2 rounded-full bg-blue-600 transition-colors`}
-                animate={{
-                  width: currentStep === 2 ? "2rem" : "0.5rem",
-                  backgroundColor: currentStep === 2 ? "#000" : "#E5E7EB",
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 30,
-                }}
-              />
-              <motion.div
-                className={`h-2 rounded-full bg-blue-600 transition-colors`}
-                animate={{
-                  width: currentStep === 3 ? "2rem" : "0.5rem",
-                  backgroundColor: currentStep === 3 ? "#000" : "#E5E7EB",
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 30,
-                }}
-              />
-              <motion.div
-                className={`h-2 rounded-full bg-blue-600 transition-colors`}
-                animate={{
-                  width: currentStep === 4 ? "2rem" : "0.5rem",
-                  backgroundColor: currentStep === 4 ? "#000" : "#E5E7EB",
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 30,
-                }}
-              />
+              <span className="text-md text-gray-500 ml-3">Logo</span>
+            </div>
+
+            <div className="flex flex-col items-center min-h-screen">
+              <div className="flex-1 flex items-center justify-center w-full p-8">
+                <motion.div className="w-full max-w-3xl">
+                  {/* Step content */}
+                  {renderStepContent()}
+                </motion.div>
+              </div>
+
+              {/* Step indicators */}
+              <div className="fixed bottom-8 z-10">
+                <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-full shadow-lg">
+                  <motion.div
+                    className="h-2 rounded-full bg-blue-600 transition-colors"
+                    animate={{
+                      width:
+                        currentStep === 1 || currentStep === 1.5
+                          ? "2rem"
+                          : "0.5rem",
+                      backgroundColor:
+                        currentStep === 1 || currentStep === 1.5
+                          ? "#000"
+                          : "#E5E7EB",
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 30,
+                    }}
+                  />
+                  <motion.div
+                    className="h-2 rounded-full bg-blue-600 transition-colors"
+                    animate={{
+                      width: currentStep === 2 ? "2rem" : "0.5rem",
+                      backgroundColor: currentStep === 2 ? "#000" : "#E5E7EB",
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 30,
+                    }}
+                  />
+                  <motion.div
+                    className="h-2 rounded-full bg-blue-600 transition-colors"
+                    animate={{
+                      width: currentStep === 3 ? "2rem" : "0.5rem",
+                      backgroundColor: currentStep === 3 ? "#000" : "#E5E7EB",
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 30,
+                    }}
+                  />
+                  <motion.div
+                    className="h-2 rounded-full bg-blue-600 transition-colors"
+                    animate={{
+                      width: currentStep === 4 ? "2rem" : "0.5rem",
+                      backgroundColor: currentStep === 4 ? "#000" : "#E5E7EB",
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 30,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

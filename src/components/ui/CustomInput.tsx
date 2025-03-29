@@ -1,10 +1,13 @@
 import React, { forwardRef, useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
+import lottie from "lottie-web";
+import eyeAnimation from "@/assets/lottie/eye-icon-dark.json";
 
 interface CustomInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   suggestions?: string[];
   onSuggestionSelect?: (suggestion: string) => void;
+  disableToggle?: boolean;
 }
 
 const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
@@ -15,9 +18,47 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
     const [activeSuggestion, setActiveSuggestion] = useState("");
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [showPassword, setShowPassword] = useState(false);
+    const [isAnimating, setIsAnimating] = useState(false);
     const localInputRef = useRef<HTMLInputElement>(null);
+    const animationContainer = useRef<HTMLDivElement>(null);
+    const animationInstance = useRef<any>(null);
     const inputRef =
       (ref as React.RefObject<HTMLInputElement>) || localInputRef;
+
+    // Setup Lottie animation
+    useEffect(() => {
+      if (props.type === "password" && animationContainer.current) {
+        // Clear any existing animation
+        if (animationInstance.current) {
+          animationInstance.current.destroy();
+        }
+
+        // Create new animation
+        animationInstance.current = lottie.loadAnimation({
+          container: animationContainer.current,
+          renderer: "svg",
+          loop: false,
+          autoplay: false,
+          animationData: eyeAnimation,
+        });
+
+        // Set animation speed
+        animationInstance.current.setSpeed(5);
+
+        // Handle animation completion
+        animationInstance.current.addEventListener("complete", () => {
+          setIsAnimating(false);
+        });
+
+        return () => {
+          if (animationInstance.current) {
+            animationInstance.current.destroy();
+            animationInstance.current = null;
+          }
+        };
+      }
+    }, [props.type]);
 
     // Add useEffect for focus handling
     useEffect(() => {
@@ -65,6 +106,27 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       setShowSuggestions(false);
       setActiveSuggestion("");
       setSelectedIndex(0);
+    };
+
+    // Handle toggle password visibility with animation
+    const togglePasswordVisibility = () => {
+      if (
+        isAnimating ||
+        props.type !== "password" ||
+        !animationInstance.current
+      )
+        return;
+
+      setIsAnimating(true);
+      setShowPassword(!showPassword);
+
+      if (showPassword) {
+        // Play animation from frame 60 to 0 (closing eye)
+        animationInstance.current.playSegments([60, 0], true);
+      } else {
+        // Play animation from frame 0 to 60 (opening eye)
+        animationInstance.current.playSegments([0, 60], true);
+      }
     };
 
     // Handle keyboard navigation
@@ -138,6 +200,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
               outline-none 
               focus:ring-0 
               focus:outline-none
+              pr-12
               [&::-webkit-calendar-picker-indicator]:opacity-0
               [&::-webkit-calendar-picker-indicator]:absolute
               [&::-webkit-calendar-picker-indicator]:right-0
@@ -146,6 +209,13 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
               ${className}
             `}
             {...props}
+            type={
+              props.type === "password"
+                ? showPassword
+                  ? "text"
+                  : "password"
+                : props.type
+            }
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             autoComplete="off"
@@ -162,14 +232,30 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
               </span>
             </div>
           )}
-          {props.value && (
+          {props.type === "password" ? (
             <button
               type="button"
-              onClick={handleClear}
-              className="absolute right-[-10px] top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              className="absolute right-[-10px] top-1/2 -translate-y-1/2 w-14 h-14 flex items-center justify-center text-gray-400 hover:bg-gray-100 focus:outline-none rounded-md"
+              onClick={togglePasswordVisibility}
+              disabled={props.disableToggle}
+              aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              <X className="w-8 h-8" />
+              <div
+                ref={animationContainer}
+                className="w-8 h-8"
+                style={{ transform: "scale(2)" }}
+              />
             </button>
+          ) : (
+            props.value && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="absolute right-[-10px] top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                <X className="w-8 h-8" />
+              </button>
+            )
           )}
         </div>
         {error && (

@@ -1,7 +1,7 @@
 import { cn } from "../../../lib/utils";
 import React, { useRef, useState, useId } from "react";
 import { motion } from "motion/react";
-import { IconUpload, IconX } from "@tabler/icons-react";
+// import { IconUpload, IconX } from "@tabler/icons-react";
 import { useDropzone } from "react-dropzone";
 
 const mainVariant = {
@@ -300,7 +300,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                             onClick={handleUnselectFile}
                             className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                           >
-                            <IconX className="h-4 w-4 text-neutral-500" />
+                            {/* <IconX className="h-4 w-4 text-neutral-500" /> */}
                           </button>
                         </div>
                       </div>
@@ -349,10 +349,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                     className="text-neutral-600 flex flex-col items-center"
                   >
                     Drop it
-                    <IconUpload className="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+                    {/* <IconUpload className="h-4 w-4 text-neutral-600 dark:text-neutral-400" /> */}
                   </motion.p>
                 ) : (
-                  <IconUpload className="h-4 w-4 text-neutral-600 dark:text-neutral-300" />
+                  // <IconUpload className="h-4 w-4 text-neutral-600 dark:text-neutral-300" />
+                  <p>Upload</p>
                 )}
               </motion.div>
             )}
