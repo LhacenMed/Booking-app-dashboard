@@ -1,4 +1,5 @@
 // server/index.js
+// server/index.js
 require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -25,9 +26,10 @@ console.log("Environment check:", {
 // Validate environment variables before starting server
 function validateEnvironmentVariables() {
     const required = {
-        BREVO_API_KEY: process.env.BREVO_API_KEY,
+        BREVO_API_KEY: process.env.BREVO_API_KEY ?
+            `${process.env.BREVO_API_KEY.substring(0, 10)}...` : "Missing",
         SENDER_EMAIL: process.env.SENDER_EMAIL,
-        SENDER_NAME: process.env.SENDER_NAME
+        SENDER_NAME: process.env.SENDER_NAME,
     };
 
     const missing = Object.entries(required)
