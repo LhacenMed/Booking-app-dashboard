@@ -26,7 +26,7 @@ import { Notification } from "@/components/ui/notification";
 import { motion, AnimatePresence } from "framer-motion";
 // import { SignupSidebar } from "@/components/Sidebar/SignupSidebar";
 // import { FileUpload } from "@/components/ui/file-upload";
-import { ImageUploadPreview } from "@/components/ui/ImageUploadPreview";
+// import { ImageUploadPreview } from "@/components/ui/ImageUploadPreview";
 import {
   InputOTP,
   InputOTPGroup,
@@ -217,7 +217,7 @@ const SignupFlow = () => {
     const focusTimer = setTimeout(() => {
       if (currentStep === 1) {
         emailInputRef.current?.focus();
-      } else if (currentStep === 1.5) {
+      } else if (currentStep === 2) {
         // Focus the OTP input using the ref
         const otpInput = otpRef.current?.querySelector(
           "input"
@@ -540,7 +540,7 @@ const SignupFlow = () => {
         "Email verified successfully! Please create your password.",
         false
       );
-      setCurrentStep(2);
+      setCurrentStep(3);
       setResendTimer(0);
     } catch (error) {
       console.error("Verification error:", error);
@@ -610,22 +610,15 @@ const SignupFlow = () => {
         // console.log("  ---");
 
         if (user.email === email) {
-          try {
-            const creationDate = new Date(user.creationTime);
-            if (!isNaN(creationDate.getTime())) {
-              console.log("\n✅ Found user with valid creation date:");
-              console.log(`- Email: ${user.email}`);
-              console.log(`- Created: ${user.creationTime}`);
-              console.log(`- Verified: ${user.emailVerified ? "✅" : "❌"}`);
-              return true;
-            }
-          } catch (error) {
-            console.log("\n❌ Invalid creation date format");
-          }
+          console.log("\n✅ Found user with matching email:");
+          console.log(`- Email: ${user.email}`);
+          console.log(`- Created: ${user.creationTime}`);
+          console.log(`- Verified: ${user.emailVerified ? "✅" : "❌"}`);
+          return true;
         }
       }
 
-      console.log("\n❌ No valid user found in Firebase Auth");
+      console.log("\n❌ No matching email found in Firebase Auth");
       return false;
     } catch (error) {
       console.error("❌ Error checking email:", error);
@@ -826,21 +819,11 @@ const SignupFlow = () => {
       console.log("Starting account creation process...");
       console.log("Form data:", {
         email,
-        companyData,
-        locationInput,
-        socialLinks: { twitterHandle, angelListUrl, linkedInUrl },
+        password,
       });
 
       if (!email || !password) {
         throw new Error("Email and password are required");
-      }
-
-      if (
-        !companyData.name ||
-        !companyData.phoneNumber ||
-        !companyData.logoUrl
-      ) {
-        throw new Error("Company details are incomplete");
       }
 
       // Get the UID we stored earlier
@@ -861,71 +844,32 @@ const SignupFlow = () => {
       const uid = userCredential.user.uid;
       console.log("Firebase Auth user created:", uid);
 
-      // Create GeoPoint from validated coordinates
-      const latitude = Number(locationInput.latitude);
-      const longitude = Number(locationInput.longitude);
-
-      if (isNaN(latitude) || isNaN(longitude)) {
-        throw new Error("Invalid location coordinates");
-      }
-
-      const geoPoint = new GeoPoint(latitude, longitude);
-
-      // Update the existing document with company details
-      const companyDocData = {
-        name: companyData.name,
-        location: geoPoint,
-        phoneNumber: companyData.phoneNumber,
-        logo: {
-          publicId: companyData.logoPublicId,
-          url: companyData.logoUrl,
-          uploadedAt: new Date().toISOString(),
-        },
-        businessLicense: companyData.businessLicensePublicId
-          ? {
-              publicId: companyData.businessLicensePublicId,
-              url: companyData.businessLicenseUrl,
-              uploadedAt: new Date().toISOString(),
-            }
-          : null,
-        creditBalance: 0,
-        status: "pending",
-        updatedAt: Timestamp.now(),
-        socialLinks: {
-          twitter: twitterHandle || "",
-          angelList: angelListUrl || "",
-          linkedIn: linkedInUrl || "",
-        },
-        authUID: uid, // Store the Firebase Auth UID
+      // Update the existing document with basic user data
+      const userDocData = {
+        email,
+        authUID: uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
-      console.log("Updating company data in Firestore...");
+      console.log("Updating user data in Firestore...");
       console.log("Document path:", `transportation_companies/${existingUID}`);
-      console.log("Company data:", companyDocData);
+      console.log("User data:", userDocData);
 
       // Update the existing document
-      const companyRef = doc(db, "transportation_companies", existingUID);
-      await updateDoc(companyRef, companyDocData);
-      console.log("Company data updated successfully");
+      const userRef = doc(db, "transportation_companies", existingUID);
+      await updateDoc(userRef, userDocData);
+      console.log("User data updated successfully");
 
-      // Create empty subcollections
-      console.log("Creating trips subcollection...");
-      const tripsCollectionRef = collection(companyRef, "trips");
-      await setDoc(doc(tripsCollectionRef, "placeholder"), {
-        createdAt: Timestamp.now(),
-        placeholder: true,
-      });
-
-      // Remove seats subcollection creation
-      // Save to local storage
+      // Save to local storage with required fields
       console.log("Saving to local storage...");
       addAccountToLocalStorage({
         id: existingUID,
-        name: companyData.name,
+        name: email.split("@")[0], // Use email username as name
         email: email,
         logo: {
-          publicId: companyData.logoPublicId,
-          url: companyData.logoUrl,
+          publicId: "",
+          url: "",
           uploadedAt: new Date().toISOString(),
         },
       });
@@ -1100,7 +1044,7 @@ const SignupFlow = () => {
       setResendTimer(300);
 
       showMessage("Verification code sent to your email!", false);
-      setCurrentStep(1.5);
+      setCurrentStep(2);
     } catch (error) {
       console.error("Error:", error);
       showMessage(
@@ -1123,7 +1067,7 @@ const SignupFlow = () => {
     };
 
     setPasswordRules(rules);
-    
+
     // Only check if passwords match when confirm field is visible
     if (showConfirmPassword) {
       setPasswordsMatch(value === confirmPassword);
@@ -1140,6 +1084,7 @@ const SignupFlow = () => {
   const handleEditPassword = () => {
     setShowConfirmPassword(false);
     setPasswordFocused(true);
+    setConfirmPassword("");
     // Focus the password input after hiding confirm password field
     setTimeout(() => {
       if (passwordInputRef.current) {
@@ -1155,16 +1100,18 @@ const SignupFlow = () => {
     // If confirm password is not visible yet, show it instead of submitting
     if (!showConfirmPassword) {
       // Check if password meets requirements first
-      const isPasswordValid = Object.values(passwordRules).every((rule) => rule);
-      
+      const isPasswordValid = Object.values(passwordRules).every(
+        (rule) => rule
+      );
+
       if (!isPasswordValid) {
         showMessage("Please meet all password requirements", true);
         return;
       }
-      
+
       // Show confirm password field
       setShowConfirmPassword(true);
-      
+
       // Focus the confirm password input after it appears
       setTimeout(() => {
         confirmPasswordRef.current?.focus();
@@ -1196,8 +1143,8 @@ const SignupFlow = () => {
       return;
     }
 
-    setCurrentStep(3);
-    setIsLoading((prev) => ({ ...prev, passwordSubmit: false }));
+    // Call handleCreateAccount when Continue is pressed
+    handleCreateAccount(e);
   };
 
   const handleSubmitCompanyDetails = (e: React.FormEvent) => {
@@ -1355,11 +1302,10 @@ const SignupFlow = () => {
             </form>
           </motion.div>
         );
-      } else if (step === 1.5) {
-        // Verification code step
+      } else if (step === 2) {
         return (
           <motion.div
-            key="step-1.5"
+            key="step-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1648,11 +1594,10 @@ const SignupFlow = () => {
             </form>
           </motion.div>
         );
-      } else if (step === 2) {
-        // Password step
+      } else if (step === 3) {
         return (
           <motion.div
-            key="step-2"
+            key="step-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1926,323 +1871,8 @@ const SignupFlow = () => {
             </form>
           </motion.div>
         );
-      } else if (step === 3) {
-        // Company Details step
-        return (
-          <motion.div
-            key="step-3"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="w-full flex flex-col justify-center"
-          >
-            <form
-              onSubmit={handleSubmitCompanyDetails}
-              className="grid grid-cols-2 gap-x-6 gap-y-4 w-full"
-            >
-              {/* Top Column */}
-              <div className="col-span-2 lg:col-span-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Company Name
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full h-10 px-3 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    value={companyData.name}
-                    onChange={(e) =>
-                      setCompanyData({ ...companyData, name: e.target.value })
-                    }
-                    placeholder="Enter registered company name"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Middle Column */}
-              <div className="col-span-1">
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Location
-                    </label>
-                    <button
-                      type="button"
-                      onClick={getCurrentLocation}
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                      disabled={isLoading.locationFetch}
-                    >
-                      {isLoading.locationFetch
-                        ? "Getting location..."
-                        : "Current Location"}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      className="w-full h-10 px-3 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      value={locationInput.latitude}
-                      onChange={(e) =>
-                        handleLocationChange("latitude", e.target.value)
-                      }
-                      placeholder="37.7749"
-                      required
-                    />
-                    <input
-                      type="text"
-                      className="w-full h-10 px-3 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      value={locationInput.longitude}
-                      onChange={(e) =>
-                        handleLocationChange("longitude", e.target.value)
-                      }
-                      placeholder="-122.4194"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  className="w-full h-10 px-3 border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  value={companyData.phoneNumber}
-                  onChange={(e) =>
-                    setCompanyData({
-                      ...companyData,
-                      phoneNumber: e.target.value,
-                    })
-                  }
-                  placeholder="Enter company phone number"
-                  required
-                />
-              </div>
-
-              {/* Bottom Column */}
-              <div className="col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Logo
-                </label>
-                <ImageUploadPreview
-                  onFileSelect={(file) => handleFileUpload(file, "logo")}
-                  previewUrl={companyData.logoUrl}
-                  publicId={companyData.logoPublicId}
-                  required={true}
-                  isLoading={isLoading.logoUpload}
-                />
-              </div>
-
-              <div className="col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Business License (Optional)
-                </label>
-                <ImageUploadPreview
-                  onFileSelect={(file) => handleFileUpload(file, "license")}
-                  previewUrl={companyData.businessLicenseUrl}
-                  publicId={companyData.businessLicensePublicId}
-                  isLoading={isLoading.licenseUpload}
-                />
-              </div>
-
-              {/* Full-width button at the bottom */}
-              <div className="col-span-2 mt-4">
-                <button
-                  type="submit"
-                  className="w-full h-10 bg-black text-white rounded-md font-medium hover:bg-black/90 transition-colors"
-                  disabled={isLoading.passwordSubmit}
-                >
-                  Register Company
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        );
-      } else if (step === 4) {
-        // Socials step
-        return (
-          <motion.div
-            key="step-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-          >
-            <div className="flex justify-center mb-6">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M22 2L15 22L11 13L2 9L22 2Z"
-                    stroke="#111827"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <h1 className="text-3xl font-bold text-center mb-2">
-              Add your socials
-            </h1>
-            <p className="text-gray-500 text-center mb-8">
-              Share posts to your social accounts.
-            </p>
-
-            <form onSubmit={handleCreateAccount} className="space-y-6">
-              {/* Twitter input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Twitter
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 1 23 3z"
-                        stroke="#6B7280"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    className="w-full pl-10 py-2 border border-gray-300 rounded-md"
-                    placeholder="twitter.com/@example"
-                    value={twitterHandle}
-                    onChange={(e) => setTwitterHandle(e.target.value)}
-                    disabled={isLoading.accountCreation}
-                  />
-                </div>
-              </div>
-
-              {/* AngelList input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  AngelList
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="#6B7280"
-                        strokeWidth="2"
-                      />
-                      <path
-                        d="M12 6v6l4 2"
-                        stroke="#6B7280"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    className="w-full pl-10 py-2 border border-gray-300 rounded-md"
-                    placeholder="angel.co/company/example"
-                    value={angelListUrl}
-                    onChange={(e) => setAngelListUrl(e.target.value)}
-                    disabled={isLoading.accountCreation}
-                  />
-                </div>
-              </div>
-
-              {/* LinkedIn input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  LinkedIn
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"
-                        stroke="#6B7280"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <rect
-                        x="2"
-                        y="9"
-                        width="4"
-                        height="12"
-                        stroke="#6B7280"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <circle
-                        cx="4"
-                        cy="4"
-                        r="2"
-                        stroke="#6B7280"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    className="w-full pl-10 py-2 border border-gray-300 rounded-md"
-                    placeholder="linkedin.com/company/example"
-                    value={linkedInUrl}
-                    onChange={(e) => setLinkedInUrl(e.target.value)}
-                    disabled={isLoading.accountCreation}
-                  />
-                </div>
-              </div>
-
-              {/* Complete button */}
-              <button
-                type="submit"
-                className={`w-full py-2 bg-blue-600 text-white rounded-md font-medium ${
-                  isLoading.accountCreation
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-                disabled={isLoading.accountCreation}
-              >
-                {isLoading.accountCreation
-                  ? "Creating Account..."
-                  : "Complete sign up"}
-              </button>
-            </form>
-          </motion.div>
-        );
+      } else {
+        return null;
       }
     };
 
@@ -2339,10 +1969,8 @@ const SignupFlow = () => {
                 className="bg-black/10 backdrop-blur-sm text-gray-800 px-4 py-2 rounded-md border border-gray-200"
               >
                 <option value={1}>Step 1: Email</option>
-                <option value={1.5}>Step 1.5: Verification</option>
-                <option value={2}>Step 2: Password</option>
-                <option value={3}>Step 3: Company</option>
-                <option value={4}>Step 4: Socials</option>
+                <option value={2}>Step 2: Verification</option>
+                <option value={3}>Step 3: Password</option>
               </select>
             </div>
           )}
@@ -2373,14 +2001,8 @@ const SignupFlow = () => {
                   <motion.div
                     className="h-2 rounded-full bg-blue-600 transition-colors"
                     animate={{
-                      width:
-                        currentStep === 1 || currentStep === 1.5
-                          ? "2rem"
-                          : "0.5rem",
-                      backgroundColor:
-                        currentStep === 1 || currentStep === 1.5
-                          ? "#000"
-                          : "#E5E7EB",
+                      width: currentStep === 1 ? "2rem" : "0.5rem",
+                      backgroundColor: currentStep === 1 ? "#000" : "#E5E7EB",
                     }}
                     transition={{
                       type: "spring",
@@ -2405,18 +2027,6 @@ const SignupFlow = () => {
                     animate={{
                       width: currentStep === 3 ? "2rem" : "0.5rem",
                       backgroundColor: currentStep === 3 ? "#000" : "#E5E7EB",
-                    }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 30,
-                    }}
-                  />
-                  <motion.div
-                    className="h-2 rounded-full bg-blue-600 transition-colors"
-                    animate={{
-                      width: currentStep === 4 ? "2rem" : "0.5rem",
-                      backgroundColor: currentStep === 4 ? "#000" : "#E5E7EB",
                     }}
                     transition={{
                       type: "spring",
