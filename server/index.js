@@ -8,17 +8,28 @@ const SibApiV3Sdk = require("@getbrevo/brevo");
 const admin = require("firebase-admin");
 
 // Initialize Firebase Admin
-const serviceAccount = require("./firebase-admin-key.json"); // You'll need to place your key file here
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-});
+console.log("Initializing Firebase Admin...");
+try {
+    const serviceAccount = require("./firebase-admin-key.json"); // You'll need to place your key file here
+    console.log("Service account loaded successfully");
+
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+    });
+    console.log("Firebase Admin initialized successfully");
+} catch (error) {
+    console.error("Firebase Admin initialization error:", error);
+    process.exit(1);
+}
 
 // Debug environment variables
 console.log("Environment check:", {
     BREVO_API_KEY: process.env.BREVO_API_KEY ?
-        `${process.env.BREVO_API_KEY.substring(0, 10)}...` : "Missing",
+        `${process.env.BREVO_API_KEY.substring(0, 10)}...` :
+        "Missing",
     BREVO_API_KEY_LENGTH: process.env.BREVO_API_KEY ?
-        process.env.BREVO_API_KEY.length : 0,
+        process.env.BREVO_API_KEY.length :
+        0,
     SENDER_EMAIL: process.env.SENDER_EMAIL || "Missing",
     SENDER_NAME: process.env.SENDER_NAME || "Missing",
 });
@@ -27,7 +38,8 @@ console.log("Environment check:", {
 function validateEnvironmentVariables() {
     const required = {
         BREVO_API_KEY: process.env.BREVO_API_KEY ?
-            `${process.env.BREVO_API_KEY.substring(0, 10)}...` : "Missing",
+            `${process.env.BREVO_API_KEY.substring(0, 10)}...` :
+            "Missing",
         SENDER_EMAIL: process.env.SENDER_EMAIL,
         SENDER_NAME: process.env.SENDER_NAME,
     };
@@ -37,12 +49,14 @@ function validateEnvironmentVariables() {
         .map(([key]) => key);
 
     if (missing.length > 0) {
-        console.error(`Missing required environment variables: ${missing.join(', ')}`);
+        console.error(
+            `Missing required environment variables: ${missing.join(", ")}`
+        );
         process.exit(1);
     }
 
     // Validate API key format
-    if (!process.env.BREVO_API_KEY.startsWith('xkeysib-')) {
+    if (!process.env.BREVO_API_KEY.startsWith("xkeysib-")) {
         console.error('Invalid API key format. Must start with "xkeysib-"');
         process.exit(1);
     }
@@ -125,31 +139,71 @@ app.post("/api/send-email", async(req, res) => {
 // Add new endpoint to list all users
 app.get("/api/list-users", async(req, res) => {
     try {
-        const listUsersResult = await admin.auth().listUsers();
-        const users = listUsersResult.users.map(userRecord => ({
+        console.log("Attempting to list users...");
+
+        // Set a longer timeout for the Firebase request
+        const timeout = 60000; // 60 seconds
+
+        // Create a promise that rejects after timeout
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Request timeout")), timeout);
+        });
+
+        // Create the actual Firebase request promise
+        const firebasePromise = admin.auth().listUsers(1000); // Limit to 1000 users
+
+        // Race between the timeout and the actual request
+        const listUsersResult = await Promise.race([
+            firebasePromise,
+            timeoutPromise,
+        ]);
+
+        console.log(`Successfully retrieved ${listUsersResult.users.length} users`);
+
+        const users = listUsersResult.users.map((userRecord) => ({
             email: userRecord.email,
             emailVerified: userRecord.emailVerified,
             disabled: userRecord.disabled,
-            creationTime: userRecord.metadata.creationTime
+            creationTime: userRecord.metadata.creationTime,
         }));
 
-        console.log('👥 All registered users in Firebase Auth:');
-        users.forEach(user => {
+        console.log("👥 All registered users in Firebase Auth:");
+        users.forEach((user) => {
             console.log(`- Email: ${user.email}`);
             console.log(`  Created: ${user.creationTime}`);
-            console.log(`  Verified: ${user.emailVerified ? '✅' : '❌'}`);
-            console.log('  ---');
+            console.log(`  Verified: ${user.emailVerified ? "✅" : "❌"}`);
+            console.log("  ---");
         });
 
         return res.status(200).json({
             success: true,
-            users: users
+            users: users,
         });
     } catch (error) {
-        console.error('Error listing users:', error);
+        console.error("Detailed error listing users:", error);
+
+        // Check if it's a timeout error
+        if (error.message === "Request timeout") {
+            return res.status(504).json({
+                success: false,
+                error: "Request timed out. Please try again.",
+                type: "timeout",
+            });
+        }
+
+        // Check if it's a Firebase Auth error
+        if (error.code === "auth/invalid-credential") {
+            return res.status(401).json({
+                success: false,
+                error: "Invalid Firebase credentials. Please check your service account.",
+                type: "auth_error",
+            });
+        }
+
         return res.status(500).json({
             success: false,
-            error: error.message
+            error: error.message,
+            type: "server_error",
         });
     }
 });

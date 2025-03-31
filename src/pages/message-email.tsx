@@ -4,7 +4,6 @@ import { auth } from "../../FirebaseConfig";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
-  // addDoc,
   serverTimestamp,
   query,
   where,
@@ -12,7 +11,6 @@ import {
   updateDoc,
   doc,
   setDoc,
-  GeoPoint,
   Timestamp,
   getDoc,
   deleteDoc,
@@ -79,16 +77,10 @@ const addToEmailHistory = (email: string) => {
   localStorage.setItem(EMAIL_HISTORY_KEY, JSON.stringify(newHistory));
 };
 
-interface CompanyData {
-  name: string;
-  location: GeoPoint;
-  phoneNumber: string;
-  logoPublicId: string;
-  logoUrl: string;
-  businessLicensePublicId?: string;
-  businessLicenseUrl?: string;
-  creditBalance?: number;
-  status?: "pending" | "approved" | "rejected" | null;
+interface FirebaseUser {
+  email: string;
+  creationTime: string;
+  emailVerified: boolean;
 }
 
 interface LoadingState {
@@ -100,11 +92,6 @@ interface LoadingState {
   licenseUpload: boolean;
   accountCreation: boolean;
   resendingCode: boolean;
-}
-
-interface LocationInput {
-  latitude: string;
-  longitude: string;
 }
 
 // Add this interface before the SignupFlow component
@@ -141,29 +128,8 @@ const SignupFlow = () => {
   const [email, setEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [password, setPassword] = useState("");
-  const [twitterHandle, setTwitterHandle] = useState("");
-  const [angelListUrl, setAngelListUrl] = useState("");
-  const [linkedInUrl, setLinkedInUrl] = useState("");
   const [otpError, setOtpError] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
-
-  // Company Information State
-  const [companyData, setCompanyData] = useState<CompanyData>({
-    name: "",
-    location: new GeoPoint(0, 0),
-    phoneNumber: "",
-    logoPublicId: "",
-    logoUrl: "",
-    businessLicensePublicId: "",
-    businessLicenseUrl: "",
-    creditBalance: 0,
-    status: "pending",
-  });
-
-  const [locationInput, setLocationInput] = useState<LocationInput>({
-    latitude: "",
-    longitude: "",
-  });
 
   const [isLoading, setIsLoading] = useState<LoadingState>({
     emailSubmit: false,
@@ -211,6 +177,9 @@ const SignupFlow = () => {
   const confirmPasswordRef = useRef<HTMLInputElement>(null);
   // Add a new ref for the first password input
   const passwordInputRef = useRef<HTMLInputElement>(null);
+
+  // Add this ref near other refs
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Add this useEffect after the other useEffect hooks
   useEffect(() => {
@@ -578,235 +547,82 @@ const SignupFlow = () => {
     try {
       console.log("🔍 Checking if email exists:", email);
 
-      // Fetch all registered users
-      const response = await fetch("/api/list-users");
+      // Use the correct API URL from environment variables or fallback to localhost:5000
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-      type FirebaseUser = {
-        email: string;
-        creationTime: string;
-        emailVerified: boolean;
-      };
+      // Create new AbortController for this request
+      abortControllerRef.current = new AbortController();
+      const timeoutId = setTimeout(
+        () => abortControllerRef.current?.abort(),
+        30000
+      ); // 30 second timeout
 
-      type ApiResponse = {
-        success: boolean;
-        users: FirebaseUser[];
-      };
+      try {
+        const response = await fetch(`${apiUrl}/api/list-users`, {
+          signal: abortControllerRef.current.signal,
+          headers: {
+            Accept: "application/json",
+          },
+        });
 
-      const data = (await response.json()) as ApiResponse;
+        clearTimeout(timeoutId);
 
-      if (!data.success || !Array.isArray(data.users)) {
-        console.log("\n❌ Failed to fetch users");
-        return false;
-      }
+        const data = await response.json();
 
-      // console.log("\n📋 All registered users in Firebase Auth:");
-      const users = data.users as FirebaseUser[];
+        if (!response.ok) {
+          console.error("API Error Response:", data);
 
-      for (const user of users) {
-        //TODO: Uncomment this when we have a way to view the users in the database
-        // console.log(`- ${user.email}`);
-        // console.log(`  Created: ${user.creationTime}`);
-        // console.log(`  Verified: ${user.emailVerified ? "✅" : "❌"}`);
-        // console.log("  ---");
-
-        if (user.email === email) {
-          console.log("\n✅ Found user with matching email:");
-          console.log(`- Email: ${user.email}`);
-          console.log(`- Created: ${user.creationTime}`);
-          console.log(`- Verified: ${user.emailVerified ? "✅" : "❌"}`);
-          return true;
+          // Handle different types of errors
+          switch (data.type) {
+            case "timeout":
+              throw new Error("Request timed out. Please try again.");
+            case "auth_error":
+              throw new Error(
+                "Server authentication error. Please contact support."
+              );
+            case "server_error":
+              throw new Error("Server error. Please try again later.");
+            default:
+              throw new Error(data.error || response.statusText);
+          }
         }
-      }
 
-      console.log("\n❌ No matching email found in Firebase Auth");
-      return false;
+        if (!data.success || !Array.isArray(data.users)) {
+          console.log("\n❌ Failed to fetch users");
+          return false;
+        }
+
+        const users = data.users as FirebaseUser[];
+
+        for (const user of users) {
+          if (user.email === email) {
+            console.log("\n✅ Found user with matching email:");
+            console.log(`- Email: ${user.email}`);
+            console.log(`- Created: ${user.creationTime}`);
+            console.log(`- Verified: ${user.emailVerified ? "✅" : "❌"}`);
+            return true;
+          }
+        }
+
+        console.log("\n❌ No matching email found in Firebase Auth");
+        return false;
+      } finally {
+        clearTimeout(timeoutId);
+      }
     } catch (error) {
       console.error("❌ Error checking email:", error);
-      throw new Error("Failed to check email availability");
-    }
-  };
 
-  const handleFileUpload = async (
-    file: File | null,
-    type: "logo" | "license"
-  ) => {
-    if (!file) {
-      // Clear the relevant image data
-      if (type === "logo") {
-        setCompanyData((prev) => ({ ...prev, logoPublicId: "", logoUrl: "" }));
-      } else {
-        setCompanyData((prev) => ({
-          ...prev,
-          businessLicensePublicId: "",
-          businessLicenseUrl: "",
-        }));
-      }
-      return;
-    }
-
-    try {
-      const loadingKey = type === "logo" ? "logoUpload" : "licenseUpload";
-      setIsLoading((prev) => ({ ...prev, [loadingKey]: true }));
-      setNotification(null);
-
-      if (!file.type.startsWith("image/")) {
-        showMessage("Please upload an image file", true);
-        return;
+      // Handle abort error (timeout)
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Request timed out. Please try again.");
       }
 
-      const maxSize = 5 * 1024 * 1024;
-      if (file.size > maxSize) {
-        showMessage("File size should be less than 5MB", true);
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", "booking-app");
-      formData.append("cloud_name", "dwctkor2s");
-
-      const response = await fetch(
-        "https://api.cloudinary.com/v1_1/dwctkor2s/image/upload",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || data.error) {
-        throw new Error(
-          data.error?.message || `Upload failed: ${response.statusText}`
-        );
-      }
-
-      if (data.public_id && data.secure_url) {
-        if (type === "logo") {
-          setCompanyData((prev) => ({
-            ...prev,
-            logoPublicId: data.public_id,
-            logoUrl: data.secure_url,
-          }));
-        } else {
-          setCompanyData((prev) => ({
-            ...prev,
-            businessLicensePublicId: data.public_id,
-            businessLicenseUrl: data.secure_url,
-          }));
-        }
-      }
-    } catch (error) {
-      showMessage(
+      throw new Error(
         error instanceof Error
           ? error.message
-          : "Error uploading file. Please try again.",
-        true
+          : "Failed to check email availability"
       );
-    } finally {
-      const loadingKey = type === "logo" ? "logoUpload" : "licenseUpload";
-      setIsLoading((prev) => ({ ...prev, [loadingKey]: false }));
     }
-  };
-
-  const handleLocationChange = (field: keyof LocationInput, value: string) => {
-    // Only allow numbers, decimal point, and minus sign
-    if (!/^-?\d*\.?\d*$/.test(value) && value !== "") return;
-
-    // Update the input field value
-    setLocationInput((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Validate and convert the coordinates
-    const lat =
-      field === "latitude" ? Number(value) : Number(locationInput.latitude);
-    const lng =
-      field === "longitude" ? Number(value) : Number(locationInput.longitude);
-
-    try {
-      // Validate latitude (-90 to 90)
-      if (field === "latitude" && value !== "") {
-        if (isNaN(lat)) {
-          throw new Error("Latitude must be a valid number");
-        }
-        if (lat < -90 || lat > 90) {
-          throw new Error("Latitude must be between -90 and 90 degrees");
-        }
-      }
-
-      // Validate longitude (-180 to 180)
-      if (field === "longitude" && value !== "") {
-        if (isNaN(lng)) {
-          throw new Error("Longitude must be a valid number");
-        }
-        if (lng < -180 || lng > 180) {
-          throw new Error("Longitude must be between -180 and 180 degrees");
-        }
-      }
-
-      // Only update GeoPoint if both values are valid numbers within range
-      if (
-        !isNaN(lat) &&
-        !isNaN(lng) &&
-        lat >= -90 &&
-        lat <= 90 &&
-        lng >= -180 &&
-        lng <= 180
-      ) {
-        setCompanyData((prev) => ({
-          ...prev,
-          location: new GeoPoint(lat, lng),
-        }));
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        showMessage(error.message, true);
-      }
-    }
-  };
-
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      showMessage("Geolocation is not supported by your browser", true);
-      return;
-    }
-
-    setIsLoading((prev) => ({ ...prev, locationFetch: true }));
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        setLocationInput({
-          latitude: latitude.toFixed(6),
-          longitude: longitude.toFixed(6),
-        });
-        setCompanyData((prev) => ({
-          ...prev,
-          location: new GeoPoint(latitude, longitude),
-        }));
-        setIsLoading((prev) => ({ ...prev, locationFetch: false }));
-      },
-      (error) => {
-        let errorMessage = "Failed to get your location";
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = "Please allow location access to continue";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = "Location information is unavailable";
-            break;
-          case error.TIMEOUT:
-            errorMessage = "Location request timed out";
-            break;
-          default:
-            errorMessage = "An unknown error occurred";
-        }
-        showMessage(errorMessage, true);
-        setIsLoading((prev) => ({ ...prev, locationFetch: false }));
-      }
-    );
   };
 
   const handleCreateAccount = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -1145,44 +961,6 @@ const SignupFlow = () => {
 
     // Call handleCreateAccount when Continue is pressed
     handleCreateAccount(e);
-  };
-
-  const handleSubmitCompanyDetails = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validate company details
-    if (
-      !companyData.name ||
-      !locationInput.latitude ||
-      !locationInput.longitude ||
-      !companyData.phoneNumber ||
-      !companyData.logoPublicId ||
-      !companyData.logoUrl
-    ) {
-      showMessage(
-        "Please fill in all required company information and upload a logo",
-        true
-      );
-      return;
-    }
-
-    // Validate location coordinates
-    const latitude = Number(locationInput.latitude);
-    const longitude = Number(locationInput.longitude);
-
-    if (
-      isNaN(latitude) ||
-      isNaN(longitude) ||
-      latitude < -90 ||
-      latitude > 90 ||
-      longitude < -180 ||
-      longitude > 180
-    ) {
-      showMessage("Please enter valid location coordinates", true);
-      return;
-    }
-
-    setCurrentStep(4);
   };
 
   // Render different content based on the current step
@@ -1898,6 +1676,15 @@ const SignupFlow = () => {
       setShowSuccessAnimation(false);
     }, 1000); // This should be longer than the total animation duration (0.3s + 0.5s delay)
   };
+
+  // Add this useEffect for cleanup
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   return (
     <div className="flex h-screen bg-white">
