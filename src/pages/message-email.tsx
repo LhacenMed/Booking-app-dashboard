@@ -493,17 +493,30 @@ const SignupFlow = () => {
         throw new Error("Invalid verification code");
       }
 
+      // Verify token with server
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiUrl}/api/verify-token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          tokenId,
+          uid,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to verify token");
+      }
+
       // Show success animation
       setShowSuccessAnimation(true);
 
       // Wait for animation to complete before proceeding
       await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Delete the verification token document
-      await deleteDoc(tokenDoc.ref);
-
-      // Clean up localStorage
-      localStorage.removeItem("verificationTokenId");
 
       showMessage(
         "Email verified successfully! Please create your password.",
@@ -642,45 +655,40 @@ const SignupFlow = () => {
         throw new Error("Email and password are required");
       }
 
-      // Get the UID we stored earlier
-      const existingUID = localStorage.getItem("signupUID");
-      if (!existingUID) {
+      // Get the UIDs we stored earlier
+      const uid = localStorage.getItem("signupUID");
+      const tokenId = localStorage.getItem("verificationTokenId");
+
+      if (!uid || !tokenId) {
         throw new Error(
           "Session expired. Please start the signup process again."
         );
       }
 
-      // Create Firebase Auth user with the same UID
-      console.log("Creating Firebase Auth user...");
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const uid = userCredential.user.uid;
-      console.log("Firebase Auth user created:", uid);
+      // Create account through secure endpoint
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiUrl}/api/create-account`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          uid,
+          tokenId,
+        }),
+      });
 
-      // Update the existing document with basic user data
-      const userDocData = {
-        email,
-        authUID: uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      console.log("Updating user data in Firestore...");
-      console.log("Document path:", `transportation_companies/${existingUID}`);
-      console.log("User data:", userDocData);
-
-      // Update the existing document
-      const userRef = doc(db, "transportation_companies", existingUID);
-      await updateDoc(userRef, userDocData);
-      console.log("User data updated successfully");
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to create account");
+      }
 
       // Save to local storage with required fields
       console.log("Saving to local storage...");
       addAccountToLocalStorage({
-        id: existingUID,
+        id: uid,
         name: email.split("@")[0], // Use email username as name
         email: email,
         logo: {
@@ -690,8 +698,9 @@ const SignupFlow = () => {
         },
       });
 
-      // Clean up the signup UID from localStorage
+      // Clean up the signup UIDs from localStorage
       localStorage.removeItem("signupUID");
+      localStorage.removeItem("verificationTokenId");
 
       showMessage("Account created successfully!", false);
       console.log("Account creation completed successfully!");
