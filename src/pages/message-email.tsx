@@ -20,7 +20,7 @@ import {
 // import { ImageUploadPreview } from "@/components/ImageUploadPreview";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";
 // import { LoadingOverlay } from "@/components/ui/loading-overlay";
-import { Notification } from "@/components/ui/notification";
+import { useNotification } from "@/components/ui/notification";
 import { motion, AnimatePresence } from "framer-motion";
 // import { SignupSidebar } from "@/components/Sidebar/SignupSidebar";
 // import { FileUpload } from "@/components/ui/file-upload";
@@ -124,6 +124,21 @@ interface CheckedEmailDoc {
   verificationData: EmailVerificationData;
 }
 
+// Add notification interface
+interface NotificationItem {
+  message: string;
+  type: "informative" | "success" | "warning" | "danger";
+  duration?: number;
+  id?: string;
+}
+
+// Update notification interface
+interface LocalNotification {
+  message: string;
+  type: "informative" | "success" | "warning" | "danger";
+  isVisible: boolean;
+}
+
 const SignupFlow = () => {
   // Form state
   const [email, setEmail] = useState("");
@@ -152,11 +167,11 @@ const SignupFlow = () => {
   // const [files, setFiles] = useState<File[]>([]);
   // const [message, setMessage] = useState("");
   // const [isError, setIsError] = useState(false);
-  const [notification, setNotification] = useState<{
-    message: string;
-    type: "informative" | "success" | "warning" | "danger";
-    isVisible: boolean;
-  } | null>(null);
+  // const [notification, setNotification] = useState<{
+  //   message: string;
+  //   type: "informative" | "success" | "warning" | "danger";
+  // } | null>(null);
+  // const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
   // Add timer state
   const [resendTimer, setResendTimer] = useState<number>(0);
@@ -184,7 +199,19 @@ const SignupFlow = () => {
 
   const navigate = useNavigate();
 
-  // Add this useEffect after the other useEffect hooks
+  // Add useNotification hook
+  const { addNotification } = useNotification();
+
+  // Add error states for form validation
+  // const [emailError, setEmailError] = useState<string | undefined>();
+  // const [passwordError, setPasswordError] = useState<string | undefined>();
+
+  // Add back notification state
+  const [notification, setNotification] = useState<LocalNotification | null>(
+    null
+  );
+
+  // Add useEffect after the other useEffect hooks
   useEffect(() => {
     const focusTimer = setTimeout(() => {
       if (currentStep === 1) {
@@ -722,7 +749,6 @@ const SignupFlow = () => {
   const handleCreateAccount = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading((prev) => ({ ...prev, accountCreation: true }));
-    setNotification(null);
 
     try {
       console.log("Starting account creation process...");
@@ -816,7 +842,6 @@ const SignupFlow = () => {
   const handleSubmitEmail = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading((prev) => ({ ...prev, emailSubmit: true }));
-    setNotification(null);
 
     if (!email || email.length === 0) {
       setIsLoading((prev) => ({ ...prev, emailSubmit: false }));
@@ -860,10 +885,10 @@ const SignupFlow = () => {
         const checkedAt = data.checkedAt?.toDate();
         existingDocId = doc.id;
 
-        // Check if the verification is less than 2 days old
+        // Check if the verification is less than 7 days old
         const isRecent =
           checkedAt &&
-          new Date().getTime() - checkedAt.getTime() < 2 * 24 * 60 * 60 * 1000;
+          new Date().getTime() - checkedAt.getTime() < 7 * 24 * 60 * 60 * 1000;
 
         if (isRecent) {
           // Use the stored verification data
@@ -1008,7 +1033,7 @@ const SignupFlow = () => {
   };
 
   // Modify the handleSubmitPassword function to use the edit handler
-  const handleSubmitPassword = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     // If confirm password is not visible yet, show it instead of submitting
@@ -1045,15 +1070,15 @@ const SignupFlow = () => {
     const isPasswordValid = Object.values(passwordRules).every((rule) => rule);
 
     if (!isPasswordValid) {
-      showMessage("Please meet all password requirements", true);
       setIsLoading((prev) => ({ ...prev, passwordSubmit: false }));
+      showMessage("Please meet all password requirements", true);
       return;
     }
 
     // Check if passwords match
     if (password !== confirmPassword) {
-      showMessage("Passwords do not match", true);
       setIsLoading((prev) => ({ ...prev, passwordSubmit: false }));
+      showMessage("Passwords do not match", true);
       return;
     }
 
@@ -1198,7 +1223,7 @@ const SignupFlow = () => {
                   <div className="w-full">
                     <motion.div
                       animate={
-                        notification?.type === "danger" || otpError
+                        otpError
                           ? {
                               x: [0, -4, 4, -2, 2, -1, 1, 0],
                             }
@@ -1554,18 +1579,17 @@ const SignupFlow = () => {
                         disabled={
                           isLoading.passwordSubmit || showConfirmPassword
                         }
-                        disableToggle={isLoading.passwordSubmit} // Only disable toggle when loading
-                        readOnly={showConfirmPassword} // Make input readonly instead of fully disabled when confirm is shown
+                        disableToggle={isLoading.passwordSubmit}
+                        readOnly={showConfirmPassword}
                         error={
                           notification?.type === "danger"
                             ? notification.message
                             : undefined
                         }
                         placeholder="Enter your password"
-                        className={`w-full ${showConfirmPassword ? "text-[#989898]" : "text-gray-900"}`}
+                        className={`w-full text-gray-900 ${showConfirmPassword ? "opacity-40 cursor-not-allowed bg-gray-50" : ""}`}
                       />
                     </motion.div>
-
                     {/* Confirm Password Input */}
                     <AnimatePresence>
                       {showConfirmPassword && (
@@ -1595,25 +1619,6 @@ const SignupFlow = () => {
                             placeholder="Re-enter your password"
                             className="w-full"
                           />
-                          {/* {confirmPassword.length > 0 && passwordsMatch && (
-                            <div className="absolute right-[-30px] top-[55%] -translate-y-1/2 flex items-center justify-center text-green-500">
-                              <svg
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                              >
-                                <path
-                                  d="M20 6L9 17L4 12"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </div>
-                          )} */}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -1759,11 +1764,19 @@ const SignupFlow = () => {
 
   // Update showMessage function
   const showMessage = (message: string, isError: boolean) => {
+    // First set the notification content
     setNotification({
       message,
       type: isError ? "danger" : "success",
       isVisible: true,
     });
+
+    // Add notification to global system as NotificationItem
+    addNotification({
+      message,
+      type: isError ? "danger" : "success",
+      duration: 5000,
+    } as NotificationItem);
   };
 
   // Add this function after other handlers
@@ -1772,7 +1785,7 @@ const SignupFlow = () => {
     // Reset the animation after it completes
     setTimeout(() => {
       setShowSuccessAnimation(false);
-    }, 1000); // This should be longer than the total animation duration (0.3s + 0.5s delay)
+    }, 1000);
   };
 
   // Add this useEffect for cleanup
@@ -1780,26 +1793,13 @@ const SignupFlow = () => {
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
     };
   }, []);
 
   return (
     <div className="flex h-screen bg-white">
-      {/* Add Notification component */}
-      {notification && (
-        <Notification
-          message={notification.message}
-          type={notification.type}
-          isVisible={notification.isVisible}
-          onClose={() =>
-            setNotification((prev) =>
-              prev ? { ...prev, isVisible: false } : null
-            )
-          }
-        />
-      )}
-
       {/* Server Error State */}
       {serverStatus !== "running" && (
         <div className="flex-1 flex items-center justify-center">

@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useState, useEffect } from "react";
 import { Spinner } from "@heroui/react";
+import { NotificationContainer } from "@/components/ui/notification";
 
 declare module "@react-types/shared" {
   interface RouterConfig {
@@ -106,6 +107,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <NotificationContainer />
       <RouterProvider router={router} />
     </QueryClientProvider>
   );

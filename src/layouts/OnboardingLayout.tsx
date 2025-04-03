@@ -1,6 +1,6 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Notification } from "@/components/ui/notification";
+import { useNotification } from "@/components/ui/notification";
 
 interface NotificationData {
   message: string;
@@ -16,23 +16,18 @@ export default function OnboardingLayout({
   children,
   notification,
 }: OnboardingLayoutProps) {
-  const [isNotificationVisible, setIsNotificationVisible] = useState(false);
-  const [activeNotification, setActiveNotification] =
-    useState<NotificationData | null>(null);
+  const { addNotification } = useNotification();
 
-  // Handle notification changes
+  // Show notification when prop changes
   useEffect(() => {
     if (notification) {
-      setActiveNotification(notification);
-      setIsNotificationVisible(true);
-    } else {
-      setIsNotificationVisible(false);
+      addNotification({
+        message: notification.message,
+        type: notification.type,
+        duration: 5000,
+      });
     }
-  }, [notification]);
-
-  const handleCloseNotification = () => {
-    setIsNotificationVisible(false);
-  };
+  }, [notification, addNotification]);
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-black">
@@ -49,15 +44,6 @@ export default function OnboardingLayout({
         className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"
         aria-hidden="true"
       />
-      {/* Notification */}
-      {activeNotification && (
-        <Notification
-          message={activeNotification.message}
-          type={activeNotification.type}
-          isVisible={isNotificationVisible}
-          onClose={handleCloseNotification}
-        />
-      )}
       {/* Content */}
       <div className="relative z-10">{children}</div>
     </div>

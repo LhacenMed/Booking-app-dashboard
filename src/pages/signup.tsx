@@ -1002,10 +1002,10 @@ const SignupFlow = () => {
         const checkedAt = data.checkedAt?.toDate();
         existingDocId = doc.id;
 
-        // Check if the verification is less than 2 days old
+        // Check if the verification is less than 7 days old
         const isRecent =
           checkedAt &&
-          new Date().getTime() - checkedAt.getTime() < 2 * 24 * 60 * 60 * 1000;
+          new Date().getTime() - checkedAt.getTime() < 7 * 24 * 60 * 60 * 1000;
 
         if (isRecent) {
           // Use the stored verification data
