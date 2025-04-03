@@ -179,15 +179,46 @@ app.get("/api/list-users", async(req, res) => {
         console.log("Attempting to list users...");
 
         // Set a longer timeout for the Firebase request
-        const timeout = 60000; // 60 seconds
+        const timeout = 120000; // 120 seconds
 
         // Create a promise that rejects after timeout
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error("Request timeout")), timeout);
         });
 
-        // Create the actual Firebase request promise
-        const firebasePromise = admin.auth().listUsers(1000); // Limit to 1000 users
+        // Create the actual Firebase request promise with pagination
+        const firebasePromise = (async() => {
+            try {
+                // Get users in smaller batches to avoid timeout
+                const batchSize = 100;
+                let lastUser = null;
+                const allUsers = [];
+
+                while (true) {
+                    let query = admin.auth().listUsers(batchSize);
+                    if (lastUser) {
+                        query = admin.auth().listUsers(batchSize, lastUser.uid);
+                    }
+
+                    const result = await query;
+                    allUsers.push(...result.users);
+
+                    if (!result.pageToken) {
+                        break; // No more users
+                    }
+
+                    lastUser = result.users[result.users.length - 1];
+
+                    // Add a small delay between batches to prevent rate limiting
+                    await new Promise((resolve) => setTimeout(resolve, 500));
+                }
+
+                return { users: allUsers };
+            } catch (error) {
+                console.error("Firebase listUsers error:", error);
+                throw error;
+            }
+        })();
 
         // Race between the timeout and the actual request
         const listUsersResult = await Promise.race([
@@ -220,7 +251,10 @@ app.get("/api/list-users", async(req, res) => {
         console.error("Detailed error listing users:", error);
 
         // Check if it's a timeout error
-        if (error.message === "Request timeout") {
+        if (
+            error.message === "Request timeout" ||
+            error.code === "DEADLINE_EXCEEDED"
+        ) {
             return res.status(504).json({
                 success: false,
                 error: "Request timed out. Please try again.",
@@ -237,9 +271,21 @@ app.get("/api/list-users", async(req, res) => {
             });
         }
 
+        // Handle rate limiting errors
+        if (
+            error.code === "auth/quota-exceeded" ||
+            error.code === "auth/too-many-requests"
+        ) {
+            return res.status(429).json({
+                success: false,
+                error: "Too many requests. Please try again later.",
+                type: "rate_limit",
+            });
+        }
+
         return res.status(500).json({
             success: false,
-            error: error.message,
+            error: error.message || "Internal server error",
             type: "server_error",
         });
     }
@@ -392,31 +438,31 @@ app.post("/api/create-account", accountCreationLimiter, async(req, res) => {
 
         // Update Firestore document
         await admin
-          .firestore()
-          .collection("transportation_companies")
-          .doc(uid)
-          .update({
-            authUID: uid,
-            email: email,
-            emailVerified: true,
-            onboarded: false,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
+            .firestore()
+            .collection("transportation_companies")
+            .doc(uid)
+            .update({
+                authUID: uid,
+                email: email,
+                emailVerified: true,
+                onboarded: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
 
         // Delete the verification token
         await tokenRef.delete();
 
         return res.status(200).json({
-          success: true,
-          message: "Account created successfully",
-          user: {
-            uid: userRecord.uid,
-            email: userRecord.email,
-            emailVerified: userRecord.emailVerified,
-            // Include password for immediate sign-in (will be used client-side only)
-            password: password,
-          },
+            success: true,
+            message: "Account created successfully",
+            user: {
+                uid: userRecord.uid,
+                email: userRecord.email,
+                emailVerified: userRecord.emailVerified,
+                // Include password for immediate sign-in (will be used client-side only)
+                password: password,
+            },
         });
     } catch (error) {
         console.error("Account creation error:", error);

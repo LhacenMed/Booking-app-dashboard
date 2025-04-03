@@ -567,77 +567,155 @@ const SignupFlow = () => {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
       // Create new AbortController for this request
-      abortControllerRef.current = new AbortController();
-      const timeoutId = setTimeout(
-        () => abortControllerRef.current?.abort(),
-        30000
-      ); // 30 second timeout
-
-      try {
-        const response = await fetch(`${apiUrl}/api/list-users`, {
-          signal: abortControllerRef.current.signal,
-          headers: {
-            Accept: "application/json",
-          },
-        });
-
-        clearTimeout(timeoutId);
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          console.error("API Error Response:", data);
-
-          // Handle different types of errors
-          switch (data.type) {
-            case "timeout":
-              throw new Error("Request timed out. Please try again.");
-            case "auth_error":
-              throw new Error(
-                "Server authentication error. Please contact support."
-              );
-            case "server_error":
-              throw new Error("Server error. Please try again later.");
-            default:
-              throw new Error(data.error || response.statusText);
-          }
-        }
-
-        if (!data.success || !Array.isArray(data.users)) {
-          console.log("\n❌ Failed to fetch users");
-          return false;
-        }
-
-        const users = data.users as FirebaseUser[];
-
-        for (const user of users) {
-          if (user.email === email) {
-            console.log("\n✅ Found user with matching email:");
-            console.log(`- Email: ${user.email}`);
-            console.log(`- Created: ${user.creationTime}`);
-            console.log(`- Verified: ${user.emailVerified ? "✅" : "❌"}`);
-            return true;
-          }
-        }
-
-        console.log("\n❌ No matching email found in Firebase Auth");
-        return false;
-      } finally {
-        clearTimeout(timeoutId);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort(); // Abort any existing request
       }
+      abortControllerRef.current = new AbortController();
+
+      // Increase timeout to 2 minutes and add retry logic
+      const maxRetries = 3; // Increased to 3 retries
+      let currentTry = 0;
+      let lastError: Error | null = null;
+
+      while (currentTry < maxRetries) {
+        let timeoutId: NodeJS.Timeout | undefined;
+        try {
+          console.log(
+            `Making request attempt ${currentTry + 1}/${maxRetries}...`
+          );
+
+          // Create a promise that combines fetch with timeout
+          const fetchWithTimeout = async () => {
+            timeoutId = setTimeout(() => {
+              const controller = abortControllerRef.current;
+              if (controller) {
+                controller.abort();
+              }
+            }, 30000); // 30 second timeout
+
+            try {
+              const controller = abortControllerRef.current;
+              if (!controller) {
+                throw new Error("Request was cancelled");
+              }
+
+              const response = await fetch(`${apiUrl}/api/list-users`, {
+                signal: controller.signal,
+                headers: {
+                  Accept: "application/json",
+                },
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                console.error("API Error Response:", data);
+
+                // Handle different types of errors
+                switch (data.type) {
+                  case "timeout":
+                    throw new Error("Request timed out. Please try again.");
+                  case "auth_error":
+                    throw new Error(
+                      "Server authentication error. Please contact support."
+                    );
+                  case "rate_limit":
+                    // Wait longer between retries for rate limiting
+                    await new Promise((resolve) => setTimeout(resolve, 5000));
+                    throw new Error("Too many requests. Retrying...");
+                  case "server_error":
+                    throw new Error(
+                      data.error || "Server error. Please try again later."
+                    );
+                  default:
+                    throw new Error(data.error || response.statusText);
+                }
+              }
+
+              return data;
+            } finally {
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = undefined;
+              }
+            }
+          };
+
+          const data = await fetchWithTimeout();
+
+          if (!data.success || !Array.isArray(data.users)) {
+            console.log("\n❌ Failed to fetch users");
+            return false;
+          }
+
+          const users = data.users as FirebaseUser[];
+
+          for (const user of users) {
+            if (user.email === email) {
+              console.log("\n✅ Found user with matching email:");
+              console.log(`- Email: ${user.email}`);
+              console.log(`- Created: ${user.creationTime}`);
+              console.log(`- Verified: ${user.emailVerified ? "✅" : "❌"}`);
+              return true;
+            }
+          }
+
+          console.log("\n❌ No matching email found in Firebase Auth");
+          return false;
+        } catch (retryError) {
+          lastError =
+            retryError instanceof Error
+              ? retryError
+              : new Error(String(retryError));
+          currentTry++;
+
+          // Clean up timeout if it exists
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = undefined;
+          }
+
+          // If it's the last try, break out of the loop
+          if (currentTry === maxRetries) {
+            break;
+          }
+
+          // Calculate exponential backoff delay with jitter
+          const baseDelay = Math.min(1000 * Math.pow(2, currentTry), 10000);
+          const jitter = Math.random() * 1000; // Add up to 1 second of random jitter
+          const backoffDelay = baseDelay + jitter;
+
+          console.log(`Waiting ${Math.round(backoffDelay)}ms before retry...`);
+          await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+          console.log(
+            `Retrying request (attempt ${currentTry + 1}/${maxRetries})...`
+          );
+        }
+      }
+
+      // If we've exhausted all retries, throw the last error
+      if (lastError) {
+        throw lastError;
+      }
+
+      return false;
     } catch (error) {
       console.error("❌ Error checking email:", error);
 
       // Handle abort error (timeout)
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new Error("Request timed out. Please try again.");
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          throw new Error("Request timed out. Please try again.");
+        }
+        throw new Error(error.message);
       }
 
-      throw new Error(
-        error instanceof Error
-          ? error.message
-          : "Failed to check email availability"
-      );
+      throw new Error("Failed to check email availability");
+    } finally {
+      // Clean up abort controller
+      if (abortControllerRef.current) {
+        abortControllerRef.current = null;
+      }
     }
   };
 

@@ -7,6 +7,8 @@ interface NotificationProps {
   type: "informative" | "success" | "warning" | "danger";
   isVisible: boolean;
   onClose?: () => void;
+  autoClose?: boolean;
+  duration?: number;
 }
 
 export const Notification: React.FC<NotificationProps> = ({
@@ -14,41 +16,43 @@ export const Notification: React.FC<NotificationProps> = ({
   type,
   isVisible,
   onClose,
+  autoClose = true,
+  duration = 5000,
 }) => {
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
-    if (onClose && isVisible) {
-      const timer = setTimeout(() => {
+    // Reset closing state when visibility changes
+    if (isVisible) {
+      setIsClosing(false);
+    }
+  }, [isVisible]);
+
+  useEffect(() => {
+    let closeTimer: NodeJS.Timeout;
+    let animationTimer: NodeJS.Timeout;
+
+    if (autoClose && onClose && isVisible) {
+      closeTimer = setTimeout(() => {
         setIsClosing(true);
-        setTimeout(() => {
+
+        animationTimer = setTimeout(() => {
           onClose();
         }, 300); // Wait for animation to complete
-      }, 5000); // Auto close after 5 seconds
-
-      return () => clearTimeout(timer);
+      }, duration);
     }
-  }, [onClose, isVisible]);
 
-  // Map notification types to Hero UI Alert colors
-  const getAlertColor = (type: NotificationProps["type"]) => {
-    switch (type) {
-      case "success":
-        return "success";
-      case "warning":
-        return "warning";
-      case "danger":
-        return "danger";
-      case "informative":
-      default:
-        return "primary";
-    }
-  };
+    // Cleanup timers on unmount or when dependencies change
+    return () => {
+      clearTimeout(closeTimer);
+      clearTimeout(animationTimer);
+    };
+  }, [onClose, isVisible, autoClose, duration]);
 
   const handleClose = () => {
     setIsClosing(true);
     setTimeout(() => {
-      onClose?.();
+      if (onClose) onClose();
     }, 300); // Wait for animation to complete
   };
 
@@ -67,7 +71,12 @@ export const Notification: React.FC<NotificationProps> = ({
               damping: 30,
               mass: 0.5,
             }}
-            className="w-full max-w-md mx-4 mt-4"
+            className="mt-4"
+            style={{
+              minWidth: "240px",
+              maxWidth: "40%",
+              width: "fit-content",
+            }}
           >
             <Alert
               color={getAlertColor(type)}
@@ -75,13 +84,38 @@ export const Notification: React.FC<NotificationProps> = ({
               radius="lg"
               isClosable
               onClose={handleClose}
-              className="shadow-lg backdrop-blur-md bg-opacity-90"
+              className="shadow-lg backdrop-blur-md bg-opacity-90 flex items-center"
             >
-              {message}
+              <div
+                className="py-1 px-2 overflow-hidden"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {message}
+              </div>
             </Alert>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
+};
+
+// Map notification types to Hero UI Alert colors
+const getAlertColor = (type: NotificationProps["type"]) => {
+  switch (type) {
+    case "success":
+      return "success";
+    case "warning":
+      return "warning";
+    case "danger":
+      return "danger";
+    case "informative":
+    default:
+      return "primary";
+  }
 };

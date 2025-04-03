@@ -41,6 +41,11 @@ export default function SelectCompanyPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState("");
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "informative" | "success" | "warning" | "danger";
+    isVisible: boolean;
+  } | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -66,6 +71,7 @@ export default function SelectCompanyPage() {
         setCompanies(validCompanies);
       } catch (error) {
         console.error("Error fetching companies:", error);
+        showNotification("Failed to fetch companies", "danger");
       } finally {
         setLoading(false);
       }
@@ -83,11 +89,24 @@ export default function SelectCompanyPage() {
         motherCompanyId: selectedCompany,
         updatedAt: new Date(),
       });
+      showNotification("Successfully updated company", "success");
       navigate("/onboarding/agency-details");
     } catch (error) {
       console.error("Error updating agency:", error);
+      showNotification(`Failed to update company: ${error}`, "danger");
       setLoading(false);
     }
+  };
+
+  const showNotification = (
+    message: string,
+    type: "informative" | "success" | "warning" | "danger"
+  ) => {
+    setNotification({
+      message,
+      type,
+      isVisible: true,
+    });
   };
 
   // if (loading)
@@ -98,7 +117,7 @@ export default function SelectCompanyPage() {
   //   );
 
   return (
-    <OnboardingLayout>
+    <OnboardingLayout notification={notification}>
       <PageTransition>
         <div className="min-h-screen flex items-center justify-center p-6">
           <div className="w-full max-w-md space-y-6">
