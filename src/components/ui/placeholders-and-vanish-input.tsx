@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cn } from "../../../lib/utils";
+import { cn } from "@/lib/utils";
 import { Kbd } from "@heroui/kbd";
 
 export function PlaceholdersAndVanishInput({

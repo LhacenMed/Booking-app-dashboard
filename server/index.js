@@ -392,28 +392,31 @@ app.post("/api/create-account", accountCreationLimiter, async(req, res) => {
 
         // Update Firestore document
         await admin
-            .firestore()
-            .collection("transportation_companies")
-            .doc(uid)
-            .update({
-                authUID: uid,
-                email: email,
-                emailVerified: false,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
+          .firestore()
+          .collection("transportation_companies")
+          .doc(uid)
+          .update({
+            authUID: uid,
+            email: email,
+            emailVerified: true,
+            onboarded: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
 
         // Delete the verification token
         await tokenRef.delete();
 
         return res.status(200).json({
-            success: true,
-            message: "Account created successfully",
-            user: {
-                uid: userRecord.uid,
-                email: userRecord.email,
-                emailVerified: userRecord.emailVerified,
-            },
+          success: true,
+          message: "Account created successfully",
+          user: {
+            uid: userRecord.uid,
+            email: userRecord.email,
+            emailVerified: userRecord.emailVerified,
+            // Include password for immediate sign-in (will be used client-side only)
+            password: password,
+          },
         });
     } catch (error) {
         console.error("Account creation error:", error);

@@ -34,7 +34,7 @@ import {
   Timestamp,
   writeBatch,
 } from "firebase/firestore";
-import { auth, db } from "../../../FirebaseConfig";
+import { auth, db } from "@/config/firebase";
 import { useNavigate } from "react-router-dom";
 import { useCompanyData, useTrips } from "@/hooks/useQueries";
 import { DashboardTopBar } from "@/components/Dashboard/DashboardTopBar";

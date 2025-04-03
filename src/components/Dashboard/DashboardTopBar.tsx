@@ -17,8 +17,8 @@ import { useTheme } from "@heroui/use-theme";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../../FirebaseConfig";
-import { auth } from "../../../FirebaseConfig";
+import { db } from "@/config/firebase";
+import { auth } from "@/config/firebase";
 
 interface DashboardTopBarProps {
   searchPlaceholder?: string;

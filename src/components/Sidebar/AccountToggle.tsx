@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { FiChevronDown, FiChevronUp, FiLogOut, FiPlus } from "react-icons/fi";
-import { auth } from "../../../FirebaseConfig";
+import { auth } from "@/config/firebase";
 import { signOut, signInWithEmailAndPassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,7 +8,7 @@ import {
   removeAccountFromLocalStorage,
 } from "@/utils/localAccounts";
 import { useCompanyData } from "@/hooks/useCompanyData";
-import { Spinner } from "@heroui/react";
+// import { Spinner } from "@heroui/react";
 import { StoredAccount } from "@/types/company";
 
 export const AccountToggle = () => {

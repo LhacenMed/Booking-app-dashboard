@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompanyStatus } from "@/hooks/useCompanyStatus";
 import { useCompanyData } from "@/hooks/useQueries";
-import { auth } from "../../FirebaseConfig";
+import { auth } from "@/config/firebase";
 import { StatusBanner } from "@/components/CompanyStatus/StatusBanner";
 import { Button, Spinner } from "@heroui/react";
 import { Dashboard } from "@/components/Dashboard/Dashboard";

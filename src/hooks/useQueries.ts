@@ -7,7 +7,7 @@ import {
   where,
   getDocs,
 } from "firebase/firestore";
-import { db } from "../../FirebaseConfig";
+import { db } from "@/config/firebase";
 import { Timestamp } from "firebase/firestore";
 
 interface CompanyData {

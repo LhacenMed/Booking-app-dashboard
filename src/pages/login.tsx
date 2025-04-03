@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardHeader, CardBody, Input, Button, Link } from "@heroui/react";
 import DefaultLayout from "@/layouts/default";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "../../FirebaseConfig";
+import { auth, db } from "@/config/firebase";
 import { useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";

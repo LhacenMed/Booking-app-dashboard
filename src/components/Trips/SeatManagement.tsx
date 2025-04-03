@@ -20,7 +20,7 @@ import {
   onSnapshot,
   collection,
 } from "firebase/firestore";
-import { db, auth } from "../../../FirebaseConfig";
+import { db, auth } from "@/config/firebase";
 import { FiArrowLeft } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { Timestamp } from "firebase/firestore";

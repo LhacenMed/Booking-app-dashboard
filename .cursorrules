@@ -1,28 +1,169 @@
 # PROJECT OVERVIEW
-- This is a modern business management application focused on company operations, finance, and team management
-- The application provides comprehensive dashboards for monitoring company status and financial metrics
-- Features include trip management, team collaboration, and third-party integrations
-- Built with a focus on security (protected routes) and scalability
-- Follows a modular component-based architecture for maintainable code
+- Modern business management application for transportation companies
+- Core features:
+  - Company onboarding flow
+  - Dashboard for monitoring operations
+  - Team management and collaboration
+  - Trip and fleet management
+  - Financial tracking and reporting
+  - Third-party integrations
+  - Role-based access control
+- Security focused with protected routes and authentication
+- Progressive onboarding experience
+- Modular architecture with component-based design
 
-# PERSONALITY
-- Professional and enterprise-focused design language
-- Clean, intuitive, and user-friendly interface
-- Data-driven dashboard experience
-- Emphasis on efficiency and productivity
-- Modern and responsive design that works across all devices
+# APPLICATION FLOW
+- Authentication:
+  - Login (/login)
+  - Signup (/signup)
+  - Signup Test (/message-email)
+  - Email verification flow
+  - Protected route system
+
+- Onboarding Flow (/onboarding/*):
+  1. Welcome
+  2. Company Information
+  3. Bank Details
+  4. Fleet Management
+  5. Team Invitations
+  6. Plan Selection
+
+- Main Application:
+  - Dashboard (/dashboard)
+  - Team Management (/team)
+  - Trip Management (/trips)
+  - Fleet Operations (/fleet)
+  - Financial Controls (/finance)
+  - Integrations (/integrations)
+  - Documentation (/docs)
 
 # TECH STACK
-Frontend tech stack (UI/UX):
-- Next.js for server-side rendering and optimal performance
-- React for component-based UI development
-- TypeScript for type safety and better developer experience
-- TailwindCSS for modern, utility-first styling
-- React Query for efficient data fetching and caching
+Frontend:
+- React 18+ with TypeScript
+- React Router v6 for routing
+- TailwindCSS for styling
+- HeroUI components (@heroui/react)
+- Framer Motion for animations
+- React Query for data fetching
 - React Context for state management
 
-Backend tech stack:
-- TypeScript for type-safe backend code
+Backend & Services:
+- Firebase Authentication
+- Firestore Database
+- Express.js API Server
+- Brevo (formerly SendInBlue) for emails
+- Rate limiting for API protection
+
+# DATABASE STRUCTURE
+Firestore Collections:
+- transportation_companies
+  - Main company info
+  - Onboarding status
+  - Company settings
+  - Subcollections:
+    - email_verification_token
+    - team_members
+    - trips
+    - fleet
+
+# AUTHENTICATION STATES
+- Not authenticated
+- Authenticated but not onboarded
+- Authenticated and onboarded
+- Authenticated, onboarded, and approved
+
+# PROTECTED ROUTES LOGIC
+- Public routes: /, /login, /signup
+- Auth required: /onboarding/*
+- Auth + Onboarding required: /dashboard, /team, /trips
+- Auth + Onboarding + Approval: /finance
+
+# FILE STRUCTURE
+src/
+├── components/
+│   ├── CompanyStatus/    # Company status indicators
+│   ├── Dashboard/        # Dashboard widgets
+│   ├── Finance/         # Financial components
+│   ├── Integrations/    # Third-party integrations
+│   ├── ProtectedRoute/  # Route protection
+│   ├── Sidebar/        # Navigation sidebar
+│   ├── Team/           # Team management
+│   ├── Trips/          # Trip management
+│   └── ui/             # Shared UI components
+├── config/
+│   ├── firebase.ts     # Firebase configuration
+│   └── site.ts        # Site-wide configuration
+├── contexts/          # React contexts
+├── hooks/            # Custom React hooks
+├── layouts/          # Page layouts
+├── pages/
+│   ├── onboarding/   # Onboarding flow pages
+│   └── [other pages] # Main application pages
+├── styles/          # Global styles
+├── types/           # TypeScript definitions
+└── utils/           # Utility functions
+
+# ENVIRONMENT VARIABLES
+Required variables:
+- VITE_FIREBASE_API_KEY
+- VITE_FIREBASE_AUTH_DOMAIN
+- VITE_FIREBASE_PROJECT_ID
+- VITE_FIREBASE_STORAGE_BUCKET
+- VITE_FIREBASE_MESSAGING_SENDER_ID
+- VITE_FIREBASE_APP_ID
+- VITE_REOON_API_KEY
+- BREVO_API_KEY
+- SENDER_EMAIL
+- SENDER_NAME
+
+# CODING STANDARDS
+- TypeScript for type safety
+- Component-based architecture
+- Modular and reusable code
+- Clear naming conventions
+- Comprehensive error handling
+- Protected route implementation
+- Responsive design patterns
+- Performance optimization
+- Typography standards:
+  - Use Outfit font family ("font-ot") for all text
+  - Font weights:
+    - ot-extralight: 200
+    - ot-light: 300
+    - ot-regular: 400
+    - ot-medium: 500
+    - ot-semibold: 600
+    - ot-bold: 700
+    - ot-extrabold: 800
+    - ot-black: 900
+
+# ERROR HANDLING
+- Form validation
+- API error handling
+- Authentication error handling
+- Loading states
+- Fallback UI components
+- Error boundaries
+- Toast notifications
+
+# DEVELOPMENT WORKFLOW
+1. Feature planning
+2. Component development
+3. Route protection
+4. Error handling
+5. Testing
+6. Documentation
+7. Code review
+
+# TESTING CHECKLIST
+- Authentication flows
+- Protected routes
+- Form submissions
+- API integrations
+- Error scenarios
+- Loading states
+- Responsive design
+- Cross-browser compatibility
 
 # ERROR FIXING PROCESS
 - Explain the error in simple terms
@@ -71,25 +212,8 @@ C:.
 ├───node_modules
 ├───public
 │   └───images
+├───server
 └───src
-    ├───components
-    │   ├───CompanyStatus
-    │   ├───Dashboard
-    │   ├───Finance
-    │   ├───Integrations
-    │   ├───ProtectedRoute
-    │   ├───Sidebar
-    │   ├───Team
-    │   ├───Trips
-    │   └───ui
-    ├───config
-    ├───contexts
-    ├───hooks
-    ├───layouts
-    ├───pages
-    ├───styles
-    ├───types
-    └───utils
 'node_modules|.git|.DS_Store'
 
 <!-- # GITHUB PUSH PROCESS
@@ -102,3 +226,34 @@ C:.
 # COMMENTS
 - make sure to ALWAYS include comments in your code
 - do not delete comments unless they are no longer needed -->
+
+USER RULES:
+
+# Fundamental  Principles
+- Write clean, simple, readable code
+- Implement features in the simplest possible way
+- Keep files small and focused (<200 lines)
+- Test after every meaningful change
+- Focus on core functionality before optimization
+- Use clear, consistent naming
+- Think thoroughly before coding. Write 2-3 reasoning paragraphs
+- ALWAYS write simple, clean and modular code.
+- use clear and easy-to-understand language. write in short sentences.
+
+# Error Fixing
+- DO NOT JUMP TO CONCLUSIONS! Consider multiple possible causes before deciding.
+- Explain the problem in plain English
+- Make minimal necessary changes changing as few lines of code as possible
+- in case of strange errors, ask the user to perform a Perplexity web search to find the latest up-to-date information
+
+# Building Process
+- Verify each new feature works by telling the user how to test it
+- DO NOT write complicated and confusing code. Opt for the simple & modular approach.
+- when not sure what to do, tell the user to perform a web search
+
+# Comments
+- ALWAYS try to add more helpful and explanatory comments into our code
+- NEVER delete old comments - unless they are obviously wrong / obsolete
+- Include LOTS of explanatory comments in your code. ALWAYS write well-documented code.
+- Document all changes and their reasoning IN THE COMMENTS YOU WRITE
+- when writing comments, use clear and easy-to-understand language. write in short sentences.

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { db } from "../../FirebaseConfig";
-import { auth } from "../../FirebaseConfig";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { db } from "@/config/firebase";
+// import { auth } from "@/config/firebase";
+// import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
   serverTimestamp,
@@ -38,6 +38,7 @@ import { REGEXP_ONLY_DIGITS } from "input-otp";
 import CustomInput from "@/components/ui/CustomInput";
 import { Spinner } from "@heroui/react";
 // import PasswordInput from "@/components/ui/PasswordInput";
+import { useNavigate } from "react-router-dom";
 
 // Simple function to generate 6-digit code
 const generateVerificationCode = () => {
@@ -180,6 +181,8 @@ const SignupFlow = () => {
 
   // Add this ref near other refs
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const navigate = useNavigate();
 
   // Add this useEffect after the other useEffect hooks
   useEffect(() => {
@@ -640,7 +643,6 @@ const SignupFlow = () => {
 
   const handleCreateAccount = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     setIsLoading((prev) => ({ ...prev, accountCreation: true }));
     setNotification(null);
 
@@ -685,6 +687,15 @@ const SignupFlow = () => {
         throw new Error(data.error || "Failed to create account");
       }
 
+      // Store credentials for automatic sign-in
+      sessionStorage.setItem(
+        "newAccountData",
+        JSON.stringify({
+          email: data.user.email,
+          password: data.user.password,
+        })
+      );
+
       // Save to local storage with required fields
       console.log("Saving to local storage...");
       addAccountToLocalStorage({
@@ -705,8 +716,8 @@ const SignupFlow = () => {
       showMessage("Account created successfully!", false);
       console.log("Account creation completed successfully!");
 
-      // Redirect to dashboard
-      window.location.href = "/dashboard";
+      // Redirect to onboarding welcome page
+      navigate("/onboarding/welcome");
     } catch (error) {
       console.error("Account creation error:", error);
       if (error instanceof Error) {

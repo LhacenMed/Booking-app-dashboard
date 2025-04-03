@@ -10,7 +10,7 @@ import {
 } from "@heroui/react";
 import DefaultLayout from "@/layouts/default";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "../../FirebaseConfig";
+import { auth, db } from "@/config/firebase";
 import { useNavigate } from "react-router-dom";
 import { doc, setDoc, collection } from "firebase/firestore";
 import { ImageUploadPreview } from "@/components/ui/ImageUploadPreview";
@@ -548,11 +548,11 @@ export default function SignUpPage() {
                     <label className="block text-sm font-medium">
                       Business License (Optional)
                     </label>
-                    <ImageUploadPreview
+                    {/* <ImageUploadPreview
                       onFileSelect={(file) => handleFileUpload(file, "license")}
                       publicId={companyData.businessLicensePublicId}
                       isLoading={isLoading.license}
-                    />
+                    /> */}
                   </div>
                 </div>
               </div>

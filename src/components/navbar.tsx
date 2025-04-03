@@ -16,10 +16,11 @@ import {
 } from "@heroui/react";
 import { link as linkStyles } from "@heroui/theme";
 import clsx from "clsx";
-import { auth } from "../../FirebaseConfig";
+import { auth } from "@/config/firebase";
 import { useNavigate } from "react-router-dom";
-import { signOut } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useCompanyData } from "@/hooks/useCompanyData";
+import { useState, useEffect } from "react";
 
 import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -35,13 +36,26 @@ const avatarStyles = {
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
   const { data: companyData, isLoading } = useCompanyData(
-    auth.currentUser?.uid || null
+    currentUser?.uid || null
   );
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log("Auth state changed:", user?.email);
+      setCurrentUser(user);
+    });
+
+    // Cleanup subscription
+    return () => unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setCurrentUser(null);
       navigate("/login");
     } catch (error) {
       console.error("Error signing out:", error);
@@ -118,13 +132,12 @@ export const Navbar = () => {
           <ThemeSwitch />
         </NavbarItem>
         <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
-        {!companyData && (
+        {!currentUser && !isLoading && (
           <NavbarItem className="hidden md:flex">
             <Button
               as={Link}
               className="text-md font-normal text-default-600 bg-default-100"
               href={siteConfig.links.login}
-              // startContent={<HeartFilledIcon className="text-danger" />}
               variant="flat"
               disableRipple
             >
@@ -169,19 +182,28 @@ export const Navbar = () => {
         {!isLoading && (
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
-              {companyData ? (
+              {currentUser && companyData ? (
                 <Avatar
                   isBordered
                   as="button"
                   className="transition-transform bg-white"
                   style={avatarStyles}
                   color="warning"
-                  name={companyData.name}
+                  name={companyData.name || currentUser.email || ""}
                   size="sm"
-                  src={companyData.logo.url}
+                  src={companyData.logo?.url}
                   imgProps={{
                     className: "object-contain",
                   }}
+                />
+              ) : currentUser ? (
+                <Avatar
+                  isBordered
+                  as="button"
+                  className="transition-transform"
+                  color="warning"
+                  name={currentUser.email || ""}
+                  size="sm"
                 />
               ) : (
                 <Avatar
@@ -196,12 +218,12 @@ export const Navbar = () => {
                 />
               )}
             </DropdownTrigger>
-            {companyData ? (
+            {currentUser ? (
               <DropdownMenu aria-label="Profile Actions" variant="flat">
                 <DropdownItem key="profile" className="h-14 gap-2">
                   <p className="font-semibold">Signed in as</p>
                   <p className="font-semibold text-primary">
-                    {companyData.email}
+                    {currentUser.email}
                   </p>
                 </DropdownItem>
                 <DropdownItem key="company_profile">

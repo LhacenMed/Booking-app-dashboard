@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { useCompanyStatus } from "@/hooks/useCompanyStatus";
-import { auth } from "../../../FirebaseConfig";
+import { auth } from "@/config/firebase";
 import { Card, CardBody, Button, Spinner } from "@heroui/react";
 import { FiClock, FiCheckCircle, FiXCircle, FiX } from "react-icons/fi";
 

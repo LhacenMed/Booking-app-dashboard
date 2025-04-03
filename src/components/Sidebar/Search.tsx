@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { FiCommand, FiSearch } from "react-icons/fi";
 import { CommandMenu } from "./CommandMenu";
 import { useCompanyStatus } from "@/hooks/useCompanyStatus";
-import { auth } from "../../../FirebaseConfig";
+import { auth } from "@/config/firebase";
 
 export const Search = () => {
   const [open, setOpen] = useState(false);

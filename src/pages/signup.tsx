@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { db } from "../../FirebaseConfig";
-import { auth } from "../../FirebaseConfig";
+import { db } from "@/config/firebase";
+import { auth } from "@/config/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   collection,

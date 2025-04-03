@@ -9,7 +9,7 @@ import {
   FiUsers,
 } from "react-icons/fi";
 import { useCompanyStatus } from "@/hooks/useCompanyStatus";
-import { auth } from "../../../FirebaseConfig";
+import { auth } from "@/config/firebase";
 
 const routes = [
   { path: "/dashboard", Icon: FiHome, title: "Dashboard" },

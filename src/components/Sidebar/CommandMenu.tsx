@@ -11,7 +11,7 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { useCompanyStatus } from "@/hooks/useCompanyStatus";
-import { auth } from "../../../FirebaseConfig";
+import { auth } from "@/config/firebase";
 
 interface Page {
   title: string;
