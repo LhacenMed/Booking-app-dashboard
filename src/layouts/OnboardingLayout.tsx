@@ -5,6 +5,7 @@ import { useNotification } from "@/components/ui/notification";
 interface NotificationData {
   message: string;
   type: "informative" | "success" | "warning" | "danger";
+  id?: number; // Make id optional since old code may not have it
 }
 
 interface OnboardingLayoutProps {
@@ -16,18 +17,24 @@ export default function OnboardingLayout({
   children,
   notification,
 }: OnboardingLayoutProps) {
-  const { addNotification } = useNotification();
+  const { isReady, addNotification } = useNotification();
 
-  // Show notification when prop changes
+  // Show notification when prop changes and system is ready
   useEffect(() => {
-    if (notification) {
+    if (notification && isReady) {
       addNotification({
         message: notification.message,
         type: notification.type,
         duration: 5000,
       });
     }
-  }, [notification, addNotification]);
+  }, [
+    notification?.id,
+    notification?.message,
+    notification?.type,
+    addNotification,
+    isReady,
+  ]);
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-black">

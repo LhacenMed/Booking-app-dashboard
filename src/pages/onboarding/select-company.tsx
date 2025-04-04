@@ -30,13 +30,6 @@ interface Company extends DocumentData {
   updatedAt: string;
 }
 
-// Simple loading spinner component
-// const LoadingSpinner = () => (
-//   <div className="flex justify-center items-center h-screen">
-//     <Spinner size="lg" className="text-white" />
-//   </div>
-// );
-
 export default function SelectCompanyPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState("");
@@ -44,7 +37,7 @@ export default function SelectCompanyPage() {
   const [notification, setNotification] = useState<{
     message: string;
     type: "informative" | "success" | "warning" | "danger";
-    isVisible: boolean;
+    id: number;
   } | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -102,19 +95,14 @@ export default function SelectCompanyPage() {
     message: string,
     type: "informative" | "success" | "warning" | "danger"
   ) => {
+    // Using timestamp as unique ID
+    const id = Date.now();
     setNotification({
       message,
       type,
-      isVisible: true,
+      id: id,
     });
   };
-
-  // if (loading)
-  //   return (
-  //     <OnboardingLayout>
-  //       <LoadingSpinner />
-  //     </OnboardingLayout>
-  //   );
 
   return (
     <OnboardingLayout notification={notification}>
