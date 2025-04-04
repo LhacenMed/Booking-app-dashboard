@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardHeader, CardBody, Input, Button, Link } from "@heroui/react";
 import DefaultLayout from "@/layouts/default";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, db } from "@/config/firebase";
 import { useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
@@ -13,6 +13,19 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      console.log("Successfully logged out");
+      // Clear any stored user data if needed
+      localStorage.removeItem("currentAccount");
+      setError(""); // Clear any existing errors
+    } catch (error: any) {
+      console.error("Logout error:", error);
+      setError("Failed to logout: " + error.message);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +43,7 @@ export default function LoginPage() {
 
       // Get company data
       const companyDoc = await getDoc(
-        doc(db, "transportation_companies", userCredential.user.uid)
+        doc(db, "agencies", userCredential.user.uid)
       );
       if (companyDoc.exists()) {
         const companyData = companyDoc.data();
@@ -121,6 +134,16 @@ export default function LoginPage() {
               <Link href="/signup" className="text-primary">
                 Sign up
               </Link>
+            </div>
+            <div className="mt-4 text-center">
+              <Button
+                color="danger"
+                variant="light"
+                onPress={handleLogout}
+                size="sm"
+              >
+                Logout
+              </Button>
             </div>
           </CardBody>
         </Card>

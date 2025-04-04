@@ -41,7 +41,7 @@ const useCompanyData = (companyId: string | null) => {
     queryKey: ["companyData", companyId],
     queryFn: async () => {
       if (!companyId) return null;
-      const docRef = doc(db, "transportation_companies", companyId);
+      const docRef = doc(db, "agencies", companyId);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) return null;
       return {

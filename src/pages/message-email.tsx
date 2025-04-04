@@ -309,9 +309,9 @@ const SignupFlow = () => {
         code,
       });
 
-      // First, check if the email already exists in transportation_companies
+      // First, check if the email already exists in agencies
       const transportationQuery = query(
-        collection(db, "transportation_companies"),
+        collection(db, "agencies"),
         where("email", "==", email)
       );
 
@@ -334,10 +334,7 @@ const SignupFlow = () => {
         };
 
         // Create the main document with custom ID
-        await setDoc(
-          doc(db, "transportation_companies", companyId),
-          companyDocData
-        );
+        await setDoc(doc(db, "agencies", companyId), companyDocData);
         console.log("Created new company document:", companyId);
       }
 
@@ -355,12 +352,7 @@ const SignupFlow = () => {
 
       // First, delete any existing verification tokens
       const existingTokensQuery = query(
-        collection(
-          db,
-          "transportation_companies",
-          companyId,
-          "email_verification_token"
-        )
+        collection(db, "agencies", companyId, "email_verification_token")
       );
       const existingTokens = await getDocs(existingTokensQuery);
 
@@ -370,13 +362,7 @@ const SignupFlow = () => {
 
       // Add new verification token to email_verification_token subcollection
       await setDoc(
-        doc(
-          db,
-          "transportation_companies",
-          companyId,
-          "email_verification_token",
-          tokenId
-        ),
+        doc(db, "agencies", companyId, "email_verification_token", tokenId),
         tokenData
       );
       console.log("Created new verification token:", tokenId);
@@ -418,7 +404,7 @@ const SignupFlow = () => {
       // Update the verification token document
       const tokenRef = doc(
         db,
-        "transportation_companies",
+        "agencies",
         uid,
         "email_verification_token",
         tokenId
@@ -481,13 +467,7 @@ const SignupFlow = () => {
 
       // Get the verification token document
       const tokenDoc = await getDoc(
-        doc(
-          db,
-          "transportation_companies",
-          uid,
-          "email_verification_token",
-          tokenId
-        )
+        doc(db, "agencies", uid, "email_verification_token", tokenId)
       );
 
       if (!tokenDoc.exists()) {
@@ -503,7 +483,7 @@ const SignupFlow = () => {
         console.log("Deleted expired verification token");
 
         // Then delete the main company document
-        const companyRef = doc(db, "transportation_companies", uid);
+        const companyRef = doc(db, "agencies", uid);
         await deleteDoc(companyRef);
         console.log("Deleted company document due to expired token");
 

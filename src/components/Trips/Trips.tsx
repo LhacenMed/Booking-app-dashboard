@@ -155,7 +155,7 @@ export const Trips = () => {
       // Delete all seats in the seats subcollection
       const seatsRef = collection(
         db,
-        `transportation_companies/${userId}/trips/${tripId}/seats`
+        `agencies/${userId}/trips/${tripId}/seats`
       );
       const seatsSnapshot = await getDocs(seatsRef);
       const batch = writeBatch(db);
@@ -165,11 +165,7 @@ export const Trips = () => {
       });
 
       // Delete the trip document
-      const tripRef = doc(
-        db,
-        `transportation_companies/${userId}/trips`,
-        tripId
-      );
+      const tripRef = doc(db, `agencies/${userId}/trips`, tripId);
       batch.delete(tripRef);
 
       await batch.commit();
@@ -238,10 +234,7 @@ export const Trips = () => {
       );
 
       // Reference to the company's trips subcollection
-      const tripRef = doc(
-        collection(db, `transportation_companies/${userId}/trips`),
-        tripId
-      );
+      const tripRef = doc(collection(db, `agencies/${userId}/trips`), tripId);
 
       // Create new trip in Firestore
       const tripData = {

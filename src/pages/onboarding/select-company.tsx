@@ -6,6 +6,7 @@ import {
   doc,
   updateDoc,
   DocumentData,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,7 +34,11 @@ interface Company extends DocumentData {
 export default function SelectCompanyPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompany, setSelectedCompany] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loadingStates, setLoadingStates] = useState({
+    fetchLoading: true, // For fetching companies
+    updateLoading: false, // For updating company selection
+    agencyLoading: true, // For fetching current agency data
+  });
   const [notification, setNotification] = useState<{
     message: string;
     type: "informative" | "success" | "warning" | "danger";
@@ -42,10 +47,36 @@ export default function SelectCompanyPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // Fetch current agency data to get motherCompanyId
+  useEffect(() => {
+    const fetchAgencyData = async () => {
+      if (!user) return;
+
+      try {
+        setLoadingStates((prev) => ({ ...prev, agencyLoading: true }));
+        const agencyDoc = await getDoc(doc(db, "agencies", user.uid));
+
+        if (agencyDoc.exists() && agencyDoc.data().motherCompanyId) {
+          setSelectedCompany(agencyDoc.data().motherCompanyId);
+        }
+      } catch (error) {
+        console.error("Error fetching agency data:", error);
+        showNotification("Failed to fetch agency data", "danger");
+      } finally {
+        setLoadingStates((prev) => ({ ...prev, agencyLoading: false }));
+      }
+    };
+
+    fetchAgencyData();
+  }, [user]);
+
   // Fetch companies on mount
   useEffect(() => {
     const fetchCompanies = async () => {
+      if (!user) return; // Don't fetch if not authenticated
+
       try {
+        setLoadingStates((prev) => ({ ...prev, fetchLoading: true }));
         const snapshot = await getDocs(
           collection(db, "transportation_companies")
         );
@@ -66,18 +97,18 @@ export default function SelectCompanyPage() {
         console.error("Error fetching companies:", error);
         showNotification("Failed to fetch companies", "danger");
       } finally {
-        setLoading(false);
+        setLoadingStates((prev) => ({ ...prev, fetchLoading: false }));
       }
     };
 
     fetchCompanies();
-  }, []);
+  }, [user]);
 
   const handleContinue = async () => {
     if (!selectedCompany || !user?.uid) return;
 
     try {
-      setLoading(true);
+      setLoadingStates((prev) => ({ ...prev, updateLoading: true }));
       await updateDoc(doc(db, "agencies", user.uid), {
         motherCompanyId: selectedCompany,
         updatedAt: new Date(),
@@ -87,7 +118,8 @@ export default function SelectCompanyPage() {
     } catch (error) {
       console.error("Error updating agency:", error);
       showNotification(`Failed to update company: ${error}`, "danger");
-      setLoading(false);
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, updateLoading: false }));
     }
   };
 
@@ -134,11 +166,13 @@ export default function SelectCompanyPage() {
               <div className="space-y-1">
                 <label className="text-sm text-white/60">Company</label>
                 <div className="relative">
-                  {loading ? (
+                  {loadingStates.fetchLoading || loadingStates.agencyLoading ? (
                     <div className="w-full px-3 py-2.5 rounded-lg bg-[#141414] border border-white/10 flex items-center gap-2 h-[55px]">
                       <Spinner size="sm" className="text-white/40" />
                       <span className="text-[15px] text-white/40">
-                        Loading companies...
+                        {loadingStates.agencyLoading
+                          ? "Loading your company data..."
+                          : "Loading companies..."}
                       </span>
                     </div>
                   ) : companies.length > 0 ? (
@@ -166,14 +200,27 @@ export default function SelectCompanyPage() {
 
               <button
                 onClick={handleContinue}
-                disabled={!selectedCompany || loading}
+                disabled={
+                  !selectedCompany ||
+                  loadingStates.updateLoading ||
+                  loadingStates.fetchLoading
+                }
                 className={`w-full bg-white text-black py-3 rounded-lg font-medium disabled:opacity-50 hover:bg-white/90 transition-colors ${
-                  !selectedCompany || loading
+                  !selectedCompany ||
+                  loadingStates.updateLoading ||
+                  loadingStates.fetchLoading
                     ? "opacity-50 cursor-not-allowed"
                     : ""
                 }`}
               >
-                Continue
+                {loadingStates.updateLoading ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Spinner size="sm" />
+                    <span>Updating...</span>
+                  </div>
+                ) : (
+                  "Continue"
+                )}
               </button>
 
               <div className="flex justify-center">

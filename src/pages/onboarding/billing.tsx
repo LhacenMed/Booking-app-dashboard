@@ -75,7 +75,7 @@ const PlanPage = () => {
       }
 
       // Update company document in Firestore
-      const companyRef = doc(db, "transportation_companies", companyId);
+      const companyRef = doc(db, "agencies", companyId);
       await updateDoc(companyRef, {
         subscription: {
           planId: selectedPlan,

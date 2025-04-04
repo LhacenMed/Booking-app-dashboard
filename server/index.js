@@ -62,11 +62,9 @@ const emailSendLimiter = rateLimit({
 // Debug environment variables
 console.log("Environment check:", {
     BREVO_API_KEY: process.env.BREVO_API_KEY ?
-        `${process.env.BREVO_API_KEY.substring(0, 10)}...` :
-        "Missing",
+        `${process.env.BREVO_API_KEY.substring(0, 10)}...` : "Missing",
     BREVO_API_KEY_LENGTH: process.env.BREVO_API_KEY ?
-        process.env.BREVO_API_KEY.length :
-        0,
+        process.env.BREVO_API_KEY.length : 0,
     SENDER_EMAIL: process.env.SENDER_EMAIL || "Missing",
     SENDER_NAME: process.env.SENDER_NAME || "Missing",
 });
@@ -75,8 +73,7 @@ console.log("Environment check:", {
 function validateEnvironmentVariables() {
     const required = {
         BREVO_API_KEY: process.env.BREVO_API_KEY ?
-            `${process.env.BREVO_API_KEY.substring(0, 10)}...` :
-            "Missing",
+            `${process.env.BREVO_API_KEY.substring(0, 10)}...` : "Missing",
         SENDER_EMAIL: process.env.SENDER_EMAIL,
         SENDER_NAME: process.env.SENDER_NAME,
     };
@@ -307,7 +304,7 @@ app.post("/api/verify-token", emailVerificationLimiter, async(req, res) => {
         // Get the verification token document
         const tokenRef = admin
             .firestore()
-            .collection("transportation_companies")
+            .collection("agencies")
             .doc(uid)
             .collection("email_verification_token")
             .doc(tokenId);
@@ -382,7 +379,7 @@ app.post("/api/create-account", accountCreationLimiter, async(req, res) => {
         // Get the verification token document
         const tokenRef = admin
             .firestore()
-            .collection("transportation_companies")
+            .collection("agencies")
             .doc(uid)
             .collection("email_verification_token")
             .doc(tokenId);
@@ -437,18 +434,14 @@ app.post("/api/create-account", accountCreationLimiter, async(req, res) => {
         });
 
         // Update Firestore document
-        await admin
-            .firestore()
-            .collection("transportation_companies")
-            .doc(uid)
-            .update({
-                authUID: uid,
-                email: email,
-                emailVerified: true,
-                onboarded: false,
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
+        await admin.firestore().collection("agencies").doc(uid).update({
+            authUID: uid,
+            email: email,
+            emailVerified: true,
+            onboarded: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
         // Delete the verification token
         await tokenRef.delete();

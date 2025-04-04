@@ -38,9 +38,7 @@ export const ProtectedRoute = ({
         setIsAuthenticated(true);
         if (requireOnboarding) {
           try {
-            const companyDoc = await getDoc(
-              doc(db, "transportation_companies", user.uid)
-            );
+            const companyDoc = await getDoc(doc(db, "agencies", user.uid));
             setNeedsOnboarding(
               !companyDoc.exists() || !companyDoc.data()?.onboarded
             );

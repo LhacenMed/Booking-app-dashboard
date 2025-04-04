@@ -56,7 +56,7 @@ Backend & Services:
 
 # DATABASE STRUCTURE
 Firestore Collections:
-- transportation_companies
+- agencies
   - Main company info
   - Onboarding status
   - Company settings

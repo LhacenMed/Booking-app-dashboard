@@ -55,9 +55,7 @@ export const useTrips = (companyId: string | null) => {
     queryKey: ["trips", companyId],
     queryFn: async () => {
       if (!companyId) return [];
-      const tripsQuery = query(
-        collection(db, `transportation_companies/${companyId}/trips`)
-      );
+      const tripsQuery = query(collection(db, `agencies/${companyId}/trips`));
       const snapshot = await getDocs(tripsQuery);
       return snapshot.docs.map((doc) => {
         const data = doc.data();

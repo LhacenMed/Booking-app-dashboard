@@ -2,6 +2,14 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Rules for transportation_companies collection
+    match /transportation_companies/{companyId} {
+      // Allow reading transportation companies for authenticated users
+      allow read: if request.auth != null;
+      // Only allow write operations by admin
+      allow write: if false;
+    }
+
     // Rules for checked_emails collection
     match /checked_emails/{docId} {
       // Function to validate document ID format (random8chars_email)
@@ -22,8 +30,8 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    // Rules for transportation_companies collection
-    match /transportation_companies/{companyId} {
+    // Rules for agencies collection
+    match /agencies/{companyId} {
       // Allow reading company documents
       allow read: if true;
       
@@ -49,7 +57,7 @@ service cloud.firestore {
       match /{subcollection}/{document} {
         allow read, write: if
           request.auth != null &&
-          get(/databases/$(database)/documents/transportation_companies/$(companyId)).data.authUID == request.auth.uid;
+          get(/databases/$(database)/documents/agencies/$(companyId)).data.authUID == request.auth.uid;
       }
     }
   }

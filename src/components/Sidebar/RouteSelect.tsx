@@ -1,4 +1,3 @@
-import React from "react";
 import { IconType } from "react-icons";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -42,7 +41,7 @@ export const RouteSelect = () => {
 };
 
 const Route = ({
-  selected,
+  // selected,
   Icon,
   title,
   path,

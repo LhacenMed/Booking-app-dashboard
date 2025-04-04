@@ -57,10 +57,7 @@ export const SeatManagement = () => {
   useEffect(() => {
     if (!tripId || !userId) return;
 
-    const tripRef = doc(
-      db,
-      `transportation_companies/${userId}/trips/${tripId}`
-    );
+    const tripRef = doc(db, `agencies/${userId}/trips/${tripId}`);
     const seatsRef = collection(tripRef, "seats");
 
     // Set up real-time listener for trip updates
@@ -94,7 +91,7 @@ export const SeatManagement = () => {
 
     const seatRef = doc(
       db,
-      `transportation_companies/${userId}/trips/${tripId}/seats/${seatId}`
+      `agencies/${userId}/trips/${tripId}/seats/${seatId}`
     );
 
     try {

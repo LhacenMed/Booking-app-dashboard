@@ -15,7 +15,7 @@ export const useCompanyStatus = (companyId: string | null) => {
     queryFn: async () => {
       if (!companyId) return null;
 
-      const companyRef = doc(db, "transportation_companies", companyId);
+      const companyRef = doc(db, "agencies", companyId);
       const companyDoc = await getDoc(companyRef);
 
       if (!companyDoc.exists()) {

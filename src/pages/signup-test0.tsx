@@ -309,11 +309,7 @@ export default function SignUpPage() {
       };
 
       // Save company data to Firestore
-      const companyRef = doc(
-        db,
-        "transportation_companies",
-        userCredential.user.uid
-      );
+      const companyRef = doc(db, "agencies", userCredential.user.uid);
       await setDoc(companyRef, companyDocData);
 
       // Create empty trips subcollection
