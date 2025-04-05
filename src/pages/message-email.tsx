@@ -1486,7 +1486,7 @@ const SignupFlow = () => {
               <div className="w-full max-w-7xl relative translate-x-[-7rem]">
                 <div className="flex flex-col">
                   <h1
-                    className={`text-xl font-ot ot-regular mb-4 ${showConfirmPassword ? "text-[#989898]" : "text-gray-900"}`}
+                    className={`text-xl font-ot ot-regular mb-2 ${showConfirmPassword ? "text-[#989898]" : "text-gray-900"}`}
                   >
                     Choose a password
                   </h1>
@@ -1577,7 +1577,7 @@ const SignupFlow = () => {
                           transition={{ duration: 0.3 }}
                           className="mt-8 relative w-full"
                         >
-                          <label className="block text-xl font-ot ot-regular text-gray-900 mb-4">
+                          <label className="block text-xl font-ot ot-regular text-gray-900 mb-2">
                             Confirm your password
                           </label>
                           <CustomInput
@@ -1846,8 +1846,8 @@ const SignupFlow = () => {
             </div>
 
             <div className="flex flex-col items-center min-h-screen">
-              <div className="flex-1 flex items-center justify-center w-full p-8">
-                <motion.div className="w-full max-w-3xl">
+              <div className="flex-1 flex items-start justify-center w-full p-8">
+                <motion.div className="w-full pt-[250px] max-w-3xl">
                   {/* Step content */}
                   {renderStepContent()}
                 </motion.div>
