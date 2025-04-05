@@ -11,7 +11,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useState, useEffect } from "react";
 import { Spinner } from "@heroui/react";
-import { NotificationContainer } from "@/components/ui/notification";
 
 declare module "@react-types/shared" {
   interface RouterConfig {
@@ -48,10 +47,8 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <Spinner />
-        </div>
+      <div className="h-screen w-screen flex items-center justify-center relative overflow-hidden bg-black">
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -107,7 +104,6 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <NotificationContainer />
       <RouterProvider router={router} />
     </QueryClientProvider>
   );

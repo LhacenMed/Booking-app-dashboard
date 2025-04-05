@@ -4,7 +4,7 @@ import { auth } from "@/config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/config/firebase";
-import { Spinner } from "@heroui/react";
+import { cn, Spinner } from "@heroui/react";
 import { useCompanyStatus } from "@/hooks/useCompanyStatus";
 
 interface ProtectedRouteProps {
@@ -59,7 +59,20 @@ export const ProtectedRoute = ({
 
   if (isLoading || statusLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center">
+      <div className="h-screen w-screen flex items-center justify-center min-h-screen relative overflow-hidden bg-black">
+        {/* Grid Background */}
+        <div
+          className={cn(
+            "absolute inset-0",
+            "[background-size:50px_50px]",
+            "[background-image:linear-gradient(to_right,#111_1px,transparent_1px),linear-gradient(to_bottom,#111_1px,transparent_1px)]"
+          )}
+        />
+        {/* Radial gradient overlay */}
+        <div
+          className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"
+          aria-hidden="true"
+        />
         <Spinner size="lg" />
       </div>
     );

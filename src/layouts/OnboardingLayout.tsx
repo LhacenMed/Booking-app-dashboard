@@ -1,6 +1,7 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useNotification } from "@/components/ui/notification";
+import { Spinner } from "@heroui/react";
 
 interface NotificationData {
   message: string;
@@ -11,30 +12,31 @@ interface NotificationData {
 interface OnboardingLayoutProps {
   children: ReactNode;
   notification?: NotificationData | null;
+  isLoading?: boolean; // Add loading state prop
+  loadingText?: string; // Optional loading text
 }
 
 export default function OnboardingLayout({
   children,
   notification,
+  isLoading = false,
+  loadingText = "Loading...",
 }: OnboardingLayoutProps) {
-  const { isReady, addNotification } = useNotification();
+  const { addNotification } = useNotification();
+  const lastNotificationRef = useRef<number | undefined>();
 
-  // Show notification when prop changes and system is ready
+  // Show notification when prop changes
   useEffect(() => {
-    if (notification && isReady) {
+    // Only show notification if it's new (different id)
+    if (notification && notification.id !== lastNotificationRef.current) {
+      lastNotificationRef.current = notification.id;
       addNotification({
         message: notification.message,
         type: notification.type,
         duration: 5000,
       });
     }
-  }, [
-    notification?.id,
-    notification?.message,
-    notification?.type,
-    addNotification,
-    isReady,
-  ]);
+  }, [notification, addNotification]); // Simplified dependency array
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-black">
@@ -51,8 +53,16 @@ export default function OnboardingLayout({
         className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"
         aria-hidden="true"
       />
-      {/* Content */}
-      <div className="relative z-10">{children}</div>
+      {/* Loading Overlay */}
+      {isLoading ? (
+        <div className="absolute inset-0 bg-black/10 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-black/10 rounded-lg p-6 flex flex-col items-center gap-3">
+            <Spinner size="lg" />
+          </div>
+        </div>
+      ) : (
+        <div className="relative z-10">{children}</div>
+      )}
     </div>
   );
 }

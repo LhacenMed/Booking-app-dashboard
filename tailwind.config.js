@@ -18,16 +18,6 @@ module.exports = {
             fontFamily: {
                 ot: ["Outfit", "sans-serif"],
             },
-            fontWeight: {
-                "ot-extralight": 200,
-                "ot-light": 300,
-                "ot-regular": 400,
-                "ot-medium": 500,
-                "ot-semibold": 600,
-                "ot-bold": 700,
-                "ot-extrabold": 800,
-                "ot-black": 900,
-            },
             keyframes: {
                 "float-slow": {
                     "0%, 100%": { transform: "translateY(0)" },

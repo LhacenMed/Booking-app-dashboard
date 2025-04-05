@@ -1,9 +1,10 @@
 import { HeroUIProvider } from "@heroui/react";
+import { NotificationProvider } from "@/components/ui/notification";
 
 export function Provider({ children }: { children: React.ReactNode }) {
   return (
     <HeroUIProvider>
-      {children}
+      <NotificationProvider>{children}</NotificationProvider>
     </HeroUIProvider>
   );
 }

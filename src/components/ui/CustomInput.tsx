@@ -259,7 +259,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
           )}
         </div>
         {error && (
-          <p className="absolute -bottom-6 left-0 text-sm font-ot ot-regular mb-2 text-red-500">
+          <p className="relative left-0 text-sm font-ot ot-regular  text-red-500">
             {error}
           </p>
         )}

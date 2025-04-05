@@ -1077,15 +1077,15 @@ const SignupFlow = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="w-full h-screen flex items-center"
+            className="w-full flex items-center"
             onAnimationComplete={() => {
               emailInputRef.current?.focus();
             }}
           >
             <form onSubmit={handleSubmitEmail} className="w-full">
-              <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
+              <div className="w-full max-w-7xl relative translate-x-[-7rem]">
                 <div className="flex flex-col">
-                  <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
+                  <h1 className="text-xl font-ot ot-regular text-gray-900 mb-2">
                     Please enter your work email
                   </h1>
 
@@ -1136,13 +1136,13 @@ const SignupFlow = () => {
                     </motion.div>
                   </div>
 
-                  <p className="text-blue-600 text-base font-ot ot-regular mt-4">
+                  <p className="text-blue-600 text-base font-ot ot-regular mt-2">
                     We'll send you a verification code
                   </p>
                 </div>
               </div>
 
-              <div className="fixed bottom-8 right-8 z-50">
+              <div className="fixed bottom-[50px] right-[50px] z-50">
                 <button
                   type="submit"
                   className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
@@ -1191,10 +1191,10 @@ const SignupFlow = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="w-full h-screen flex items-center"
+            className="w-full flex items-center"
           >
             <form onSubmit={handleVerifyCode} className="w-full">
-              <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
+              <div className="w-full max-w-7xl relative translate-x-[-5rem]">
                 <div className="flex flex-col">
                   <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
                     Enter the verification code
@@ -1297,7 +1297,7 @@ const SignupFlow = () => {
 
                   <div className="flex flex-col gap-4 mt-4">
                     <p className="text-blue-600 text-base font-ot ot-regular">
-                      We sent a code to {email}
+                      We sent a code to {email || "your email"}
                     </p>
                     <div className="flex items-center gap-2">
                       <button
@@ -1359,7 +1359,7 @@ const SignupFlow = () => {
                       </button>
 
                       {/* Add test button */}
-                      {process.env.NODE_ENV === "development" && (
+                      {/* {process.env.NODE_ENV === "development" && (
                         <button
                           type="button"
                           onClick={handleSuccessAnimation}
@@ -1367,13 +1367,13 @@ const SignupFlow = () => {
                         >
                           Success OTP
                         </button>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="fixed bottom-8 right-8 z-50">
+              <div className="fixed bottom-[50px] right-[50px] z-50">
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -1438,7 +1438,7 @@ const SignupFlow = () => {
               </div>
 
               {/* Email info text */}
-              <div className="fixed bottom-8 left-8 z-10 flex items-center gap-2 text-sm text-gray-600">
+              {/* <div className="fixed bottom-8 left-8 z-10 flex items-center gap-2 text-sm text-gray-600">
                 <svg
                   width="16"
                   height="16"
@@ -1471,7 +1471,7 @@ const SignupFlow = () => {
                 >
                   (logout)
                 </button>
-              </div>
+              </div> */}
             </form>
           </motion.div>
         );
@@ -1483,10 +1483,10 @@ const SignupFlow = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="w-full h-screen flex items-center"
+            className="w-full flex items-center"
           >
             <form onSubmit={handleSubmitPassword} className="w-full">
-              <div className="w-full max-w-7xl relative mb-[150px] translate-x-[-10rem]">
+              <div className="w-full max-w-7xl relative translate-x-[-5rem]">
                 <div className="flex flex-col">
                   <h1
                     className={`text-xl font-ot ot-regular mb-4 ${showConfirmPassword ? "text-[#989898]" : "text-gray-900"}`}
@@ -1649,7 +1649,7 @@ const SignupFlow = () => {
                 </div>
               </div>
 
-              <div className="fixed bottom-8 right-8 z-50">
+              <div className="fixed bottom-[50px] right-[50px] z-50">
                 <div className="flex items-center gap-3">
                   <button
                     type="submit"
@@ -1695,7 +1695,7 @@ const SignupFlow = () => {
               </div>
 
               {/* Email info text */}
-              <div className="fixed bottom-8 left-8 z-10 flex items-center gap-2 text-sm text-gray-600">
+              {/* <div className="fixed bottom-8 left-8 z-10 flex items-center gap-2 text-sm text-gray-600">
                 <svg
                   width="16"
                   height="16"
@@ -1728,7 +1728,7 @@ const SignupFlow = () => {
                 >
                   (logout)
                 </button>
-              </div>
+              </div> */}
             </form>
           </motion.div>
         );
@@ -1760,13 +1760,13 @@ const SignupFlow = () => {
   };
 
   // Add this function after other handlers
-  const handleSuccessAnimation = () => {
-    setShowSuccessAnimation(true);
-    // Reset the animation after it completes
-    setTimeout(() => {
-      setShowSuccessAnimation(false);
-    }, 1000);
-  };
+  // const handleSuccessAnimation = () => {
+  //   setShowSuccessAnimation(true);
+  //   // Reset the animation after it completes
+  //   setTimeout(() => {
+  //     setShowSuccessAnimation(false);
+  //   }, 1000);
+  // };
 
   // Add this useEffect for cleanup
   useEffect(() => {
@@ -1843,13 +1843,9 @@ const SignupFlow = () => {
           {/* Main content */}
           <div className="flex-1 min-h-screen overflow-y-auto relative">
             {/* Logo */}
-            <div className="absolute top-8 left-8 flex items-center">
-              <img
-                src="/images/qatalog-logo.svg"
-                alt="Qatalog"
-                className="h-8"
-              />
-              <span className="text-md text-gray-500 ml-3">Logo</span>
+            <div className="absolute top-[50px] left-[50px] flex items-center font-ot ot-medium">
+              <img src="/images/logo.svg" alt="Logo" className="h-8" />
+              <span className="text-2xl text-gray-500 ml-3">Booking</span>
             </div>
 
             <div className="flex flex-col items-center min-h-screen">
@@ -1861,10 +1857,10 @@ const SignupFlow = () => {
               </div>
 
               {/* Step indicators */}
-              <div className="fixed bottom-8 z-10">
+              <div className="fixed bottom-[50px] z-10">
                 <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-full shadow-lg">
                   <motion.div
-                    className="h-2 rounded-full bg-blue-600 transition-colors"
+                    className="h-2 rounded-full bg-[#000] transition-colors"
                     animate={{
                       width: currentStep === 1 ? "2rem" : "0.5rem",
                       backgroundColor: currentStep === 1 ? "#000" : "#E5E7EB",
@@ -1876,7 +1872,7 @@ const SignupFlow = () => {
                     }}
                   />
                   <motion.div
-                    className="h-2 rounded-full bg-blue-600 transition-colors"
+                    className="h-2 rounded-full bg-[#000] transition-colors"
                     animate={{
                       width: currentStep === 2 ? "2rem" : "0.5rem",
                       backgroundColor: currentStep === 2 ? "#000" : "#E5E7EB",
@@ -1888,7 +1884,7 @@ const SignupFlow = () => {
                     }}
                   />
                   <motion.div
-                    className="h-2 rounded-full bg-blue-600 transition-colors"
+                    className="h-2 rounded-full bg-[#000] transition-colors"
                     animate={{
                       width: currentStep === 3 ? "2rem" : "0.5rem",
                       backgroundColor: currentStep === 3 ? "#000" : "#E5E7EB",
