@@ -110,12 +110,12 @@ const InputOTPSlot = React.forwardRef<
               ? {
                   y: [
                     0, // start
-                    -10, // move up
-                    -10, // hold position
+                    -5, // move up
+                    -5, // hold position
                     0, // move down
                   ],
                   transition: {
-                    duration: 0.5,
+                    duration: 0.3,
                     delay: index * 0.1, // delay for moving up
                     times: [0, 0.3, 0.6, 1], // control timing of each keyframe
                     ease: "easeInOut",

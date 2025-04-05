@@ -190,22 +190,25 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
             ref={inputRef}
             className={`
               w-full 
-              text-[48px] 
+              text-[32px] md:text-[48px]
               text-gray-900 
               font-ot 
               ot-semibold
               placeholder:text-gray-300
               bg-transparent
-              border-none 
               outline-none 
               focus:ring-0 
               focus:outline-none
               pr-12
+              border-0 md:border-none
+              border-b-2 md:border-b-0
+              border-gray-200
+              pb-0 md:pb-0
               [&::-webkit-calendar-picker-indicator]:opacity-0
               [&::-webkit-calendar-picker-indicator]:absolute
               [&::-webkit-calendar-picker-indicator]:right-0
               [&::-webkit-calendar-picker-indicator]:cursor-pointer
-              ${error ? "text-red-500" : ""}
+              ${error ? "text-red-500 border-red-500" : ""}
               ${className}
             `}
             {...props}
@@ -223,10 +226,12 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
             autoFocus
           />
           {activeSuggestion && props.value && showSuggestions && (
-            <div className="absolute inset-0 flex items-center pointer-events-none">
-              <span className="text-gray-300 text-[48px] font-ot ot-semibold">
-                <span className="invisible">{props.value as string}</span>
-                <span>
+            <div className="absolute inset-0 flex items-center pointer-events-none overflow-hidden">
+              <span className="text-gray-300 text-[32px] md:text-[48px] font-ot ot-semibold whitespace-nowrap overflow-hidden text-ellipsis max-w-[90%] pb-[1px] md:pb-0">
+                <span className="invisible whitespace-nowrap">
+                  {props.value as string}
+                </span>
+                <span className="whitespace-nowrap overflow-hidden text-ellipsis">
                   {activeSuggestion.slice((props.value as string).length)}
                 </span>
               </span>

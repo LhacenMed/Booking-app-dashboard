@@ -1080,9 +1080,9 @@ const SignupFlow = () => {
             }}
           >
             <form onSubmit={handleSubmitEmail} className="w-full">
-              <div className="w-full max-w-7xl relative translate-x-[-7rem]">
+              <div className="w-full max-w-7xl relative md:translate-x-[-7rem] translate-x-0">
                 <div className="flex flex-col">
-                  <h1 className="text-xl font-ot ot-regular text-gray-900 mb-2">
+                  <h1 className="text-lg md:text-xl font-ot ot-regular text-gray-900 mb-2 select-none">
                     Please enter your work email
                   </h1>
 
@@ -1133,16 +1133,17 @@ const SignupFlow = () => {
                     </motion.div>
                   </div>
 
-                  <p className="text-blue-600 text-base font-ot ot-regular mt-2">
+                  <p className="text-blue-600 text-base font-ot ot-regular mt-2 select-none">
                     We'll send you a verification code
                   </p>
                 </div>
               </div>
 
-              <div className="fixed bottom-[50px] right-[50px] z-50">
+              {/* Update the button container for step 1 */}
+              <div className="fixed inset-x-0 md:left-auto bottom-[80px] md:bottom-[50px] z-50 flex md:block justify-center md:right-[50px]">
                 <button
                   type="submit"
-                  className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
+                  className={`w-[100px] md:w-[120px] px-3 md:px-4 py-2 h-10 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-2 md:gap-3 select-none ${
                     isLoading.emailSubmit ||
                     serverStatus !== "running" ||
                     !email
@@ -1155,25 +1156,10 @@ const SignupFlow = () => {
                     !email
                   }
                 >
-                  Continue
                   {isLoading.emailSubmit ? (
                     <Spinner size="sm" color="white" />
                   ) : (
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M1 8H15M15 8L8 1M15 8L8 15"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    "Continue"
                   )}
                 </button>
               </div>
@@ -1191,9 +1177,9 @@ const SignupFlow = () => {
             className="w-full flex items-center"
           >
             <form onSubmit={handleVerifyCode} className="w-full">
-              <div className="w-full max-w-7xl relative translate-x-[-7rem]">
+              <div className="w-full max-w-7xl relative md:translate-x-[-7rem] translate-x-0">
                 <div className="flex flex-col">
-                  <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
+                  <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4 select-none">
                     Enter the verification code
                   </h1>
 
@@ -1233,7 +1219,7 @@ const SignupFlow = () => {
                           <InputOTPSlot
                             index={0}
                             showSuccessAnimation={showSuccessAnimation}
-                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                            className={`w-10 h-10 md:w-14 md:h-14 text-xl md:text-2xl font-ot ot-regular ${
                               otpError
                                 ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -1242,7 +1228,7 @@ const SignupFlow = () => {
                           <InputOTPSlot
                             index={1}
                             showSuccessAnimation={showSuccessAnimation}
-                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                            className={`w-10 h-10 md:w-14 md:h-14 text-xl md:text-2xl font-ot ot-regular ${
                               otpError
                                 ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -1251,7 +1237,7 @@ const SignupFlow = () => {
                           <InputOTPSlot
                             index={2}
                             showSuccessAnimation={showSuccessAnimation}
-                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                            className={`w-10 h-10 md:w-14 md:h-14 text-xl md:text-2xl font-ot ot-regular ${
                               otpError
                                 ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -1263,7 +1249,7 @@ const SignupFlow = () => {
                           <InputOTPSlot
                             index={3}
                             showSuccessAnimation={showSuccessAnimation}
-                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                            className={`w-10 h-10 md:w-14 md:h-14 text-xl md:text-2xl font-ot ot-regular ${
                               otpError
                                 ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -1272,7 +1258,7 @@ const SignupFlow = () => {
                           <InputOTPSlot
                             index={4}
                             showSuccessAnimation={showSuccessAnimation}
-                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                            className={`w-10 h-10 md:w-14 md:h-14 text-xl md:text-2xl font-ot ot-regular ${
                               otpError
                                 ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -1281,7 +1267,7 @@ const SignupFlow = () => {
                           <InputOTPSlot
                             index={5}
                             showSuccessAnimation={showSuccessAnimation}
-                            className={`w-14 h-14 text-2xl font-ot ot-regular ${
+                            className={`w-10 h-10 md:w-14 md:h-14 text-xl md:text-2xl font-ot ot-regular ${
                               otpError
                                 ? "border-red-500 ring-1 ring-red-500"
                                 : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -1293,14 +1279,14 @@ const SignupFlow = () => {
                   </div>
 
                   <div className="flex flex-col gap-4 mt-4">
-                    <p className="text-blue-600 text-base font-ot ot-regular">
+                    <p className="text-blue-600 text-sm md:text-base font-ot ot-regular select-none">
                       We sent a code to {email || "your email"}
                     </p>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         disabled={resendTimer > 0 || isLoading.resendingCode}
-                        className={`px-3 py-1.5 rounded-lg font-ot ot-regular bg-gray-200 inline-flex items-center gap-1.5 transition-all duration-200 ${
+                        className={`px-3 py-1.5 rounded-lg font-ot ot-regular bg-gray-200 inline-flex items-center gap-1.5 transition-all duration-200 select-none ${
                           resendTimer > 0 || isLoading.resendingCode
                             ? "text-gray-400 cursor-not-allowed"
                             : "text-gray-900 hover:bg-gray-300"
@@ -1370,7 +1356,8 @@ const SignupFlow = () => {
                 </div>
               </div>
 
-              <div className="fixed bottom-[50px] right-[50px] z-50">
+              {/* Update the button container for step 2 */}
+              <div className="fixed inset-x-0 md:left-auto bottom-[80px] md:bottom-[50px] z-50 flex md:block justify-center md:right-[50px]">
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -1379,7 +1366,7 @@ const SignupFlow = () => {
                       localStorage.removeItem("signupUID");
                       localStorage.removeItem("verificationTokenId");
                     }}
-                    className="w-[120px] px-4 py-2 text-gray-600 hover:text-gray-900 font-ot ot-regular flex items-center justify-center gap-2"
+                    className="w-[100px] md:w-[120px] px-3 md:px-4 py-2 h-10 text-gray-600 hover:text-gray-900 font-ot ot-regular flex items-center justify-center gap-2 md:gap-3 select-none"
                   >
                     <svg
                       width="13"
@@ -1401,7 +1388,7 @@ const SignupFlow = () => {
                   </button>
                   <button
                     type="submit"
-                    className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
+                    className={`w-[100px] md:w-[120px] px-3 md:px-4 py-2 h-10 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-2 md:gap-3 select-none ${
                       isLoading.verification || verificationCode.length !== 6
                         ? "opacity-50 cursor-not-allowed"
                         : "hover:bg-black/90"
@@ -1410,65 +1397,14 @@ const SignupFlow = () => {
                       isLoading.verification || verificationCode.length !== 6
                     }
                   >
-                    Verify
                     {isLoading.verification ? (
                       <Spinner size="sm" color="white" />
                     ) : (
-                      <svg
-                        width="13"
-                        height="13"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M1 8H15M15 8L8 1M15 8L8 15"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                      "Verify"
                     )}
                   </button>
                 </div>
               </div>
-
-              {/* Email info text */}
-              {/* <div className="fixed bottom-8 left-8 z-10 flex items-center gap-2 text-sm text-gray-600">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M12 3C16.9706 3 21 7.02944 21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                </svg>
-                Signing up as {email}
-                <button
-                  onClick={() => {
-                    setCurrentStep(1);
-                    setEmail("");
-                    localStorage.removeItem("signupUID");
-                    localStorage.removeItem("verificationTokenId");
-                  }}
-                  className="text-gray-500 hover:text-gray-700 underline"
-                >
-                  (logout)
-                </button>
-              </div> */}
             </form>
           </motion.div>
         );
@@ -1483,13 +1419,46 @@ const SignupFlow = () => {
             className="w-full flex items-center"
           >
             <form onSubmit={handleSubmitPassword} className="w-full">
-              <div className="w-full max-w-7xl relative translate-x-[-7rem]">
+              <div className="w-full max-w-7xl relative md:translate-x-[-7rem] translate-x-0">
                 <div className="flex flex-col">
-                  <h1
-                    className={`text-xl font-ot ot-regular mb-2 ${showConfirmPassword ? "text-[#989898]" : "text-gray-900"}`}
-                  >
-                    Choose a password
-                  </h1>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h1
+                      className={`text-xl font-ot ot-regular select-none ${showConfirmPassword ? "text-[#989898]" : "text-gray-900"}`}
+                    >
+                      Choose a password
+                    </h1>
+                    {showConfirmPassword && (
+                      <button
+                        type="button"
+                        onClick={handleEditPassword}
+                        className="w-8 h-8 absolute left-[180px] flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 rounded-full z-10 transition-all group select-none"
+                        aria-label="Edit password"
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M18.5 2.50001C18.8978 2.10219 19.4374 1.87869 20 1.87869C20.5626 1.87869 21.1022 2.10219 21.5 2.50001C21.8978 2.89784 22.1213 3.4374 22.1213 4.00001C22.1213 4.56262 21.8978 5.10219 21.5 5.50001L12 15L8 16L9 12L18.5 2.50001Z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
 
                   <div className="w-full">
                     <motion.div
@@ -1506,40 +1475,6 @@ const SignupFlow = () => {
                       }}
                       className="w-full relative"
                     >
-                      {showConfirmPassword && (
-                        <button
-                          type="button"
-                          onClick={handleEditPassword}
-                          className="absolute left-[-40px] top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 rounded-full z-10 transition-all group"
-                          aria-label="Edit password"
-                        >
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M18.5 2.50001C18.8978 2.10219 19.4374 1.87869 20 1.87869C20.5626 1.87869 21.1022 2.10219 21.5 2.50001C21.8978 2.89784 22.1213 3.4374 22.1213 4.00001C22.1213 4.56262 21.8978 5.10219 21.5 5.50001L12 15L8 16L9 12L18.5 2.50001Z"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          <span className="absolute bottom-[-24px] left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                            Edit password
-                          </span>
-                        </button>
-                      )}
                       <CustomInput
                         ref={passwordInputRef}
                         type="password"
@@ -1611,11 +1546,11 @@ const SignupFlow = () => {
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <h3 className="text-sm font-medium text-gray-700 mb-2">
+                        <h3 className="text-sm font-medium text-gray-700 mb-2 select-none">
                           Password must contain at least:
                         </h3>
                         <ul className="space-y-2">
-                          <li className="text-sm flex items-center gap-2">
+                          <li className="text-sm flex items-center gap-2 select-none">
                             <span
                               className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.minLength ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
                             >
@@ -1623,7 +1558,7 @@ const SignupFlow = () => {
                             </span>
                             8 characters
                           </li>
-                          <li className="text-sm flex items-center gap-2">
+                          <li className="text-sm flex items-center gap-2 select-none">
                             <span
                               className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasUppercase ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
                             >
@@ -1631,7 +1566,7 @@ const SignupFlow = () => {
                             </span>
                             One uppercase letter
                           </li>
-                          <li className="text-sm flex items-center gap-2">
+                          <li className="text-sm flex items-center gap-2 select-none">
                             <span
                               className={`w-5 h-5 rounded-full flex items-center justify-center ${passwordRules.hasNumber ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
                             >
@@ -1646,11 +1581,12 @@ const SignupFlow = () => {
                 </div>
               </div>
 
-              <div className="fixed bottom-[50px] right-[50px] z-50">
+              {/* Update the button container for step 3 */}
+              <div className="fixed inset-x-0 md:left-auto bottom-[80px] md:bottom-[50px] z-50 flex md:block justify-center md:right-[50px]">
                 <div className="flex items-center gap-3">
                   <button
                     type="submit"
-                    className={`w-[120px] px-4 py-2 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-3 ${
+                    className={`w-[100px] md:w-[120px] px-3 md:px-4 py-2 h-10 bg-black text-white rounded-xl font-ot ot-regular flex items-center justify-center gap-2 md:gap-3 select-none ${
                       isLoading.passwordSubmit ||
                       !password ||
                       (!showConfirmPassword &&
@@ -1667,65 +1603,16 @@ const SignupFlow = () => {
                       (showConfirmPassword && !passwordsMatch)
                     }
                   >
-                    {showConfirmPassword ? "Continue" : "Next"}
                     {isLoading.passwordSubmit ? (
                       <Spinner size="sm" color="white" />
+                    ) : showConfirmPassword ? (
+                      "Continue"
                     ) : (
-                      <svg
-                        width="13"
-                        height="13"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M1 8H15M15 8L8 1M15 8L8 15"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                      "Next"
                     )}
                   </button>
                 </div>
               </div>
-
-              {/* Email info text */}
-              {/* <div className="fixed bottom-8 left-8 z-10 flex items-center gap-2 text-sm text-gray-600">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M12 3C16.9706 3 21 7.02944 21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                </svg>
-                Signing up as {email}
-                <button
-                  onClick={() => {
-                    setCurrentStep(1);
-                    setEmail("");
-                    localStorage.removeItem("signupUID");
-                    localStorage.removeItem("verificationTokenId");
-                  }}
-                  className="text-gray-500 hover:text-gray-700 underline"
-                >
-                  (logout)
-                </button>
-              </div> */}
             </form>
           </motion.div>
         );
@@ -1823,7 +1710,7 @@ const SignupFlow = () => {
           {/* <SignupSidebar currentStep={currentStep} /> */}
 
           {/* Dev Jump Button */}
-          {process.env.NODE_ENV === "development" && (
+          {/* {process.env.NODE_ENV === "development" && (
             <div className="fixed top-4 right-4 z-50">
               <select
                 value={currentStep}
@@ -1835,26 +1722,36 @@ const SignupFlow = () => {
                 <option value={3}>Step 3: Password</option>
               </select>
             </div>
-          )}
+          )} */}
 
           {/* Main content */}
           <div className="flex-1 min-h-screen overflow-y-auto relative">
             {/* Logo */}
-            <div className="absolute top-[50px] left-[50px] flex items-center font-ot ot-medium">
-              <img src="/images/logo.svg" alt="Logo" className="h-8" />
-              <span className="text-2xl text-gray-500 ml-3">Booking</span>
+            <div 
+              onClick={() => window.location.href = '/'}
+              className="absolute md:top-[50px] md:left-[50px] top-6 left-6 flex items-center font-ot ot-medium select-none cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              <img
+                src="/images/logo.svg"
+                alt="Logo"
+                className="h-6 md:h-8"
+                draggable={false}
+              />
+              <span className="text-xl md:text-2xl text-gray-500 ml-3">
+                Booking
+              </span>
             </div>
 
             <div className="flex flex-col items-center min-h-screen">
-              <div className="flex-1 flex items-start justify-center w-full p-8">
-                <motion.div className="w-full pt-[250px] max-w-3xl">
+              <div className="flex-1 flex items-start justify-center w-full p-4 md:p-8">
+                <motion.div className="w-full pt-[180px] md:pt-[250px] max-w-3xl px-4 md:px-0">
                   {/* Step content */}
                   {renderStepContent()}
                 </motion.div>
               </div>
 
               {/* Step indicators */}
-              <div className="fixed bottom-[50px] z-10">
+              <div className="fixed bottom-[20px] md:bottom-[50px] z-10 select-none">
                 <div className="flex items-center gap-3 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-full shadow-lg">
                   <motion.div
                     className="h-2 rounded-full bg-[#000] transition-colors"

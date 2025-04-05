@@ -69,9 +69,9 @@ export const Notification: React.FC<NotificationProps> = ({
         position: "fixed",
         right: "1rem",
         zIndex: 10000,
-        minWidth: "320px",
+        minWidth: "280px",
         maxWidth: "500px",
-        width: "max-content",
+        width: "calc(100vw - 2.5rem)",
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -82,12 +82,12 @@ export const Notification: React.FC<NotificationProps> = ({
         radius="lg"
         isClosable
         onClose={onClose}
-        className={`shadow-xl backdrop-blur-md bg-opacity-90 flex items-center m-4 ${isHovered ? "ring-2 ring-black/5" : ""}`}
+        className={`shadow-xl backdrop-blur-md bg-opacity-90 flex items-center m-2 md:m-4 ${isHovered ? "ring-2 ring-black/5" : ""}`}
       >
-        <div className="py-2 px-2 font-ot ot-medium overflow-hidden flex items-center justify-between w-full">
+        <div className="py-1.5 md:py-2 px-2 font-ot ot-medium overflow-hidden flex items-center justify-between w-full text-xs md:text-base">
           <span>{message}</span>
           {count > 1 && (
-            <span className="px-2 bg-black/10 rounded-full text-sm">
+            <span className="ml-2 px-1.5 md:px-2 bg-black/10 rounded-full text-xs md:text-sm">
               {count}
             </span>
           )}
@@ -162,20 +162,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       value={{ addNotification, removeNotification }}
     >
       {children}
-      <div className="fixed right-0 top-0 z-[9999] pt-4">
+      <div className="fixed right-0 top-0 z-[9999] pt-2 md:pt-4">
         <div className="relative" style={{ minHeight: "100px" }}>
           <AnimatePresence initial={false} mode="wait">
             {sortedNotifications.map((notification, index) => (
               <motion.div
                 key={notification.id}
-                initial={{ x: 100, opacity: 0, scale: 1 }}
+                initial={{ x: 50, opacity: 0, scale: 1 }}
                 animate={{
-                  x: -50,
-                  y: index * 12,
+                  x: -15,
+                  y: index * (window.innerWidth < 768 ? 8 : 12),
                   opacity: 1,
-                  scale: 1 - index * 0.02,
+                  scale: 1 - index * (window.innerWidth < 768 ? 0.01 : 0.02),
                 }}
-                exit={{ x: 100, opacity: 0, scale: 1 }}
+                exit={{ x: 50, opacity: 0, scale: 1 }}
                 transition={{
                   type: "spring",
                   stiffness: 400,
