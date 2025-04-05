@@ -20,7 +20,6 @@ export default function OnboardingLayout({
   children,
   notification,
   isLoading = false,
-  loadingText = "Loading...",
 }: OnboardingLayoutProps) {
   const { addNotification } = useNotification();
   const lastNotificationRef = useRef<number | undefined>();

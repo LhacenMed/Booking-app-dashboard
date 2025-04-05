@@ -94,7 +94,7 @@ export default function SignUpTest() {
     try {
       await applyActionCode(auth, verificationCode);
       setStep("password");
-      setMessage("Email verified successfully! Please create your password.");
+      setMessage("Email verified successfully!");
     } catch (error) {
       console.error("Error verifying code:", error);
       setError("Invalid verification code. Please try again.");

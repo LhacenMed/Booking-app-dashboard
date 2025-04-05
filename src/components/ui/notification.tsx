@@ -5,6 +5,7 @@ import {
   useCallback,
   createContext,
   useContext,
+  useRef,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Alert } from "@heroui/react";
@@ -27,7 +28,6 @@ interface NotificationProps {
   duration?: number;
   id: string;
   index: number;
-  total: number;
   count?: number; // Add count prop with default value
 }
 
@@ -48,68 +48,41 @@ export const Notification: React.FC<NotificationProps> = ({
   onClose,
   autoClose = true,
   duration = 5000,
-  id,
-  index,
-  total,
-  count = 1, // Add count prop with default value
+  count = 1,
 }) => {
-  const [isClosing, setIsClosing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const timerRef = useRef<number>();
 
-  // Reset the timer when count changes
   useEffect(() => {
-    if (!autoClose || !onClose) return;
+    if (!autoClose || !onClose || isHovered) {
+      clearTimeout(timerRef.current);
+      return;
+    }
 
-    const closeTimer = setTimeout(() => {
-      setIsClosing(true);
-      const animationTimer = setTimeout(() => {
-        onClose();
-      }, 300);
-
-      return () => clearTimeout(animationTimer);
-    }, duration);
-
-    return () => clearTimeout(closeTimer);
-  }, [onClose, autoClose, duration, count]); // Reset timer when count changes
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      if (onClose) onClose();
-    }, 300);
-  };
-
-  // Modified stacking animation for right-side notifications
-  const yOffset = index * 12; // Vertical stacking
-  const opacity = Math.max(0.75, 1 - index * 0.15);
+    timerRef.current = window.setTimeout(onClose, duration);
+    return () => clearTimeout(timerRef.current);
+  }, [autoClose, duration, onClose, isHovered]);
 
   return (
-    <motion.div
-      key={`notification-${id}`}
-      initial={{ x: 100, opacity: 0 }}
-      animate={{
-        x: -50,
-        y: yOffset,
-        opacity: isClosing ? 0 : opacity,
-      }}
-      exit={{ x: 100, opacity: 0 }}
-      transition={{
-        type: "spring",
-        stiffness: 400,
-        damping: 30,
-      }}
-      className="fixed right-0 transform"
+    <div
       style={{
-        maxWidth: "500px", // Fixed width for notifications
-        zIndex: 9999 - index, // Ensure proper stacking
+        position: "fixed",
+        right: "1rem",
+        zIndex: 10000,
+        minWidth: "320px",
+        maxWidth: "500px",
+        width: "max-content",
       }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <Alert
         color={getAlertColor(type)}
         variant="flat"
         radius="lg"
         isClosable
-        onClose={handleClose}
-        className="shadow-xl backdrop-blur-md bg-opacity-90 flex items-center m-4"
+        onClose={onClose}
+        className={`shadow-xl backdrop-blur-md bg-opacity-90 flex items-center m-4 ${isHovered ? "ring-2 ring-black/5" : ""}`}
       >
         <div className="py-2 px-2 font-ot ot-medium overflow-hidden flex items-center justify-between w-full">
           <span>{message}</span>
@@ -120,7 +93,7 @@ export const Notification: React.FC<NotificationProps> = ({
           )}
         </div>
       </Alert>
-    </motion.div>
+    </div>
   );
 };
 
@@ -144,57 +117,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [activeTimers, setActiveTimers] = useState<Record<string, number>>({});
+  const [isAnyHovered, setIsAnyHovered] = useState(false);
 
-  // Function to remove a notification
   const removeNotification = useCallback((id: string) => {
     setNotifications((prev) =>
       prev.filter((notification) => notification.id !== id)
     );
-    
-    // Clear the timer
-    const timerId = activeTimers[id];
-    if (timerId) {
-      clearTimeout(timerId);
-      setActiveTimers((prev) => {
-        const newTimers = { ...prev };
-        delete newTimers[id];
-        return newTimers;
-      });
-    }
-  }, [activeTimers]);
+  }, []);
 
-  // Function to add a new notification
   const addNotification = useCallback(
     (notification: Omit<NotificationItem, "id" | "createdAt">) => {
       const id = Date.now().toString();
       const createdAt = Date.now();
 
       setNotifications((prev) => {
-        // Check if there's an existing notification with the same message and type
         const existingNotification = prev.find(
-          (n) => n.message === notification.message && n.type === notification.type
+          (n) =>
+            n.message === notification.message && n.type === notification.type
         );
 
         if (existingNotification) {
-          // Clear existing timer
-          const existingTimerId = activeTimers[existingNotification.id];
-          if (existingTimerId) {
-            clearTimeout(existingTimerId);
-          }
-
-          // Set new timer
-          const duration = notification.duration || 5000;
-          const newTimerId = window.setTimeout(() => {
-            removeNotification(existingNotification.id);
-          }, duration);
-
-          // Update timers
-          setActiveTimers((prev) => ({
-            ...prev,
-            [existingNotification.id]: newTimerId,
-          }));
-
           return prev.map((n) =>
             n.id === existingNotification.id
               ? { ...n, count: (n.count || 1) + 1, createdAt: Date.now() }
@@ -202,38 +144,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
           );
         }
 
-        // Set timer for new notification
-        const duration = notification.duration || 5000;
-        const newTimerId = window.setTimeout(() => {
-          removeNotification(id);
-        }, duration);
-
-        // Store new timer
-        setActiveTimers((prev) => ({
-          ...prev,
-          [id]: newTimerId,
-        }));
-
-        // Limit to maximum 5 visible notifications
         const limitedPrev = prev.slice(0, 4);
         return [{ ...notification, id, createdAt, count: 1 }, ...limitedPrev];
       });
 
       return id;
     },
-    [removeNotification, activeTimers]
+    []
   );
 
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(activeTimers).forEach((timerId) => {
-        clearTimeout(timerId);
-      });
-    };
-  }, [activeTimers]);
-
-  // Sort notifications by creation time (newest first)
   const sortedNotifications = [...notifications].sort(
     (a, b) => b.createdAt - a.createdAt
   );
@@ -243,21 +162,51 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
       value={{ addNotification, removeNotification }}
     >
       {children}
-      <div className="fixed right-0 top-0 z-50 pt-4">
+      <div className="fixed right-0 top-0 z-[9999] pt-4">
         <div className="relative" style={{ minHeight: "100px" }}>
-          <AnimatePresence mode="sync">
+          <AnimatePresence initial={false} mode="wait">
             {sortedNotifications.map((notification, index) => (
-              <Notification
+              <motion.div
                 key={notification.id}
-                id={notification.id}
-                message={notification.message}
-                type={notification.type}
-                onClose={() => removeNotification(notification.id)}
-                duration={notification.duration}
-                index={index}
-                total={sortedNotifications.length}
-                count={notification.count}
-              />
+                initial={{ x: 100, opacity: 0, scale: 1 }}
+                animate={{
+                  x: -50,
+                  y: index * 12,
+                  opacity: 1,
+                  scale: 1 - index * 0.02,
+                }}
+                exit={{ x: 100, opacity: 0, scale: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 30,
+                  scale: {
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 20,
+                  },
+                }}
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  top: 0,
+                  zIndex: sortedNotifications.length - index,
+                }}
+                onMouseEnter={() => setIsAnyHovered(true)}
+                onMouseLeave={() => setIsAnyHovered(false)}
+              >
+                <Notification
+                  key={notification.id}
+                  id={notification.id}
+                  message={notification.message}
+                  type={notification.type}
+                  onClose={() => removeNotification(notification.id)}
+                  duration={notification.duration}
+                  index={index}
+                  count={notification.count}
+                  autoClose={!isAnyHovered}
+                />
+              </motion.div>
             ))}
           </AnimatePresence>
         </div>

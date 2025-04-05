@@ -528,10 +528,7 @@ const SignupFlow = () => {
       // Wait for animation to complete before proceeding
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      showMessage(
-        "Email verified successfully! Please create your password.",
-        false
-      );
+      showMessage("Email verified successfully!", false);
       setCurrentStep(3);
       setResendTimer(0);
     } catch (error) {
@@ -1194,7 +1191,7 @@ const SignupFlow = () => {
             className="w-full flex items-center"
           >
             <form onSubmit={handleVerifyCode} className="w-full">
-              <div className="w-full max-w-7xl relative translate-x-[-5rem]">
+              <div className="w-full max-w-7xl relative translate-x-[-7rem]">
                 <div className="flex flex-col">
                   <h1 className="text-xl font-ot ot-regular text-gray-900 mb-4">
                     Enter the verification code
@@ -1303,10 +1300,10 @@ const SignupFlow = () => {
                       <button
                         type="button"
                         disabled={resendTimer > 0 || isLoading.resendingCode}
-                        className={`px-3 py-1.5 rounded-lg font-ot ot-regular bg-gray-100 inline-flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg font-ot ot-regular bg-gray-200 inline-flex items-center gap-1.5 transition-all duration-200 ${
                           resendTimer > 0 || isLoading.resendingCode
                             ? "text-gray-400 cursor-not-allowed"
-                            : "text-gray-900 hover:bg-gray-200"
+                            : "text-gray-900 hover:bg-gray-300"
                         }`}
                         onClick={() => {
                           setVerificationCode("");
@@ -1486,7 +1483,7 @@ const SignupFlow = () => {
             className="w-full flex items-center"
           >
             <form onSubmit={handleSubmitPassword} className="w-full">
-              <div className="w-full max-w-7xl relative translate-x-[-5rem]">
+              <div className="w-full max-w-7xl relative translate-x-[-7rem]">
                 <div className="flex flex-col">
                   <h1
                     className={`text-xl font-ot ot-regular mb-4 ${showConfirmPassword ? "text-[#989898]" : "text-gray-900"}`}
@@ -1779,7 +1776,7 @@ const SignupFlow = () => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen bg-[#f7f6f4]">
       {/* Server Error State */}
       {serverStatus !== "running" && (
         <div className="flex-1 flex items-center justify-center">

@@ -516,10 +516,7 @@ const SignupFlow = () => {
       // Clean up localStorage
       localStorage.removeItem("verificationTokenId");
 
-      showMessage(
-        "Email verified successfully! Please create your password.",
-        false
-      );
+      showMessage("Email verified successfully!", false);
       setCurrentStep(2);
       setResendTimer(0);
     } catch (error) {

@@ -251,7 +251,12 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
               <button
                 type="button"
                 onClick={handleClear}
-                className="absolute right-[-10px] top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                className={`absolute right-[-10px] top-1/2 -translate-y-1/2 p-2 text-gray-400 focus:outline-none ${
+                  props.disabled
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:text-gray-600"
+                }`}
+                disabled={props.disabled}
               >
                 <X className="w-8 h-8" />
               </button>
