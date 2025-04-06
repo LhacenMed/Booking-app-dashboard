@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db } from "@/config/firebase";
-// import { auth } from "@/config/firebase";
-// import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/config/firebase";
+import {
+  // signOut,
+  signInWithEmailAndPassword,
+  signInWithCustomToken,
+} from "firebase/auth";
 import {
   collection,
   serverTimestamp,
@@ -17,14 +21,9 @@ import {
   orderBy,
   limit,
 } from "firebase/firestore";
-// import { ImageUploadPreview } from "@/components/ImageUploadPreview";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";
-// import { LoadingOverlay } from "@/components/ui/loading-overlay";
 import { useNotification } from "@/components/ui/notification";
 import { motion, AnimatePresence } from "framer-motion";
-// import { SignupSidebar } from "@/components/Sidebar/SignupSidebar";
-// import { FileUpload } from "@/components/ui/file-upload";
-// import { ImageUploadPreview } from "@/components/ui/ImageUploadPreview";
 import {
   InputOTP,
   InputOTPGroup,
@@ -32,12 +31,8 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
-// import { Input } from "@heroui/react";
-// import { LoadingSpinner } from "@/components/ui/loading-spinner";
-// import { EyeIcon, EyeOffIcon } from "lucide-react";
 import CustomInput from "@/components/ui/CustomInput";
 import { Spinner } from "@heroui/react";
-// import PasswordInput from "@/components/ui/PasswordInput";
 import { useNavigate } from "react-router-dom";
 
 // Simple function to generate 6-digit code
@@ -163,15 +158,6 @@ const SignupFlow = () => {
   const [serverStatus, setServerStatus] = useState<"running" | "error">(
     "running"
   );
-  // const [showPassword, setShowPassword] = useState(false);
-  // const [files, setFiles] = useState<File[]>([]);
-  // const [message, setMessage] = useState("");
-  // const [isError, setIsError] = useState(false);
-  // const [notification, setNotification] = useState<{
-  //   message: string;
-  //   type: "informative" | "success" | "warning" | "danger";
-  // } | null>(null);
-  // const [isNotificationVisible, setIsNotificationVisible] = useState(false);
 
   // Add timer state
   const [resendTimer, setResendTimer] = useState<number>(0);
@@ -201,10 +187,6 @@ const SignupFlow = () => {
 
   // Add useNotification hook
   const { addNotification } = useNotification();
-
-  // Add error states for form validation
-  // const [emailError, setEmailError] = useState<string | undefined>();
-  // const [passwordError, setPasswordError] = useState<string | undefined>();
 
   // Add back notification state
   const [notification, setNotification] = useState<LocalNotification | null>(
@@ -795,7 +777,21 @@ const SignupFlow = () => {
       localStorage.removeItem("verificationTokenId");
 
       showMessage("Account created successfully!", false);
-      console.log("Account creation completed successfully!");
+
+      // Sign in with the custom token from the server
+      try {
+        if (data.user.customToken) {
+          await signInWithCustomToken(auth, data.user.customToken);
+          console.log("Successfully signed in with custom token");
+        } else {
+          console.error("No custom token received from server");
+          // Fallback to email/password sign in if no token
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+      } catch (signInError) {
+        console.error("Error signing in:", signInError);
+        // Don't throw error as account creation was successful
+      }
 
       // Redirect to onboarding welcome page
       navigate("/onboarding/welcome");
@@ -1340,17 +1336,6 @@ const SignupFlow = () => {
                           </>
                         )}
                       </button>
-
-                      {/* Add test button */}
-                      {/* {process.env.NODE_ENV === "development" && (
-                        <button
-                          type="button"
-                          onClick={handleSuccessAnimation}
-                          className="px-3 py-1.5 rounded-lg font-ot ot-regular bg-green-100 text-green-700 hover:bg-green-200"
-                        >
-                          Success OTP
-                        </button>
-                      )} */}
                     </div>
                   </div>
                 </div>
@@ -1727,8 +1712,8 @@ const SignupFlow = () => {
           {/* Main content */}
           <div className="flex-1 min-h-screen overflow-y-auto relative">
             {/* Logo */}
-            <div 
-              onClick={() => window.location.href = '/'}
+            <div
+              onClick={() => (window.location.href = "/")}
               className="absolute md:top-[50px] md:left-[50px] top-6 left-6 flex items-center font-ot ot-medium select-none cursor-pointer hover:opacity-80 transition-opacity"
             >
               <img
@@ -1744,7 +1729,7 @@ const SignupFlow = () => {
 
             <div className="flex flex-col items-center min-h-screen">
               <div className="flex-1 flex items-start justify-center w-full p-4 md:p-8">
-                <motion.div className="w-full pt-[180px] md:pt-[250px] max-w-3xl px-4 md:px-0">
+                <motion.div className="w-full pt-[200px] md:pt-[250px] max-w-3xl px-4 md:px-0">
                   {/* Step content */}
                   {renderStepContent()}
                 </motion.div>

@@ -439,24 +439,50 @@ app.post("/api/create-account", accountCreationLimiter, async(req, res) => {
             email: email,
             emailVerified: true,
             onboarded: false,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            // createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         // Delete the verification token
         await tokenRef.delete();
 
-        return res.status(200).json({
-            success: true,
-            message: "Account created successfully",
-            user: {
-                uid: userRecord.uid,
-                email: userRecord.email,
-                emailVerified: userRecord.emailVerified,
-                // Include password for immediate sign-in (will be used client-side only)
-                password: password,
-            },
-        });
+        // Sign out any existing sessions for this user
+        try {
+            await admin.auth().revokeRefreshTokens(uid);
+            console.log("Successfully revoked tokens for user:", uid);
+        } catch (signOutError) {
+            console.error("Error revoking tokens:", signOutError);
+            // Don't throw error as account creation was successful
+        }
+
+        // Create a custom token for the new user
+        try {
+            const customToken = await admin.auth().createCustomToken(uid);
+            console.log("Successfully created custom token for user:", uid);
+
+            return res.status(200).json({
+                success: true,
+                message: "Account created successfully",
+                user: {
+                    uid: userRecord.uid,
+                    email: userRecord.email,
+                    emailVerified: userRecord.emailVerified,
+                    customToken: customToken, // Send custom token instead of password
+                },
+            });
+        } catch (tokenError) {
+            console.error("Error creating custom token:", tokenError);
+            // Still return success but without token
+            return res.status(200).json({
+                success: true,
+                message: "Account created successfully, but session creation failed",
+                user: {
+                    uid: userRecord.uid,
+                    email: userRecord.email,
+                    emailVerified: userRecord.emailVerified,
+                },
+            });
+        }
     } catch (error) {
         console.error("Account creation error:", error);
 
