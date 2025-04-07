@@ -1,0 +1,1 @@
+export const middleOfUSA: [number, number] = [-100, 40] as const;

@@ -24,6 +24,7 @@ import ErrorPage from "./components/ErrorBoundary/ErrorPage";
 import MessageEmail from "./pages/message-email";
 import SignUpTestPage0 from "./pages/signup-test0";
 import SignUpTestPage1 from "./pages/signup-test1";
+import MapPage from "./pages/map";
 
 export const router = createBrowserRouter([
   {
@@ -53,6 +54,10 @@ export const router = createBrowserRouter([
       {
         path: "/signup-test1",
         element: <SignUpTestPage1 />,
+      },
+      {
+        path: "/map",
+        element: <MapPage />,
       },
       // Onboarding Flow
       {
