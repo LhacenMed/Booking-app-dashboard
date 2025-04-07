@@ -47,7 +47,7 @@ export default function SelectCompanyPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Fetch current agency data to get motherCompanyId
+  // Fetch current agency data to get companyId
   useEffect(() => {
     const fetchAgencyData = async () => {
       if (!user) return;
@@ -56,8 +56,8 @@ export default function SelectCompanyPage() {
         setLoadingStates((prev) => ({ ...prev, agencyLoading: true }));
         const agencyDoc = await getDoc(doc(db, "agencies", user.uid));
 
-        if (agencyDoc.exists() && agencyDoc.data().motherCompanyId) {
-          setSelectedCompany(agencyDoc.data().motherCompanyId);
+        if (agencyDoc.exists() && agencyDoc.data().companyId) {
+          setSelectedCompany(agencyDoc.data().companyId);
         }
       } catch (error) {
         console.error("Error fetching agency data:", error);
@@ -110,7 +110,7 @@ export default function SelectCompanyPage() {
     try {
       setLoadingStates((prev) => ({ ...prev, updateLoading: true }));
       await updateDoc(doc(db, "agencies", user.uid), {
-        motherCompanyId: selectedCompany,
+        companyId: selectedCompany,
         updatedAt: new Date(),
       });
       showNotification("Successfully updated company", "success");

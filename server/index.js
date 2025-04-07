@@ -162,7 +162,7 @@ app.post("/api/send-email", emailSendLimiter, async(req, res) => {
             </html>`;
 
         sendSmtpEmail.sender = {
-            name: process.env.SENDER_NAME || "SupNum",
+            name: process.env.SENDER_NAME || "Bookly",
             email: process.env.SENDER_EMAIL,
         };
 
@@ -173,7 +173,7 @@ app.post("/api/send-email", emailSendLimiter, async(req, res) => {
 
         sendSmtpEmail.replyTo = {
             email: process.env.SENDER_EMAIL,
-            name: process.env.SENDER_NAME || "SupNum Support",
+            name: process.env.SENDER_NAME || "Bookly Support",
         };
 
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
@@ -790,7 +790,7 @@ app.post("/api/request-verification", emailSendLimiter, async(req, res) => {
             <table class="t35" role="presentation" cellpadding="0" cellspacing="0" style="Margin-left:auto;Margin-right:auto;"><tr><td width="351" class="t34" style="border-top:2px solid #DFE1E4;width:600px;">
             <table class="t33" role="presentation" cellpadding="0" cellspacing="0" width="100%" style="width:100%;"><tr><td class="t32" style="padding:30px 0 0 0;"><div class="t30" style="width:100%;text-align:left;"><div class="t29" style="display:inline-block;"><table class="t28" role="presentation" cellpadding="0" cellspacing="0" align="left" valign="top">
             <tr class="t27"><td></td><td class="t26" width="351" valign="top">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="t25" style="width:100%;"><tr><td class="t24"><p class="t23" style="margin:0;Margin:0;font-family:Outfit, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Arial, sans-serif;line-height:22px;font-weight:400;font-style:normal;font-size:16px;text-decoration:none;text-transform:none;direction:ltr;color:#333333;text-align:left;mso-line-height-rule:exactly;mso-text-raise:2px;">This code expires in 5 minutes.<br/><br/>If you didn't sign up for SupNum, you can safely ignore this email. Someone else might have typed your email address by mistake.</p></td></tr></table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="t25" style="width:100%;"><tr><td class="t24"><p class="t23" style="margin:0;Margin:0;font-family:Outfit, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Arial, sans-serif;line-height:22px;font-weight:400;font-style:normal;font-size:16px;text-decoration:none;text-transform:none;direction:ltr;color:#333333;text-align:left;mso-line-height-rule:exactly;mso-text-raise:2px;">This code expires in 5 minutes.<br/><br/>If you didn't sign up for Bookly, you can safely ignore this email. Someone else might have typed your email address by mistake.</p></td></tr></table>
             </td>
             <td></td></tr>
             </table></div></div></td></tr></table>
@@ -801,7 +801,7 @@ app.post("/api/request-verification", emailSendLimiter, async(req, res) => {
             </html>`;
 
         sendSmtpEmail.sender = {
-            name: process.env.SENDER_NAME || "SupNum",
+            name: process.env.SENDER_NAME || "Bookly",
             email: process.env.SENDER_EMAIL,
         };
 
@@ -812,7 +812,7 @@ app.post("/api/request-verification", emailSendLimiter, async(req, res) => {
 
         sendSmtpEmail.replyTo = {
             email: process.env.SENDER_EMAIL,
-            name: process.env.SENDER_NAME || "SupNum Support",
+            name: process.env.SENDER_NAME || "Bookly Support",
         };
 
         await apiInstance.sendTransacEmail(sendSmtpEmail);
@@ -1034,7 +1034,7 @@ app.post("/api/resend-verification", emailSendLimiter, async(req, res) => {
             <table class="t35" role="presentation" cellpadding="0" cellspacing="0" style="Margin-left:auto;Margin-right:auto;"><tr><td width="351" class="t34" style="border-top:2px solid #DFE1E4;width:600px;">
             <table class="t33" role="presentation" cellpadding="0" cellspacing="0" width="100%" style="width:100%;"><tr><td class="t32" style="padding:30px 0 0 0;"><div class="t30" style="width:100%;text-align:left;"><div class="t29" style="display:inline-block;"><table class="t28" role="presentation" cellpadding="0" cellspacing="0" align="left" valign="top">
             <tr class="t27"><td></td><td class="t26" width="351" valign="top">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="t25" style="width:100%;"><tr><td class="t24"><p class="t23" style="margin:0;Margin:0;font-family:Outfit, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Arial, sans-serif;line-height:22px;font-weight:400;font-style:normal;font-size:16px;text-decoration:none;text-transform:none;direction:ltr;color:#333333;text-align:left;mso-line-height-rule:exactly;mso-text-raise:2px;">This code expires in 5 minutes.<br/><br/>If you didn't sign up for SupNum, you can safely ignore this email. Someone else might have typed your email address by mistake.</p></td></tr></table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="t25" style="width:100%;"><tr><td class="t24"><p class="t23" style="margin:0;Margin:0;font-family:Outfit, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Arial, sans-serif;line-height:22px;font-weight:400;font-style:normal;font-size:16px;text-decoration:none;text-transform:none;direction:ltr;color:#333333;text-align:left;mso-line-height-rule:exactly;mso-text-raise:2px;">This code expires in 5 minutes.<br/><br/>If you didn't sign up for Bookly, you can safely ignore this email. Someone else might have typed your email address by mistake.</p></td></tr></table>
             </td>
             <td></td></tr>
             </table></div></div></td></tr></table>
@@ -1045,7 +1045,7 @@ app.post("/api/resend-verification", emailSendLimiter, async(req, res) => {
             </html>`;
 
         sendSmtpEmail.sender = {
-            name: process.env.SENDER_NAME || "SupNum",
+            name: process.env.SENDER_NAME || "Bookly",
             email: process.env.SENDER_EMAIL,
         };
 
@@ -1056,7 +1056,7 @@ app.post("/api/resend-verification", emailSendLimiter, async(req, res) => {
 
         sendSmtpEmail.replyTo = {
             email: process.env.SENDER_EMAIL,
-            name: process.env.SENDER_NAME || "SupNum Support",
+            name: process.env.SENDER_NAME || "Bookly Support",
         };
 
         await apiInstance.sendTransacEmail(sendSmtpEmail);
