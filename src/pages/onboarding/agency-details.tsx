@@ -7,10 +7,37 @@ import { Spinner } from "@heroui/react";
 import { FiGlobe, FiMapPin, FiMap } from "react-icons/fi";
 import OnboardingLayout from "@/layouts/OnboardingLayout";
 import { PageTransition } from "@/components/ui/PageTransition";
-import { Map, GeolocateControl, Marker } from "@vis.gl/react-maplibre";
-import "maplibre-gl/dist/maplibre-gl.css";
+// Replace maplibre imports with leaflet
+import "leaflet/dist/leaflet.css";
+import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
+import "leaflet.locatecontrol/dist/L.Control.Locate.min.css";
 import { useAuth } from "@/hooks/useAuth";
 import { ImageUploadPreview } from "@/components/ui/ImageUploadPreview";
+import { LocationPickerModal } from "@/components/maps";
+
+// This is needed for Leaflet marker icons to work properly
+import icon from "leaflet/dist/images/marker-icon.png";
+import iconShadow from "leaflet/dist/images/marker-shadow.png";
+import L from "leaflet";
+// Declare leaflet-routing-machine as a module to avoid TS issues
+import "leaflet-routing-machine";
+import "leaflet.locatecontrol";
+
+// Fix Leaflet default icon issue
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// Extend L.Control type to include locate method
+declare module "leaflet" {
+  namespace control {
+    function locate(options?: any): any;
+  }
+}
 
 interface CompanyInfo {
   name: string;
@@ -57,13 +84,6 @@ const CompanyInfoPage = () => {
     licensePublicId: "",
   });
 
-  // Nouakchott, Mauritania coordinates
-  const NOUAKCHOTT_COORDS = {
-    longitude: -15.9785,
-    latitude: 18.0735,
-    zoom: 10,
-  };
-
   // Validate coordinates
   const isValidCoordinates = (lat: string, lng: string): boolean => {
     const latNum = parseFloat(lat);
@@ -79,28 +99,11 @@ const CompanyInfoPage = () => {
     );
   };
 
-  // Get initial map view state
-  const getInitialViewState = () => {
-    if (
-      companyInfo.latitude &&
-      companyInfo.longitude &&
-      isValidCoordinates(companyInfo.latitude, companyInfo.longitude)
-    ) {
-      return {
-        longitude: parseFloat(companyInfo.longitude),
-        latitude: parseFloat(companyInfo.latitude),
-        zoom: 12,
-      };
-    }
-    return NOUAKCHOTT_COORDS;
-  };
-
-  // Handle show map toggle
+  // Handle show/hide map
   const handleShowMap = () => {
     if (showMap) {
       setShowMap(false);
     } else {
-      setShowMap(true);
       // If coordinates are valid, set them as selected location
       if (
         companyInfo.latitude &&
@@ -111,14 +114,28 @@ const CompanyInfoPage = () => {
           parseFloat(companyInfo.longitude),
           parseFloat(companyInfo.latitude),
         ]);
-      } else {
-        // Reset selected location if showing default view
-        setSelectedLocation(null);
       }
+
+      setShowMap(true);
     }
   };
 
-  // Get current location
+  // Handle location selection from the map
+  const handleLocationSelect = useCallback((location: [number, number]) => {
+    setSelectedLocation(location);
+
+    // Update the form fields with the selected coordinates
+    setCompanyInfo((prev) => ({
+      ...prev,
+      // location[0] is longitude, location[1] is latitude
+      longitude: location[0].toString(),
+      latitude: location[1].toString(),
+    }));
+
+    showNotification("Location selected successfully", "success");
+  }, []);
+
+  // Get current location using browser geolocation
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       showNotification(
@@ -131,11 +148,16 @@ const CompanyInfoPage = () => {
     setIsGettingLocation(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
         setCompanyInfo((prev) => ({
           ...prev,
-          latitude: position.coords.latitude.toString(),
-          longitude: position.coords.longitude.toString(),
+          latitude: lat.toString(),
+          longitude: lng.toString(),
         }));
+
+        setSelectedLocation([lng, lat]);
         setIsGettingLocation(false);
         showNotification("Location updated successfully", "success");
       },
@@ -178,39 +200,6 @@ const CompanyInfoPage = () => {
     });
   };
 
-  // Handle map click
-  const handleMapClick = useCallback(
-    (event: { lngLat: { lng: number; lat: number } }) => {
-      if (!isPickingLocation) return;
-
-      const { lng, lat } = event.lngLat;
-      setSelectedLocation([lng, lat]);
-      setCompanyInfo((prev) => ({
-        ...prev,
-        latitude: lat.toString(),
-        longitude: lng.toString(),
-      }));
-      setIsPickingLocation(false);
-      showNotification("Location selected successfully", "success");
-    },
-    [isPickingLocation]
-  );
-
-  // Toggle location picking mode
-  const toggleLocationPicking = () => {
-    setIsPickingLocation(!isPickingLocation);
-  };
-
-  // Update cursor style when picking mode changes
-  useEffect(() => {
-    const mapContainer = document.querySelector(
-      ".maplibregl-canvas-container"
-    ) as HTMLElement;
-    if (mapContainer) {
-      mapContainer.style.cursor = isPickingLocation ? "crosshair" : "grab";
-    }
-  }, [isPickingLocation]);
-
   // Fetch current agency data when component loads
   useEffect(() => {
     const fetchAgencyData = async () => {
@@ -245,8 +234,6 @@ const CompanyInfoPage = () => {
               parseFloat(data.location.latitude),
             ]);
           }
-
-          // showNotification("Agency data loaded successfully", "success");
         }
       } catch (error) {
         console.error("Error fetching agency data:", error);
@@ -552,74 +539,15 @@ const CompanyInfoPage = () => {
                     </div>
                   </div>
 
-                  {/* Map Window */}
-                  {showMap && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                      <div className="bg-gray-900 rounded-lg w-full max-w-2xl overflow-hidden">
-                        <div className="flex justify-between items-center p-4 border-b border-gray-800">
-                          <h3 className="text-lg font-ot-medium text-white">
-                            Select Location
-                          </h3>
-                          <div className="flex items-center gap-4">
-                            <button
-                              type="button"
-                              onClick={toggleLocationPicking}
-                              className={`px-3 py-1.5 rounded-md text-sm flex items-center gap-2 transition-colors ${
-                                isPickingLocation
-                                  ? "bg-blue-500 text-white"
-                                  : "bg-gray-700 text-white/60 hover:text-white"
-                              }`}
-                            >
-                              <FiMapPin className="w-4 h-4" />
-                              {isPickingLocation
-                                ? "Picking Location..."
-                                : "Pick Location"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setShowMap(false)}
-                              className="text-white/60 hover:text-white"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                        <div className="h-[400px] relative">
-                          {isPickingLocation && (
-                            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
-                              Click anywhere on the map to select location
-                            </div>
-                          )}
-                          <Map
-                            initialViewState={getInitialViewState()}
-                            style={{ width: "100%", height: "100%" }}
-                            mapStyle="https://tiles.openfreemap.org/styles/bright"
-                            onClick={handleMapClick}
-                          >
-                            <GeolocateControl
-                              position="top-left"
-                              positionOptions={{
-                                enableHighAccuracy: true,
-                                timeout: 6000,
-                              }}
-                              trackUserLocation
-                              showUserLocation
-                              showAccuracyCircle
-                              auto
-                            />
-                            {selectedLocation && (
-                              <Marker
-                                longitude={selectedLocation[0]}
-                                latitude={selectedLocation[1]}
-                              >
-                                <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-lg transform -translate-x-1/2 -translate-y-1/2" />
-                              </Marker>
-                            )}
-                          </Map>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {/* Map Modal - Using our reusable component */}
+                  <LocationPickerModal
+                    isOpen={showMap}
+                    onClose={() => setShowMap(false)}
+                    selectedLocation={selectedLocation}
+                    onLocationSelect={handleLocationSelect}
+                    isPickingMode={isPickingLocation}
+                    onPickingModeChange={setIsPickingLocation}
+                  />
 
                   {/* Upload Section */}
                   <div className="grid grid-cols-2 gap-4">

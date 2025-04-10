@@ -338,7 +338,7 @@ export const SeatManagement = () => {
             <Button
               isIconOnly
               variant="light"
-              onPress={() => navigate("/trips")}
+              onPress={() => navigate("/dashboard/trips")}
             >
               <FiArrowLeft className="h-5 w-5" />
             </Button>
@@ -346,9 +346,7 @@ export const SeatManagement = () => {
               <h1 className="text-xl font-semibold text-foreground">
                 Seat Management
               </h1>
-              <p className="text-small text-default-500">
-                Loading
-              </p>
+              <p className="text-small text-default-500">Loading</p>
             </div>
           </div>
         </div>
@@ -365,12 +363,12 @@ export const SeatManagement = () => {
   return (
     <div className="flex h-screen bg-background">
       <div className="flex-1">
-        <div className="bg-content1 border-b border-divider px-6 py-4">
+        <div className="bg-content1 border-b border-divider px-6 py-2">
           <div className="flex items-center gap-4">
             <Button
               isIconOnly
               variant="light"
-              onPress={() => navigate("/trips")}
+              onPress={() => navigate("/dashboard/trips")}
             >
               <FiArrowLeft className="h-5 w-5" />
             </Button>

@@ -1,302 +1,828 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import OnboardingLayout from "@/layouts/OnboardingLayout";
-import { motion, AnimatePresence } from "framer-motion";
+import { PageTransition } from "@/components/ui/PageTransition";
+import { Spinner } from "@heroui/react";
 import { db } from "@/config/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  updateDoc,
+  collection,
+  addDoc,
+  getDoc,
+  getDocs,
+  setDoc,
+  deleteDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+} from "firebase/firestore";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  FiUsers,
+  FiEdit2,
+  FiTrash2,
+  FiSend,
+  FiAlertCircle,
+} from "react-icons/fi";
 
-interface VehicleType {
+// Types for staff member and permissions
+interface Permission {
   id: string;
-  type: "medium" | "large";
-  seatCapacity: number;
+  name: string;
   description: string;
 }
 
-const FleetInfoPage = () => {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface StaffMember {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  permissions: Record<string, boolean>;
+  status: "pending" | "active" | "suspended";
+  createdAt: Date;
+}
 
-  const [vehicles, setVehicles] = useState<VehicleType[]>([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newVehicle, setNewVehicle] = useState<Omit<VehicleType, "id">>({
-    type: "medium",
-    seatCapacity: 0,
-    description: "",
+// Available roles and permissions
+const ROLES = [
+  { id: "admin", name: "Admin" },
+  { id: "manager", name: "Manager" },
+  { id: "accountant", name: "Accountant" },
+  { id: "agent", name: "Agent" },
+  { id: "driver", name: "Driver" },
+  { id: "customer_service", name: "Customer Service" },
+];
+
+const PERMISSIONS: Permission[] = [
+  {
+    id: "create_trips",
+    name: "Create Trips",
+    description: "Create and publish new trips",
+  },
+  {
+    id: "manage_seats",
+    name: "Manage Seats",
+    description: "Assign and manage seat bookings",
+  },
+  {
+    id: "view_revenue",
+    name: "View Revenue",
+    description: "Access financial reports and revenue data",
+  },
+  {
+    id: "manage_staff",
+    name: "Manage Staff",
+    description: "Add, edit, and remove staff members",
+  },
+  {
+    id: "view_customer_data",
+    name: "View Customer Data",
+    description: "Access customer information",
+  },
+  {
+    id: "buy_credits",
+    name: "Buy Credits",
+    description: "Purchase credits for the agency",
+  },
+];
+
+// Default permissions by role
+const DEFAULT_PERMISSIONS: Record<string, string[]> = {
+  admin: PERMISSIONS.map((p) => p.id),
+  manager: ["create_trips", "manage_seats", "view_customer_data"],
+  accountant: ["view_revenue"],
+  agent: ["create_trips", "manage_seats", "view_customer_data"],
+  driver: ["view_customer_data"],
+  customer_service: ["view_customer_data"],
+};
+
+const StaffManagementPage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSendingInvite, setIsSendingInvite] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "informative" | "success" | "warning" | "danger";
+    id: number;
+  } | null>(null);
+
+  // Staff state
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+
+  // New staff member form state
+  const [newStaff, setNewStaff] = useState<
+    Omit<StaffMember, "id" | "createdAt" | "status">
+  >({
+    name: "",
+    email: "",
+    phone: "",
+    role: "agent",
+    permissions: {},
   });
 
+  // Initialize permissions based on role
+  useEffect(() => {
+    if (newStaff.role) {
+      const rolePermissions = DEFAULT_PERMISSIONS[newStaff.role] || [];
+      const permissionsObj = PERMISSIONS.reduce(
+        (acc, permission) => {
+          acc[permission.id] = rolePermissions.includes(permission.id);
+          return acc;
+        },
+        {} as Record<string, boolean>
+      );
+
+      setNewStaff((prev) => ({
+        ...prev,
+        permissions: permissionsObj,
+      }));
+    }
+  }, [newStaff.role]);
+
+  // Load existing staff members from the subcollection
+  useEffect(() => {
+    const loadStaffData = async () => {
+      if (!user?.uid) return;
+
+      setIsLoading(true);
+      try {
+        // Get reference to the staff subcollection
+        const staffCollectionRef = collection(
+          db,
+          "agencies",
+          user.uid,
+          "staff"
+        );
+
+        // Query all staff documents ordered by creation time
+        const staffQuery = query(
+          staffCollectionRef,
+          orderBy("createdAt", "desc")
+        );
+        const staffSnapshot = await getDocs(staffQuery);
+
+        // Convert the documents to StaffMember objects
+        const loadedStaff: StaffMember[] = [];
+
+        staffSnapshot.forEach((doc) => {
+          const data = doc.data();
+          loadedStaff.push({
+            id: doc.id,
+            name: data.name || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            role: data.role || "agent",
+            permissions: data.permissions || {},
+            status: data.status || "pending",
+            createdAt: data.createdAt?.toDate() || new Date(),
+          });
+        });
+
+        setStaffMembers(loadedStaff);
+
+        if (loadedStaff.length > 0) {
+          showNotification("Staff data loaded successfully", "informative");
+        }
+      } catch (error) {
+        console.error("Error loading staff data:", error);
+        showNotification("Failed to load existing staff data", "warning");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadStaffData();
+  }, [user]);
+
+  // Show notification
+  const showNotification = (
+    message: string,
+    type: "informative" | "success" | "warning" | "danger"
+  ) => {
+    const id = Date.now();
+    setNotification({
+      message,
+      type,
+      id,
+    });
+  };
+
+  // Handle input change
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >
   ) => {
     const { name, value } = e.target;
-    setNewVehicle((prev) => ({
+    setNewStaff((prev) => ({
       ...prev,
-      [name]: name === "seatCapacity" ? parseInt(value) || 0 : value,
+      [name]: value,
     }));
   };
 
-  const handleAddVehicle = (e: React.FormEvent) => {
-    e.preventDefault();
-    const id = `vehicle_${Date.now()}`;
-    setVehicles((prev) => [...prev, { ...newVehicle, id }]);
-    setNewVehicle({
-      type: "medium",
-      seatCapacity: 0,
-      description: "",
+  // Handle permission checkbox change
+  const handlePermissionChange = (permissionId: string, checked: boolean) => {
+    setNewStaff((prev) => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        [permissionId]: checked,
+      },
+    }));
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setNewStaff({
+      name: "",
+      email: "",
+      phone: "",
+      role: "agent",
+      permissions: {},
     });
-    setShowAddForm(false);
+    setIsEditMode(false);
+    setEditingStaffId(null);
+    setIsFormVisible(false);
   };
 
-  const handleRemoveVehicle = (id: string) => {
-    setVehicles((prev) => prev.filter((vehicle) => vehicle.id !== id));
+  // Add or update staff member
+  const handleAddStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newStaff.name || !newStaff.email) {
+      showNotification("Name and email are required", "warning");
+      return;
+    }
+
+    // Simple email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newStaff.email)) {
+      showNotification("Please enter a valid email address", "warning");
+      return;
+    }
+
+    if (isEditMode && editingStaffId) {
+      // Update existing staff member
+      updateStaffMember(editingStaffId);
+    } else {
+      // Add new staff member
+      addStaffMember();
+    }
   };
 
-  const handleSubmit = async () => {
+  // Add new staff member to the subcollection
+  const addStaffMember = async () => {
+    if (!user?.uid) {
+      showNotification("You must be logged in to add staff members", "danger");
+      return;
+    }
+
+    // Check if email already exists in staff list
+    const emailExists = staffMembers.some(
+      (staff) => staff.email.toLowerCase() === newStaff.email.toLowerCase()
+    );
+
+    if (emailExists) {
+      showNotification(
+        "A staff member with this email already exists",
+        "warning"
+      );
+      return;
+    }
+
     setIsLoading(true);
-    setError(null);
 
     try {
-      // Get company ID from localStorage
-      const companyId = localStorage.getItem("signupUID");
-      if (!companyId) {
-        throw new Error("Company ID not found");
-      }
+      // Get reference to the staff subcollection
+      const staffCollectionRef = collection(db, "agencies", user.uid, "staff");
 
-      // Update company document in Firestore
-      const companyRef = doc(db, "agencies", companyId);
-      await updateDoc(companyRef, {
-        fleet: {
-          vehicles,
-          updatedAt: new Date(),
-        },
+      // Create a new staff member object
+      const staffData = {
+        name: newStaff.name,
+        email: newStaff.email,
+        phone: newStaff.phone || "",
+        role: newStaff.role,
+        permissions: newStaff.permissions,
+        status: "pending",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      // Add the document to the subcollection
+      const docRef = await addDoc(staffCollectionRef, staffData);
+
+      // Create the complete staff member object with the generated ID
+      const newStaffMember: StaffMember = {
+        id: docRef.id,
+        ...newStaff,
+        status: "pending",
+        createdAt: new Date(),
+      };
+
+      // Add to local state
+      setStaffMembers((prev) => [...prev, newStaffMember]);
+
+      // Send invite (this would typically call a backend function to send an email)
+      // For now, just simulate it
+      showNotification(`Invitation sent to ${newStaff.email}`, "success");
+
+      // Reset form
+      resetForm();
+
+      // Update the agency document with hasStaff flag
+      const agencyRef = doc(db, "agencies", user.uid);
+      await updateDoc(agencyRef, {
+        hasStaff: true,
+        updatedAt: serverTimestamp(),
       });
-
-      // Navigate to next step
-      navigate("/onboarding/invite");
     } catch (error) {
-      console.error("Error saving fleet info:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to save fleet information"
+      console.error("Error adding staff member:", error);
+      showNotification(
+        "Failed to add staff member. Please try again.",
+        "danger"
       );
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Update existing staff member in the subcollection
+  const updateStaffMember = async (staffId: string) => {
+    if (!user?.uid) {
+      showNotification(
+        "You must be logged in to update staff members",
+        "danger"
+      );
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Get reference to the specific staff document
+      const staffDocRef = doc(db, "agencies", user.uid, "staff", staffId);
+
+      // Update the document in Firestore
+      await updateDoc(staffDocRef, {
+        name: newStaff.name,
+        email: newStaff.email,
+        phone: newStaff.phone || "",
+        role: newStaff.role,
+        permissions: newStaff.permissions,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Update in local state
+      setStaffMembers((prev) =>
+        prev.map((staff) =>
+          staff.id === staffId
+            ? {
+                ...staff,
+                name: newStaff.name,
+                email: newStaff.email,
+                phone: newStaff.phone,
+                role: newStaff.role,
+                permissions: newStaff.permissions,
+              }
+            : staff
+        )
+      );
+
+      showNotification("Staff member updated successfully", "success");
+      resetForm();
+    } catch (error) {
+      console.error("Error updating staff member:", error);
+      showNotification(
+        "Failed to update staff member. Please try again.",
+        "danger"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Remove staff member from the subcollection
+  const handleRemoveStaff = async (staffId: string) => {
+    if (!user?.uid) {
+      showNotification(
+        "You must be logged in to remove staff members",
+        "danger"
+      );
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Get reference to the specific staff document
+      const staffDocRef = doc(db, "agencies", user.uid, "staff", staffId);
+
+      // Delete the document from Firestore
+      await deleteDoc(staffDocRef);
+
+      // Remove from local state
+      setStaffMembers((prev) => prev.filter((staff) => staff.id !== staffId));
+      showNotification("Staff member removed successfully", "informative");
+
+      // If this was the last staff member, update the agency document
+      if (staffMembers.length <= 1) {
+        const agencyRef = doc(db, "agencies", user.uid);
+        await updateDoc(agencyRef, {
+          hasStaff: false,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.error("Error removing staff member:", error);
+      showNotification(
+        "Failed to remove staff member. Please try again.",
+        "danger"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Edit staff member
+  const handleEditStaff = (staffId: string) => {
+    const staffToEdit = staffMembers.find((staff) => staff.id === staffId);
+
+    if (staffToEdit) {
+      setNewStaff({
+        name: staffToEdit.name,
+        email: staffToEdit.email,
+        phone: staffToEdit.phone,
+        role: staffToEdit.role,
+        permissions: { ...staffToEdit.permissions },
+      });
+
+      setIsEditMode(true);
+      setEditingStaffId(staffId);
+      setIsFormVisible(true);
+    }
+  };
+
+  // Resend invite - in a real app, this would call a backend function
+  const handleResendInvite = async (staffId: string) => {
+    if (!user?.uid) {
+      showNotification("You must be logged in to resend invites", "danger");
+      return;
+    }
+
+    setIsSendingInvite(staffId);
+
+    try {
+      // Get the staff member to resend invite to
+      const staffMember = staffMembers.find((staff) => staff.id === staffId);
+
+      if (!staffMember) {
+        throw new Error("Staff member not found");
+      }
+
+      // In a real app, you'd call an API to send the invite email
+      // For now, just simulate it
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Update the document to reflect the resent invite
+      const staffDocRef = doc(db, "agencies", user.uid, "staff", staffId);
+      await updateDoc(staffDocRef, {
+        inviteResent: serverTimestamp(),
+      });
+
+      showNotification(`Invitation resent to ${staffMember.email}`, "success");
+    } catch (error) {
+      console.error("Error resending invite:", error);
+      showNotification("Failed to resend invitation", "danger");
+    } finally {
+      setIsSendingInvite(null);
+    }
+  };
+
+  // Proceed to the next step in onboarding
+  const handleContinue = () => {
+    // Just navigate to the next step, no need to save anything
+    // as data is already stored in Firestore upon each action
+    navigate("/onboarding/credits");
+  };
+
   return (
-    <OnboardingLayout currentStep={3}>
-      <div className="max-w-3xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-blue-50 border border-blue-100 rounded-xl p-6 mb-8"
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex-shrink-0 flex items-center justify-center text-blue-600">
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                Fleet Information
-              </h3>
-              <p className="text-gray-600">
-                Add your vehicle types and their seating capacities. This
-                information will be used when creating trips.
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Vehicle List */}
-        <div className="space-y-4 mb-8">
-          <AnimatePresence>
-            {vehicles.map((vehicle) => (
-              <motion.div
-                key={vehicle.id}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-white border border-gray-200 rounded-lg p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-900">
-                      {vehicle.type.charAt(0).toUpperCase() +
-                        vehicle.type.slice(1)}{" "}
-                      Vehicle
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      Capacity: {vehicle.seatCapacity} seats
-                    </p>
-                    {vehicle.description && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        {vehicle.description}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleRemoveVehicle(vehicle.id)}
-                    className="text-gray-400 hover:text-red-500"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-
-        {/* Add Vehicle Form */}
-        <AnimatePresence>
-          {showAddForm ? (
-            <motion.form
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              onSubmit={handleAddVehicle}
-              className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8"
-            >
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="type"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Vehicle Type
-                  </label>
-                  <select
-                    id="type"
-                    name="type"
-                    value={newVehicle.type}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  >
-                    <option value="medium">Medium</option>
-                    <option value="large">Large</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="seatCapacity"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Seat Capacity
-                  </label>
-                  <input
-                    type="number"
-                    id="seatCapacity"
-                    name="seatCapacity"
-                    min="1"
-                    value={newVehicle.seatCapacity}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="description"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Description (Optional)
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    rows={3}
-                    value={newVehicle.description}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="Add any additional details about the vehicle"
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddForm(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    Add Vehicle
-                  </button>
+    <OnboardingLayout notification={notification}>
+      <PageTransition>
+        <div className="min-h-screen flex flex-col p-6">
+          <div className="w-full max-w-4xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <div className="flex justify-center mb-4">
+                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                  <FiUsers className="w-6 h-6 text-white" />
                 </div>
               </div>
-            </motion.form>
-          ) : (
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowAddForm(true)}
-              className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:text-gray-900 hover:border-gray-400 transition-colors"
-            >
-              <svg
-                className="w-6 h-6 mx-auto mb-2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              Add Vehicle
-            </motion.button>
-          )}
-        </AnimatePresence>
+              <h1 className="text-2xl font-ot-medium text-white">
+                Add Your Team – Manage Your Agency Smoothly
+              </h1>
+              <p className="text-white/60 max-w-2xl mx-auto">
+                Add staff members who will help run your agency. Each person can
+                have different permissions based on their role.
+              </p>
+            </div>
 
-        {/* Error Message */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mt-6"
-          >
-            {error}
-          </motion.div>
-        )}
-      </div>
+            {/* Add Staff Section */}
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+              {isFormVisible ? (
+                <form onSubmit={handleAddStaff} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Name */}
+                    <div>
+                      <label className="block text-sm text-white/60 mb-1">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={newStaff.name}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 py-2.5 rounded-lg bg-[#141414] border border-white/10 text-white placeholder-white/40"
+                        placeholder="John Doe"
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block text-sm text-white/60 mb-1">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={newStaff.email}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 py-2.5 rounded-lg bg-[#141414] border border-white/10 text-white placeholder-white/40"
+                        placeholder="johndoe@example.com"
+                      />
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="block text-sm text-white/60 mb-1">
+                        Phone Number (Optional)
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={newStaff.phone}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2.5 rounded-lg bg-[#141414] border border-white/10 text-white placeholder-white/40"
+                        placeholder="+1 234 567 8900"
+                      />
+                    </div>
+
+                    {/* Role */}
+                    <div>
+                      <label className="block text-sm text-white/60 mb-1">
+                        Role
+                      </label>
+                      <select
+                        name="role"
+                        value={newStaff.role}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2.5 rounded-lg bg-[#141414] border border-white/10 text-white"
+                      >
+                        {ROLES.map((role) => (
+                          <option key={role.id} value={role.id}>
+                            {role.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Permissions */}
+                  <div>
+                    <label className="block text-sm text-white/60 mb-3">
+                      Permissions
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {PERMISSIONS.map((permission) => (
+                        <div key={permission.id} className="flex items-start">
+                          <input
+                            type="checkbox"
+                            id={permission.id}
+                            checked={
+                              newStaff.permissions[permission.id] || false
+                            }
+                            onChange={(e) =>
+                              handlePermissionChange(
+                                permission.id,
+                                e.target.checked
+                              )
+                            }
+                            className="mt-1 h-4 w-4 text-blue-600 rounded"
+                          />
+                          <label
+                            htmlFor={permission.id}
+                            className="ml-2 block text-sm"
+                          >
+                            <span className="font-medium text-white">
+                              {permission.name}
+                            </span>
+                            <p className="text-white/60 text-xs mt-0.5">
+                              {permission.description}
+                            </p>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Form Buttons */}
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      className="px-4 py-2.5 border border-white/10 rounded-lg text-white/80 hover:text-white hover:border-white/30 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 transition-colors flex items-center"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Spinner size="sm" className="mr-2" />
+                          <span>
+                            {isEditMode ? "Updating..." : "Adding..."}
+                          </span>
+                        </>
+                      ) : (
+                        <span>
+                          {isEditMode
+                            ? "Update Staff Member"
+                            : "Add Staff Member"}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  onClick={() => setIsFormVisible(true)}
+                  className="w-full py-4 border-2 border-dashed border-white/20 rounded-lg text-white/60 hover:text-white/90 hover:border-white/40 transition-all flex items-center justify-center group"
+                >
+                  <span className="w-5 h-5 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center mr-2 transition-all">
+                    +
+                  </span>
+                  Add Staff Member
+                </button>
+              )}
+            </div>
+
+            {/* Staff List */}
+            {staffMembers.length > 0 && (
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+                <h2 className="text-xl font-medium text-white mb-4">
+                  Your Team ({staffMembers.length})
+                </h2>
+                <div className="space-y-4">
+                  {staffMembers.map((staff) => (
+                    <div
+                      key={staff.id}
+                      className="border border-white/10 rounded-lg p-4"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center justify-between">
+                        <div className="mb-4 md:mb-0">
+                          <h3 className="text-lg font-medium text-white">
+                            {staff.name}
+                          </h3>
+                          <div className="flex flex-col sm:flex-row sm:items-center text-white/60 gap-x-4 mt-1">
+                            <span>{staff.email}</span>
+                            <span className="hidden sm:inline">•</span>
+                            <span>
+                              {ROLES.find((r) => r.id === staff.role)?.name ||
+                                staff.role}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Status badge */}
+                          <span
+                            className={`px-2 py-1 rounded-md text-xs font-medium ${
+                              staff.status === "active"
+                                ? "bg-green-500/20 text-green-400"
+                                : staff.status === "suspended"
+                                  ? "bg-red-500/20 text-red-400"
+                                  : "bg-yellow-500/20 text-yellow-400"
+                            }`}
+                          >
+                            {staff.status === "active"
+                              ? "Active"
+                              : staff.status === "suspended"
+                                ? "Suspended"
+                                : "Pending Invite"}
+                          </span>
+
+                          {/* Action buttons */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditStaff(staff.id)}
+                              className="p-1.5 rounded-md hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                              aria-label="Edit"
+                            >
+                              <FiEdit2 className="w-4 h-4" />
+                            </button>
+
+                            {staff.status === "pending" && (
+                              <button
+                                onClick={() => handleResendInvite(staff.id)}
+                                disabled={isSendingInvite === staff.id}
+                                className="p-1.5 rounded-md hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                                aria-label="Resend invite"
+                              >
+                                {isSendingInvite === staff.id ? (
+                                  <Spinner size="sm" />
+                                ) : (
+                                  <FiSend className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => handleRemoveStaff(staff.id)}
+                              className="p-1.5 rounded-md hover:bg-white/10 text-white/60 hover:text-red-400 transition-colors"
+                              aria-label="Remove"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Permissions */}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {Object.entries(staff.permissions)
+                          .filter(([_, hasPermission]) => hasPermission)
+                          .map(([permId]) => {
+                            const permission = PERMISSIONS.find(
+                              (p) => p.id === permId
+                            );
+                            return permission ? (
+                              <span
+                                key={permId}
+                                className="px-2 py-1 bg-white/5 text-white/80 rounded-md text-xs"
+                                title={permission.description}
+                              >
+                                {permission.name}
+                              </span>
+                            ) : null;
+                          })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Info Message */}
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 text-blue-300 text-sm">
+              <div className="flex items-start">
+                <FiAlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+                <p>
+                  You can always manage your staff later in the Agencies & Staff
+                  section of your dashboard.
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row justify-center gap-4 py-6">
+              <button
+                onClick={handleContinue}
+                className="px-8 py-3 bg-white text-black rounded-lg font-medium hover:bg-white/90 transition-colors flex items-center justify-center"
+              >
+                Continue to Credits
+              </button>
+              <button
+                onClick={() => navigate("/onboarding/credits")}
+                className="px-8 py-3 border border-white/20 text-white/80 rounded-lg font-medium hover:text-white hover:border-white/40 transition-colors"
+              >
+                Skip for Now
+              </button>
+            </div>
+          </div>
+        </div>
+      </PageTransition>
     </OnboardingLayout>
   );
 };
 
-export default FleetInfoPage;
+export default StaffManagementPage;

@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useCompanyStatus } from "@/hooks/useCompanyStatus";
+import { useAgency } from "@/hooks/useAgency";
 import { auth } from "@/config/firebase";
 import { Card, CardBody, Button, Spinner } from "@heroui/react";
 import { FiClock, FiCheckCircle, FiXCircle, FiX } from "react-icons/fi";
 
 export const StatusBanner = () => {
   const userId = auth.currentUser?.uid || null;
-  const { data: statusData, isLoading, error } = useCompanyStatus(userId);
+  const { status: statusData, isLoading, error } = useAgency(userId);
   const [isVisible, setIsVisible] = useState(() => {
     if (typeof window !== "undefined") {
       return !localStorage.getItem(`statusBannerHidden_${userId}`);

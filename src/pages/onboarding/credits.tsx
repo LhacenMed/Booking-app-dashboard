@@ -1,280 +1,343 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import OnboardingLayout from "@/layouts/OnboardingLayout";
-import { motion, AnimatePresence } from "framer-motion";
+import { PageTransition } from "@/components/ui/PageTransition";
+import { Spinner } from "@heroui/react";
 import { db } from "@/config/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { FiCreditCard, FiAlertCircle, FiInfo } from "react-icons/fi";
 
-interface TeamMember {
+// Credit package interface
+interface CreditPackage {
   id: string;
-  email: string;
-  role: "admin" | "manager" | "support";
-  inviteSent: boolean;
+  credits: number;
+  price: number;
+  isPopular?: boolean;
 }
 
-const InvitePage = () => {
+// Available credit packages
+const CREDIT_PACKAGES: CreditPackage[] = [
+  { id: "starter", credits: 50, price: 1000 },
+  { id: "popular", credits: 100, price: 1800, isPopular: true },
+  { id: "pro", credits: 500, price: 8000 },
+];
+
+const CreditsPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [customCredits, setCustomCredits] = useState<number | "">("");
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "informative" | "success" | "warning" | "danger";
+    id: number;
+  } | null>(null);
+  const [showSkipWarning, setShowSkipWarning] = useState(false);
 
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [newMember, setNewMember] = useState({
-    email: "",
-    role: "manager" as const,
-  });
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setNewMember((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  // Calculate price for custom credits (20 MRO per credit)
+  const calculateCustomPrice = (credits: number) => {
+    return Math.floor(credits * 20);
   };
 
-  const handleAddMember = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMember.email) return;
-
-    const id = `member_${Date.now()}`;
-    setTeamMembers((prev) => [
-      ...prev,
-      { ...newMember, id, inviteSent: false },
-    ]);
-    setNewMember({
-      email: "",
-      role: "manager",
+  // Show notification
+  const showNotification = (
+    message: string,
+    type: "informative" | "success" | "warning" | "danger"
+  ) => {
+    const id = Date.now();
+    setNotification({
+      message,
+      type,
+      id,
     });
   };
 
-  const handleRemoveMember = (id: string) => {
-    setTeamMembers((prev) => prev.filter((member) => member.id !== id));
+  // Handle custom credits input
+  const handleCustomCreditsChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = e.target.value;
+    if (value === "") {
+      setCustomCredits("");
+      setSelectedPackage(null);
+      return;
+    }
+
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue >= 0) {
+      setCustomCredits(numValue);
+      setSelectedPackage(null);
+    }
   };
 
-  const handleSendInvites = async () => {
+  // Handle package selection
+  const handlePackageSelect = (packageId: string) => {
+    setSelectedPackage(packageId);
+    setCustomCredits("");
+  };
+
+  // Handle agency creation and onboarding completion
+  const handleCreateAgency = async () => {
+    if (!user?.uid) {
+      showNotification(
+        "You must be logged in to complete onboarding",
+        "danger"
+      );
+      return;
+    }
+
     setIsLoading(true);
-    setError(null);
-
     try {
-      // Get company ID from localStorage
-      const companyId = localStorage.getItem("signupUID");
-      if (!companyId) {
-        throw new Error("Company ID not found");
-      }
-
-      // Update company document in Firestore
-      const companyRef = doc(db, "agencies", companyId);
-      await updateDoc(companyRef, {
-        teamMembers: teamMembers.map(({ id, email, role }) => ({
-          email,
-          role,
-          invitedAt: new Date(),
-        })),
+      // Update agency document to mark as onboarded
+      const agencyRef = doc(db, "agencies", user.uid);
+      await updateDoc(agencyRef, {
+        onboarded: true,
+        status: "pending",
+        updatedAt: serverTimestamp(),
       });
 
-      // Send invitation emails (you'll need to implement this)
-      for (const member of teamMembers) {
-        if (!member.inviteSent) {
-          // Send invitation email
-          // Update member status
-          setTeamMembers((prev) =>
-            prev.map((m) =>
-              m.id === member.id ? { ...m, inviteSent: true } : m
-            )
-          );
-        }
-      }
-
-      // Navigate to next step
-      navigate("/onboarding/plan");
+      showNotification("Onboarding completed successfully", "success");
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1500);
     } catch (error) {
-      console.error("Error sending invites:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to send invites"
+      console.error("Error completing onboarding:", error);
+      showNotification(
+        error instanceof Error
+          ? error.message
+          : "Failed to complete onboarding",
+        "danger"
       );
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Handle purchase
+  const handlePurchase = async () => {
+    if (!user?.uid) {
+      showNotification("You must be logged in to purchase credits", "danger");
+      return;
+    }
+
+    let creditsToAdd = 0;
+    let price = 0;
+
+    if (selectedPackage) {
+      const pkg = CREDIT_PACKAGES.find((p) => p.id === selectedPackage);
+      if (pkg) {
+        creditsToAdd = pkg.credits;
+        price = pkg.price;
+      }
+    } else if (customCredits) {
+      creditsToAdd = customCredits;
+      price = calculateCustomPrice(customCredits);
+    }
+
+    if (creditsToAdd <= 0) {
+      showNotification(
+        "Please select a credit package or enter an amount",
+        "warning"
+      );
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Update agency document with credits
+      const agencyRef = doc(db, "agencies", user.uid);
+      await updateDoc(agencyRef, {
+        credits: creditsToAdd,
+        creditHistory: [
+          {
+            amount: creditsToAdd,
+            price: price,
+            purchasedAt: serverTimestamp(),
+            type: "initial_purchase",
+          },
+        ],
+        updatedAt: serverTimestamp(),
+      });
+
+      showNotification(
+        `Successfully purchased ${creditsToAdd} credits`,
+        "success"
+      );
+      setTimeout(() => {
+        navigate("/onboarding/review");
+      }, 1500);
+    } catch (error) {
+      console.error("Error purchasing credits:", error);
+      showNotification(
+        error instanceof Error ? error.message : "Failed to purchase credits",
+        "danger"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle skip
+  const handleSkip = () => {
+    if (!showSkipWarning) {
+      setShowSkipWarning(true);
+      return;
+    }
+
+    handleCreateAgency();
+  };
+
   return (
-    <OnboardingLayout currentStep={4}>
-      <div className="max-w-3xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-blue-50 border border-blue-100 rounded-xl p-6 mb-8"
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex-shrink-0 flex items-center justify-center text-blue-600">
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                Invite Your Team
-              </h3>
-              <p className="text-gray-600">
-                Add team members to help manage your transportation business.
-                You can invite administrators, managers, and support staff.
+    <OnboardingLayout notification={notification}>
+      <PageTransition>
+        <div className="min-h-screen flex flex-col p-6">
+          <div className="w-full max-w-4xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <div className="flex justify-center mb-4">
+                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                  <FiCreditCard className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <h1 className="text-2xl font-ot-medium text-white">
+                Get Started with Credits – Power Your Bookings
+              </h1>
+              <p className="text-white/60 max-w-2xl mx-auto">
+                Purchase credits to make your trips visible in the app. Each
+                booking uses one credit.
               </p>
             </div>
-          </div>
-        </motion.div>
 
-        {/* Team Members List */}
-        <div className="space-y-4 mb-8">
-          <AnimatePresence>
-            {teamMembers.map((member) => (
-              <motion.div
-                key={member.id}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-white border border-gray-200 rounded-lg p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center">
-                      <h4 className="text-lg font-medium text-gray-900">
-                        {member.email}
-                      </h4>
-                      {member.inviteSent && (
-                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Invited
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Role:{" "}
-                      {member.role.charAt(0).toUpperCase() +
-                        member.role.slice(1)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveMember(member.id)}
-                    className="text-gray-400 hover:text-red-500"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
+            {/* Credits System Explanation */}
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6 text-blue-300">
+              <div className="flex items-start space-x-4">
+                <FiInfo className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div className="space-y-2">
+                  <p className="font-medium">How Credits Work:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>
+                      Each time a customer books a seat, 1 credit is deducted
+                    </li>
+                    <li>No hidden fees – pay only for visibility</li>
+                    <li>Buy more anytime from your dashboard</li>
+                    <li>
+                      Your agency needs credits for trips to be visible to
+                      customers in the app
+                    </li>
+                  </ul>
                 </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Credit Packages */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {CREDIT_PACKAGES.map((pkg) => (
+                <div
+                  key={pkg.id}
+                  className={`relative bg-white/5 backdrop-blur-sm border rounded-xl p-6 cursor-pointer transition-all ${
+                    selectedPackage === pkg.id
+                      ? "border-blue-500 bg-white/10"
+                      : "border-white/10 hover:border-white/20"
+                  }`}
+                  onClick={() => handlePackageSelect(pkg.id)}
+                >
+                  {pkg.isPopular && (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                      <span className="px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded-full">
+                        Popular
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-center">
+                    <div className="text-2xl font-ot-medium text-white mb-1">
+                      {pkg.credits} Credits
+                    </div>
+                    <div className="text-white/60 mb-4">{pkg.price} MRO</div>
+                    <div className="text-sm text-white/40">
+                      {Math.round(pkg.price / pkg.credits)} MRO per credit
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Custom Amount */}
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+              <div className="mb-4">
+                <label className="block text-sm text-white/60 mb-2">
+                  Custom Amount
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="number"
+                    value={customCredits}
+                    onChange={handleCustomCreditsChange}
+                    placeholder="Enter number of credits"
+                    className="flex-1 px-3 py-2.5 rounded-lg bg-[#141414] border border-white/10 text-white placeholder-white/40"
+                  />
+                  {customCredits && (
+                    <div className="text-white/60">
+                      = {calculateCustomPrice(Number(customCredits))} MRO
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Skip Warning */}
+            {showSkipWarning && (
+              <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4 text-yellow-300 text-sm">
+                <div className="flex items-start">
+                  <FiAlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+                  <p>
+                    Your trips won't appear in the app until you have credits.
+                    You can purchase credits later from your dashboard.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row justify-center gap-4 py-6">
+              <button
+                onClick={handlePurchase}
+                disabled={isLoading || (!selectedPackage && !customCredits)}
+                className="px-8 py-3 bg-white text-black rounded-lg font-medium hover:bg-white/90 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <>
+                    <Spinner size="sm" className="mr-2" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <span>
+                    {selectedPackage || customCredits
+                      ? `Purchase ${
+                          selectedPackage
+                            ? CREDIT_PACKAGES.find(
+                                (p) => p.id === selectedPackage
+                              )?.credits
+                            : customCredits
+                        } Credits`
+                      : "Select Credits"}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={handleSkip}
+                className="px-8 py-3 border border-white/20 text-white/80 rounded-lg font-medium hover:text-white hover:border-white/40 transition-colors"
+              >
+                Skip & Buy Credits Later
+              </button>
+            </div>
+          </div>
         </div>
-
-        {/* Add Member Form */}
-        <form
-          onSubmit={handleAddMember}
-          className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={newMember.email}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                placeholder="Enter team member's email"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Role
-              </label>
-              <select
-                id="role"
-                name="role"
-                value={newMember.role}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="admin">Administrator</option>
-                <option value="manager">Manager</option>
-                <option value="support">Support</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <button
-              type="submit"
-              className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Add Team Member
-            </button>
-          </div>
-        </form>
-
-        {/* Send Invites Button */}
-        {teamMembers.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-end"
-          >
-            <button
-              onClick={handleSendInvites}
-              disabled={isLoading}
-              className={`px-6 py-3 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-                isLoading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              {isLoading ? "Sending Invites..." : "Send Invites"}
-            </button>
-          </motion.div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mt-6"
-          >
-            {error}
-          </motion.div>
-        )}
-      </div>
+      </PageTransition>
     </OnboardingLayout>
   );
 };
 
-export default InvitePage;
+export default CreditsPage;

@@ -84,7 +84,7 @@ src/
 │   ├── CompanyStatus/    # Company status indicators
 │   ├── Dashboard/        # Dashboard widgets
 │   ├── Finance/         # Financial components
-│   ├── Integrations/    # Third-party integrations
+│   ├── Settings/        # Settings
 │   ├── ProtectedRoute/  # Route protection
 │   ├── Sidebar/        # Navigation sidebar
 │   ├── Team/           # Team management

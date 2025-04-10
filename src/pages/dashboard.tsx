@@ -1,7 +1,5 @@
-import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useCompanyStatus } from "@/hooks/useCompanyStatus";
-import { useCompanyData } from "@/hooks/useQueries";
+import { useAgency } from "@/hooks/useAgency";
 import { auth } from "@/config/firebase";
 import { StatusBanner } from "@/components/CompanyStatus/StatusBanner";
 import { Button, Spinner } from "@heroui/react";
@@ -11,8 +9,7 @@ import { DashboardTopBar } from "@/components/Dashboard/DashboardTopBar";
 export default function DashboardPage() {
   const navigate = useNavigate();
   const userId = auth.currentUser?.uid || null;
-  const { data: statusData, isLoading, error } = useCompanyStatus(userId);
-  const { data: companyData } = useCompanyData(userId);
+  const { status: statusData, isLoading, error } = useAgency(userId);
 
   if (isLoading) {
     return (

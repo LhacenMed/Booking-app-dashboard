@@ -1,4 +1,3 @@
-import React from "react";
 import { DashboardTopBar } from "./DashboardTopBar";
 import { Grid } from "./Grid";
 import { FiCalendar } from "react-icons/fi";

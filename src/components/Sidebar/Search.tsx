@@ -1,21 +1,19 @@
-"use client";
-
-import React, { useState } from "react";
+import { useState } from "react";
 import { FiCommand, FiSearch } from "react-icons/fi";
 import { CommandMenu } from "./CommandMenu";
-import { useCompanyStatus } from "@/hooks/useCompanyStatus";
+import { useAgency } from "@/hooks/useAgency";
 import { auth } from "@/config/firebase";
 
 export const Search = () => {
   const [open, setOpen] = useState(false);
   const userId = auth.currentUser?.uid || null;
-  const { data: statusData } = useCompanyStatus(userId);
+  const { status: statusData } = useAgency(userId);
   const isPending = statusData?.status === "pending";
 
   return (
-    <div className="px-3">
+    <div className="px-3 py-5">
       <div
-        className={`bg-content2 mb-4 relative rounded flex items-center px-2 py-1.5 text-sm ${
+        className={`bg-content2 relative rounded flex items-center px-2 py-1.5 text-sm ${
           isPending ? "opacity-50 cursor-not-allowed" : ""
         }`}
       >

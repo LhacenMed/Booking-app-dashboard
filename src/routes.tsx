@@ -6,7 +6,6 @@ import IndexPage from "./pages/index";
 import DocsPage from "./pages/docs";
 import TeamPage from "./pages/team";
 import TripsPage from "./pages/trips";
-import IntegrationsPage from "./pages/integrations";
 import FinancePage from "./pages/finance";
 import { SeatManagement } from "./components/Trips/SeatManagement";
 import { AppLayout } from "@/layouts/AppLayout";
@@ -25,6 +24,14 @@ import MessageEmail from "./pages/message-email";
 import SignUpTestPage0 from "./pages/signup-test0";
 import SignUpTestPage1 from "./pages/signup-test1";
 import MapPage from "./pages/map";
+// Import settings components
+import { SettingsLayout } from "./components/Settings/SettingsLayout";
+import { GeneralSettings } from "./pages/settings/general";
+import { TeamSettings } from "./pages/settings/team";
+import { NotificationSettings } from "./pages/settings/notifications";
+import { SecuritySettings } from "./pages/settings/security";
+import { BillingSettings } from "./pages/settings/billing";
+import { IntegrationsSettings } from "./pages/settings/integrations";
 
 export const router = createBrowserRouter([
   {
@@ -107,6 +114,7 @@ export const router = createBrowserRouter([
       },
       // Main Application Routes
       {
+        path: "/dashboard",
         element: (
           <ProtectedRoute requireAuth requireOnboarding>
             <AppLayout />
@@ -115,18 +123,18 @@ export const router = createBrowserRouter([
         errorElement: <ErrorPage />,
         children: [
           {
-            path: "/dashboard",
+            index: true,
             element: <DashboardPage />,
           },
           {
-            path: "/team",
+            path: "team",
             element: <TeamPage />,
           },
           {
-            path: "/trips",
+            path: "trips",
             children: [
               {
-                path: "",
+                index: true,
                 element: <TripsPage />,
               },
               {
@@ -136,11 +144,41 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            path: "/integrations",
-            element: <IntegrationsPage />,
+            path: "settings",
+            element: <SettingsLayout />,
+            children: [
+              {
+                index: true,
+                element: <GeneralSettings />,
+              },
+              {
+                path: "general",
+                element: <GeneralSettings />,
+              },
+              {
+                path: "team",
+                element: <TeamSettings />,
+              },
+              {
+                path: "notifications",
+                element: <NotificationSettings />,
+              },
+              {
+                path: "security",
+                element: <SecuritySettings />,
+              },
+              {
+                path: "billing",
+                element: <BillingSettings />,
+              },
+              {
+                path: "integrations",
+                element: <IntegrationsSettings />,
+              },
+            ],
           },
           {
-            path: "/finance",
+            path: "finance",
             element: (
               <ProtectedRoute requireAuth requireStatus="approved">
                 <FinancePage />
@@ -148,7 +186,7 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: "/docs",
+            path: "docs",
             element: <DocsPage />,
           },
         ],

@@ -3,25 +3,25 @@ import { Link, useLocation } from "react-router-dom";
 import {
   FiDollarSign,
   FiHome,
-  FiLink,
   FiTruck,
   FiUsers,
+  FiSettings,
 } from "react-icons/fi";
-import { useCompanyStatus } from "@/hooks/useCompanyStatus";
+import { useAgency } from "@/hooks/useAgency";
 import { auth } from "@/config/firebase";
 
 const routes = [
   { path: "/dashboard", Icon: FiHome, title: "Dashboard" },
-  { path: "/team", Icon: FiUsers, title: "Team" },
-  { path: "/trips", Icon: FiTruck, title: "Trips" },
-  { path: "/integrations", Icon: FiLink, title: "Integrations" },
-  { path: "/finance", Icon: FiDollarSign, title: "Finance" },
+  { path: "/dashboard/team", Icon: FiUsers, title: "Team" },
+  { path: "/dashboard/trips", Icon: FiTruck, title: "Trips" },
+  { path: "/dashboard/settings", Icon: FiSettings, title: "Settings" },
+  { path: "/dashboard/finance", Icon: FiDollarSign, title: "Finance" },
 ];
 
 export const RouteSelect = () => {
   const location = useLocation();
   const userId = auth.currentUser?.uid || null;
-  const { data: statusData } = useCompanyStatus(userId);
+  const { status: statusData } = useAgency(userId);
   const isPending = statusData?.status === "pending";
 
   return (
@@ -54,7 +54,10 @@ const Route = ({
   disabled?: boolean;
 }) => {
   const location = useLocation();
-  const isActive = location.pathname.startsWith(path);
+  const isActive =
+    path === "/dashboard"
+      ? location.pathname === "/dashboard"
+      : location.pathname.startsWith(path);
 
   return (
     <Link

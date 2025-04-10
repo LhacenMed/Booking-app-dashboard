@@ -19,7 +19,7 @@ import clsx from "clsx";
 import { auth } from "@/config/firebase";
 import { useNavigate } from "react-router-dom";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { useCompanyData } from "@/hooks/useCompanyData";
+import { useAgency } from "@/hooks/useAgency";
 import { useState, useEffect } from "react";
 
 import { siteConfig } from "@/config/site";
@@ -37,7 +37,7 @@ const avatarStyles = {
 export const Navbar = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(auth.currentUser);
-  const { data: companyData, isLoading } = useCompanyData(
+  const { company: companyData, isLoading } = useAgency(
     currentUser?.uid || null
   );
 
@@ -179,7 +179,7 @@ export const Navbar = () => {
       </NavbarMenu>
 
       <NavbarContent as="div" justify="center">
-        {!isLoading && (
+        {!isLoading ? (
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
               {currentUser && companyData ? (
@@ -251,6 +251,17 @@ export const Navbar = () => {
               </DropdownMenu>
             )}
           </Dropdown>
+        ) : (
+          <Avatar
+            isDisabled
+            isBordered
+            as="button"
+            className="transition-transform"
+            color="primary"
+            name=""
+            size="sm"
+            src=""
+          />
         )}
       </NavbarContent>
     </HeroUINavbar>

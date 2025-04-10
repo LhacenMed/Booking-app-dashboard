@@ -5,7 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { cn, Spinner } from "@heroui/react";
-import { useCompanyStatus } from "@/hooks/useCompanyStatus";
+import { useAgency } from "@/hooks/useAgency";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -28,9 +28,9 @@ export const ProtectedRoute = ({
   const location = useLocation();
 
   const userId = auth.currentUser?.uid || null;
-  const { data: statusData, isLoading: statusLoading } = requireStatus
-    ? useCompanyStatus(userId)
-    : { data: null, isLoading: false };
+  const { status: statusData, isLoading: statusLoading } = requireStatus
+    ? useAgency(userId)
+    : { status: null, isLoading: false };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {

@@ -36,7 +36,7 @@ interface CompanyData {
   };
 }
 
-const useCompanyData = (companyId: string | null) => {
+const useAgency = (companyId: string | null) => {
   return useQuery<CompanyData | null>({
     queryKey: ["companyData", companyId],
     queryFn: async () => {
@@ -54,12 +54,6 @@ const useCompanyData = (companyId: string | null) => {
   });
 };
 
-// Add a custom style for the avatar
-const avatarStyles = {
-  "--avatar-img-object-fit": "contain",
-  backgroundColor: "white",
-} as React.CSSProperties;
-
 export const DashboardTopBar = ({
   searchPlaceholder = "Search...",
   showSearch = true,
@@ -68,10 +62,10 @@ export const DashboardTopBar = ({
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const userId = auth.currentUser?.uid || null;
-  const { data: companyData, isLoading } = useCompanyData(userId);
+  const { data: companyData, isLoading } = useAgency(userId);
 
   return (
-    <div className="sticky top-0 bg-content1 border-b border-divider px-6 py-5">
+    <div className="sticky top-0 bg-content1 border-b border-divider px-6 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 flex-1">
           {showSearch && (
@@ -103,7 +97,6 @@ export const DashboardTopBar = ({
                     isBordered
                     as="button"
                     className="transition-transform bg-white"
-                    style={avatarStyles}
                     color="warning"
                     name={companyData.name}
                     size="sm"

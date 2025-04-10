@@ -36,7 +36,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "@/config/firebase";
 import { useNavigate } from "react-router-dom";
-import { useCompanyData, useTrips } from "@/hooks/useQueries";
+import { useAgency, useTrips } from "@/hooks/useAgency";
 import { DashboardTopBar } from "@/components/Dashboard/DashboardTopBar";
 import { useQueryClient } from "@tanstack/react-query";
 import { CustomScrollbar } from "@/components/ui/CustomScrollbar";
@@ -110,7 +110,7 @@ export const Trips = () => {
   });
 
   const userId = auth.currentUser?.uid || null;
-  const { data: companyData } = useCompanyData(userId);
+  const { company: companyData } = useAgency(userId);
   const { data: trips = [], isLoading } = useTrips(userId);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const queryClient = useQueryClient();
@@ -129,12 +129,14 @@ export const Trips = () => {
 
   const handleViewSeats = (tripId: string) => {
     if (!userId) return;
-    navigate(`/trips/seats/${tripId}`);
+    navigate(`/dashboard/trips/seats/${tripId}`);
   };
 
   const handleDeactivateTrip = async (tripId: string) => {
+    if (!userId) return;
+
     try {
-      const tripRef = doc(db, "trips", tripId);
+      const tripRef = doc(db, `agencies/${userId}/trips`, tripId);
       const tripDoc = await getDoc(tripRef);
 
       if (tripDoc.exists()) {
@@ -169,7 +171,6 @@ export const Trips = () => {
       batch.delete(tripRef);
 
       await batch.commit();
-      await deleteDoc(doc(db, "trips", tripId));
     } catch (error) {
       console.error("Error deleting trip:", error);
     }
@@ -186,11 +187,8 @@ export const Trips = () => {
       .join("");
 
     // Get count of existing trips for this company
-    const tripsQuery = query(
-      collection(db, "trips"),
-      where("companyId", "==", companyId)
-    );
-    const tripsSnapshot = await getDocs(tripsQuery);
+    const tripsRef = collection(db, `agencies/${companyId}/trips`);
+    const tripsSnapshot = await getDocs(tripsRef);
     const tripCount = (tripsSnapshot.size + 1).toString().padStart(4, "0");
 
     // Get year
@@ -252,7 +250,10 @@ export const Trips = () => {
 
       // Generate and add seats to the seats subcollection
       const seats = generateSeats(newTripForm.carType);
-      const seatsCollectionRef = collection(tripRef, "seats");
+      const seatsCollectionRef = collection(
+        db,
+        `agencies/${userId}/trips/${tripId}/seats`
+      );
 
       // Add all seats in a batch
       const batch = writeBatch(db);

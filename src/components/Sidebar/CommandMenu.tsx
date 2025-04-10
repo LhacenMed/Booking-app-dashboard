@@ -10,7 +10,7 @@ import {
   FiSearch,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-import { useCompanyStatus } from "@/hooks/useCompanyStatus";
+import { useAgency } from "@/hooks/useAgency";
 import { auth } from "@/config/firebase";
 
 interface Page {
@@ -51,8 +51,8 @@ const pages: Page[] = [
     keywords: ["members", "staff", "employees", "roles", "permissions"],
   },
   {
-    title: "Integrations",
-    href: "/integrations",
+    title: "Settings",
+    href: "/Settings",
     icon: <FiLink className="text-default-500" />,
     description: "Connect with other services",
     keywords: ["connect", "services", "apps", "tools"],
@@ -70,7 +70,7 @@ export const CommandMenu = ({
   const [pages_filtered, setFilteredPages] = useState<Page[]>(pages);
   const navigate = useNavigate();
   const userId = auth.currentUser?.uid || null;
-  const { data: statusData } = useCompanyStatus(userId);
+  const { status: statusData } = useAgency(userId);
   const isPending = statusData?.status === "pending";
 
   // Filter pages based on search input
