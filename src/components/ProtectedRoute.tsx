@@ -11,6 +11,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAuth?: boolean;
   requireOnboarding?: boolean;
+  preventIfOnboarded?: boolean;
   requireStatus?: "pending" | "approved" | "rejected";
   redirectTo?: string;
 }
@@ -19,12 +20,15 @@ export const ProtectedRoute = ({
   children,
   requireAuth = true,
   requireOnboarding = false,
+  preventIfOnboarded = false,
   requireStatus,
   redirectTo = "/login",
 }: ProtectedRouteProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [isOnboarded, setIsOnboarded] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const location = useLocation();
 
   const userId = auth.currentUser?.uid || null;
@@ -32,30 +36,76 @@ export const ProtectedRoute = ({
     ? useAgency(userId)
     : { status: null, isLoading: false };
 
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setIsAuthenticated(true);
-        if (requireOnboarding) {
+        if (requireOnboarding || preventIfOnboarded) {
           try {
             const companyDoc = await getDoc(doc(db, "agencies", user.uid));
-            setNeedsOnboarding(
-              !companyDoc.exists() || !companyDoc.data()?.onboarded
-            );
+            const onboardedStatus =
+              companyDoc.exists() && companyDoc.data()?.onboarded;
+            setIsOnboarded(onboardedStatus);
+            setNeedsOnboarding(!onboardedStatus);
           } catch (error) {
             console.error("Error checking onboarding status:", error);
-            setNeedsOnboarding(true);
+            // When offline, don't redirect to onboarding
+            if (isOffline) {
+              // Use session storage or localStorage to remember last known state if available
+              const lastKnownOnboardingState =
+                localStorage.getItem("user_onboarded");
+              if (lastKnownOnboardingState === "true") {
+                setIsOnboarded(true);
+                setNeedsOnboarding(false);
+              } else if (requireOnboarding) {
+                // For the dashboard route that requires onboarding
+                // Default to assuming the user is onboarded when offline
+                setIsOnboarded(true);
+                setNeedsOnboarding(false);
+              } else if (preventIfOnboarded) {
+                // For the onboarding route that should be prevented if onboarded
+                // Default to allowing access to onboarding when offline only if explicitly going there
+                setIsOnboarded(false);
+                setNeedsOnboarding(true);
+              }
+            } else {
+              // If error is not related to being offline, use default behavior
+              setNeedsOnboarding(true);
+              setIsOnboarded(false);
+            }
           }
         }
       } else {
         setIsAuthenticated(false);
         setNeedsOnboarding(false);
+        setIsOnboarded(false);
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [requireOnboarding]);
+  }, [requireOnboarding, preventIfOnboarded, isOffline]);
+
+  // Save onboarding state to localStorage when it changes
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      localStorage.setItem("user_onboarded", isOnboarded.toString());
+    }
+  }, [isOnboarded, isAuthenticated, isLoading]);
 
   if (isLoading || statusLoading) {
     return (
@@ -84,13 +134,27 @@ export const ProtectedRoute = ({
     return <Navigate to={redirectTo} replace />;
   }
 
-  // Onboarding check
-  if (requireAuth && requireOnboarding && needsOnboarding) {
+  // If offline and trying to access dashboard, allow access regardless of onboarding status
+  if (isOffline && requireOnboarding) {
+    return <>{children}</>;
+  }
+
+  // Prevent onboarded users from accessing onboarding pages
+  if (preventIfOnboarded && isOnboarded && !isOffline) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Onboarding check (skip if offline)
+  if (requireAuth && requireOnboarding && needsOnboarding && !isOffline) {
     return <Navigate to="/onboarding/select-company" replace />;
   }
 
-  // Status check
-  if (requireStatus && (!statusData || statusData.status !== requireStatus)) {
+  // Status check (skip if offline)
+  if (
+    requireStatus &&
+    (!statusData || statusData.status !== requireStatus) &&
+    !isOffline
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 

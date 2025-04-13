@@ -52,7 +52,7 @@ const pages: Page[] = [
   },
   {
     title: "Settings",
-    href: "/Settings",
+    href: "/dashboard/settings",
     icon: <FiLink className="text-default-500" />,
     description: "Connect with other services",
     keywords: ["connect", "services", "apps", "tools"],

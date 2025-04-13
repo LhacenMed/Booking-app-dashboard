@@ -107,7 +107,8 @@ export const SettingsMenu = () => {
               const isActive =
                 pathname === path ||
                 (path === "/dashboard/settings" &&
-                  pathname === "/dashboard/settings/general");
+                  (pathname === "/dashboard/settings/general" ||
+                    pathname === "/dashboard/settings/general/route"));
 
               return (
                 <Link

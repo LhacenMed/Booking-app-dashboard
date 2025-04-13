@@ -32,6 +32,7 @@ import { NotificationSettings } from "./pages/settings/notifications";
 import { SecuritySettings } from "./pages/settings/security";
 import { BillingSettings } from "./pages/settings/billing";
 import { IntegrationsSettings } from "./pages/settings/integrations";
+import { RoutePage } from "./pages/settings/route";
 
 export const router = createBrowserRouter([
   {
@@ -70,7 +71,7 @@ export const router = createBrowserRouter([
       {
         path: "/onboarding",
         element: (
-          <ProtectedRoute requireAuth>
+          <ProtectedRoute requireAuth preventIfOnboarded>
             <OnboardingLayout>
               <Outlet />
             </OnboardingLayout>
@@ -154,6 +155,10 @@ export const router = createBrowserRouter([
               {
                 path: "general",
                 element: <GeneralSettings />,
+              },
+              {
+                path: "general/route",
+                element: <RoutePage />,
               },
               {
                 path: "team",

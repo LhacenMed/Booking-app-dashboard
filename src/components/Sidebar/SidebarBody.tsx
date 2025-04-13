@@ -4,6 +4,7 @@ import { RouteSelect } from "./RouteSelect";
 import { useLocation } from "react-router-dom";
 import { SettingsMenu } from "@/components/Settings/SettingsLayout";
 import { useState, useEffect } from "react";
+// import { AccountToggle } from "./AccountToggle";
 
 /**
  * SidebarBody Component
@@ -33,6 +34,8 @@ function SidebarBody() {
 
   return (
     <div className="h-full overflow-x-hidden relative">
+      {/* <AccountToggle /> */}
+      <Search />
       {/* Main menu with horizontal slide animation */}
       <div
         className={`absolute inset-x-0 w-full transition-transform duration-150 ease-out ${
@@ -41,7 +44,7 @@ function SidebarBody() {
             : "transform -translate-x-full pointer-events-none"
         }`}
       >
-        <MainMenu />
+        <RouteSelect />
       </div>
 
       {/* Settings menu with horizontal slide animation */}
@@ -52,31 +55,10 @@ function SidebarBody() {
             : "transform translate-x-full pointer-events-none"
         }`}
       >
-        <SettingsMenuFull />
+        <SettingsMenu />
       </div>
     </div>
   );
 }
-
-/**
- * MainMenu Component - Displays main app navigation
- */
-const MainMenu = () => (
-  <div>
-    {/* <AccountToggle /> */}
-    <Search />
-    <RouteSelect />
-  </div>
-);
-
-/**
- * SettingsMenuFull Component - Displays settings navigation with search
- */
-const SettingsMenuFull = () => (
-  <div>
-    <Search />
-    <SettingsMenu />
-  </div>
-);
 
 export default SidebarBody;

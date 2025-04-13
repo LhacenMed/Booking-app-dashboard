@@ -6,6 +6,7 @@ import {
   DropdownTrigger,
   Switch,
   Button,
+  Spinner,
 } from "@heroui/react";
 import { auth } from "@/config/firebase";
 import { useQuery } from "@tanstack/react-query";
@@ -78,7 +79,7 @@ export const SidebarHeader = () => {
         <span className="text-xl font-bold">SupNum</span>
       )}
 
-      {!isLoading && (
+      {!isLoading ? (
         <Dropdown placement="bottom-end">
           <DropdownTrigger>
             {companyData ? (
@@ -162,6 +163,18 @@ export const SidebarHeader = () => {
             </DropdownMenu>
           )}
         </Dropdown>
+      ) : (
+        <Avatar
+          isDisabled
+          isBordered
+          className="transition-transform"
+          color="primary"
+          size="sm"
+          showFallback
+          fallback={
+            <Spinner size="sm" color="current" className="text-primary-500" />
+          }
+        />
       )}
     </div>
   );

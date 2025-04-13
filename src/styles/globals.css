@@ -1,7 +1,9 @@
 @import './fonts.css';
+@import './variables.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @keyframes highlight {
     0% {
         background-color: rgb(34 197 94 / 0.1);
@@ -14,6 +16,10 @@
     }
 }
 
+* {
+    box-sizing: border-box;
+    font-family: 'Outfit', sans-serif;
+}
 
 /* ::selection {
     background-color: #0000002b;
