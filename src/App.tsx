@@ -47,7 +47,7 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center relative overflow-hidden bg-black">
+      <div className="h-screen w-screen flex items-center justify-center relative overflow-hidden">
         <Spinner size="lg" />
       </div>
     );

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button, Input, Textarea } from "@heroui/react";
-import RoutePickerMap from "@/components/maps/RoutePickerMap";
+// import RoutePickerMap from "@/components/maps/RoutePickerMap";
 import RouteCreator from "@/components/route-creator";
 
 /**
@@ -222,13 +222,13 @@ export const RoutePage = () => {
   };
 
   // Update route metrics when map calculates a route
-  const handleRouteCalculated = (distance: string, duration: string) => {
-    setRouteMetrics({
-      distance,
-      duration,
-      waypoints: (intermediatePoints.length || 0) + 2, // Start + End + Intermediate
-    });
-  };
+  // const handleRouteCalculated = (distance: string, duration: string) => {
+  //   setRouteMetrics({
+  //     distance,
+  //     duration,
+  //     waypoints: (intermediatePoints.length || 0) + 2, // Start + End + Intermediate
+  //   });
+  // };
 
   return (
     <div className="space-y-6">
@@ -256,203 +256,8 @@ export const RoutePage = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column - Route details form */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-ot-semibold mb-4">Route Details</h2>
-
-              <div className="space-y-4">
-                <Input
-                  label="Route Name"
-                  name="name"
-                  value={routeForm.name}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Downtown Delivery Route"
-                  required
-                />
-
-                <Input
-                  label="Starting Location Name"
-                  name="startLocationName"
-                  value={routeForm.startLocationName}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Company Headquarters"
-                />
-
-                <Input
-                  label="Destination Name"
-                  name="endLocationName"
-                  value={routeForm.endLocationName}
-                  onChange={handleInputChange}
-                  placeholder="e.g., City Center"
-                />
-
-                <Textarea
-                  label="Route Description"
-                  name="description"
-                  value={routeForm.description}
-                  onChange={handleInputChange}
-                  placeholder="Describe the purpose of this route..."
-                  rows={3}
-                />
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Trip Type
-                  </label>
-                  <div className="flex space-x-4">
-                    <button
-                      type="button"
-                      className={`px-4 py-2 text-sm rounded-md ${
-                        routeForm.tripType === "delivery"
-                          ? "bg-blue-100 text-blue-800 border-blue-300"
-                          : "bg-gray-100 text-gray-700 border-gray-300"
-                      } border`}
-                      onClick={() => handleTripTypeChange("delivery")}
-                    >
-                      Delivery
-                    </button>
-                    <button
-                      type="button"
-                      className={`px-4 py-2 text-sm rounded-md ${
-                        routeForm.tripType === "pickup"
-                          ? "bg-blue-100 text-blue-800 border-blue-300"
-                          : "bg-gray-100 text-gray-700 border-gray-300"
-                      } border`}
-                      onClick={() => handleTripTypeChange("pickup")}
-                    >
-                      Pickup
-                    </button>
-                    <button
-                      type="button"
-                      className={`px-4 py-2 text-sm rounded-md ${
-                        routeForm.tripType === "round-trip"
-                          ? "bg-blue-100 text-blue-800 border-blue-300"
-                          : "bg-gray-100 text-gray-700 border-gray-300"
-                      } border`}
-                      onClick={() => handleTripTypeChange("round-trip")}
-                    >
-                      Round Trip
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="isDefault"
-                    name="isDefault"
-                    checked={routeForm.isDefault}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label
-                    htmlFor="isDefault"
-                    className="ml-2 block text-sm text-gray-700"
-                  >
-                    Set as default route
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Route Metrics Card */}
-            {(startPoint || endPoint) && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-ot-semibold mb-4">Route Metrics</h2>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <div className="text-xs text-gray-500">Total Distance</div>
-                    <div className="text-xl font-medium text-gray-900">
-                      {routeMetrics.distance || "Calculating..."}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <div className="text-xs text-gray-500">Estimated Time</div>
-                    <div className="text-xl font-medium text-gray-900">
-                      {routeMetrics.duration || "Calculating..."}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <div className="text-xs text-gray-500">Waypoints</div>
-                    <div className="text-xl font-medium text-gray-900">
-                      {routeMetrics.waypoints || 0}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <div className="text-xs text-gray-500">Type</div>
-                    <div className="text-xl font-medium text-gray-900">
-                      {routeForm.tripType.charAt(0).toUpperCase() +
-                        routeForm.tripType.slice(1)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right column - Map */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-ot-semibold mb-4">Route Map</h2>
-
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  Select starting and destination points on the map. Add
-                  intermediate waypoints by clicking on the route line.
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  <div className="flex items-center">
-                    <span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span>
-                    <span className="text-xs text-gray-600">Start</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="w-3 h-3 bg-blue-500 rounded-full mr-1"></span>
-                    <span className="text-xs text-gray-600">Via</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span>
-                    <span className="text-xs text-gray-600">End</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Route Map */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <RoutePickerMap
-                  startPoint={startPoint}
-                  endPoint={endPoint}
-                  intermediatePoints={intermediatePoints}
-                  onStartPointSelect={setStartPoint}
-                  onEndPointSelect={setEndPoint}
-                  onIntermediatePointsChange={setIntermediatePoints}
-                  height="500px"
-                  width="100%"
-                  showLocateControl={true}
-                />
-              </div>
-
-              {/* Map instructions */}
-              <div className="mt-4 text-sm text-gray-500">
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Click on the map to set start and end points</li>
-                  <li>Click on the route line to add intermediate waypoints</li>
-                  <li>Drag markers to adjust their positions</li>
-                  <li>Click on a waypoint and press Delete to remove it</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
+        <RouteCreator />
       )}
-
-      <RouteCreator />
     </div>
   );
 };

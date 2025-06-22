@@ -6,6 +6,7 @@ import {
   FiTruck,
   FiUsers,
   FiSettings,
+  FiCalendar,
 } from "react-icons/fi";
 import { useAgency } from "@/hooks/useAgency";
 import { auth } from "@/config/firebase";
@@ -14,6 +15,7 @@ const routes = [
   { path: "/dashboard", Icon: FiHome, title: "Dashboard" },
   { path: "/dashboard/team", Icon: FiUsers, title: "Team" },
   { path: "/dashboard/trips", Icon: FiTruck, title: "Trips" },
+  { path: "/dashboard/reservations", Icon: FiCalendar, title: "Reservations" },
   { path: "/dashboard/settings", Icon: FiSettings, title: "Settings" },
   { path: "/dashboard/finance", Icon: FiDollarSign, title: "Finance" },
 ];

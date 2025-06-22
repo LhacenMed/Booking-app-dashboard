@@ -35,9 +35,9 @@ import { Spinner } from "@heroui/react";
 import { useNavigate } from "react-router-dom";
 
 // Simple function to generate 6-digit code
-const generateVerificationCode = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+// const generateVerificationCode = () => {
+//   return Math.floor(100000 + Math.random() * 900000).toString();
+// };
 
 // Add this helper function at the top level, after the generateVerificationCode function
 const generateCustomCompanyId = (email: string) => {
@@ -277,6 +277,9 @@ const SignupFlow = () => {
     const checkServer = async () => {
       try {
         const response = await fetch("/api/test");
+        // const response = await fetch(
+        //   "https://node-server-ho9q.onrender.com/api/test"
+        // );
         const data = await response.json();
         setServerStatus(
           data.message === "Server is running!" ? "running" : "error"
@@ -326,6 +329,7 @@ const SignupFlow = () => {
   };
 
   // Store email and verification code in Firestore
+  // @ts-ignore
   const storeEmailInFirestore = async (email: string, code: string) => {
     try {
       console.log("Starting to store/update email in Firestore:", {
@@ -526,6 +530,9 @@ const SignupFlow = () => {
 
       // Verify token with server
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      // const apiUrl =
+      //   process.env.NEXT_PUBLIC_API_URL ||
+      //   "https://node-server-ho9q.onrender.com";
       const response = await fetch(`${apiUrl}/api/verify-token`, {
         method: "POST",
         headers: {
@@ -596,6 +603,9 @@ const SignupFlow = () => {
 
       // Use the correct API URL from environment variables or fallback to localhost:5000
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      // const apiUrl =
+      //   process.env.NEXT_PUBLIC_API_URL ||
+      //   "https://node-server-ho9q.onrender.com";
 
       // Create new AbortController for this request
       if (abortControllerRef.current) {
@@ -779,6 +789,9 @@ const SignupFlow = () => {
 
       // Create account through secure endpoint
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      // const apiUrl =
+      //   process.env.NEXT_PUBLIC_API_URL ||
+      //   "https://node-server-ho9q.onrender.com";
       const response = await fetch(`${apiUrl}/api/create-account`, {
         method: "POST",
         headers: {
@@ -939,7 +952,7 @@ const SignupFlow = () => {
             existingDocId
           );
           await updateDoc(checkedEmailRef, {
-            isValid: verificationResult.status === "safe",
+            isValid: verificationResult.status === "safe" || verificationResult.overall_score >= 90,
             checkedAt: serverTimestamp(),
             verificationData: verificationResult,
           });
@@ -954,7 +967,7 @@ const SignupFlow = () => {
           const checkedEmailRef = doc(collection(db, "checked_emails"), docId);
           await setDoc(checkedEmailRef, {
             email,
-            isValid: verificationResult.status === "safe",
+            isValid: verificationResult.status === "safe" || verificationResult.overall_score >= 90,
             checkedAt: serverTimestamp(),
             verificationData: verificationResult,
           });
@@ -965,7 +978,7 @@ const SignupFlow = () => {
       // At this point emailVerificationData is guaranteed to be non-null
       // because we either got it from cache or just verified it
       const verificationData = emailVerificationData!;
-      if (verificationData.status !== "safe") {
+      if (verificationData.status !== "safe" && verificationData.overall_score < 90) {
         throw new Error("This email address appears to be invalid or risky");
       }
 
@@ -1696,8 +1709,8 @@ const SignupFlow = () => {
             </div>
 
             <div className="flex flex-col items-center min-h-screen">
-              <div className="flex-1 flex items-start justify-center w-full p-4 md:p-8">
-                <div className="w-full pt-[200px] lg:pt-[200px] max-w-3xl px-4 lg:px-0">
+              <div className="flex-1 flex items-center justify-center w-full p-4 md:p-8">
+                <div className="w-full max-w-3xl px-4 lg:px-0">
                   {renderStepContent()}
                 </div>
               </div>

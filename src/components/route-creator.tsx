@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   MapPin,
   Plus,
@@ -9,7 +9,7 @@ import {
   RotateCw,
   Save,
 } from "lucide-react";
-import RouteMap from "./route-map";
+// import RouteMap from "./route-map";
 import RoutePickerMap from "./maps/RoutePickerMap";
 import LocationSearch from "./location-search";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ux/tabs";
@@ -20,12 +20,44 @@ import { Button } from "@/components/ux/button";
 import { Card, CardContent } from "@/components/ux/card";
 import { Input } from "@/components/ux/input";
 import { Label } from "@/components/ux/label";
+// Import the location data and helper function
+import { locations } from "./maps/locationData";
 
 type Location = {
   id: string;
   name: string;
   lat?: number;
   lng?: number;
+};
+
+// Helper function to get location name from coordinates
+const getLocationName = (lat: number, lng: number): string | null => {
+  for (const location of locations) {
+    const locationPoint = {
+      lat: location.coordinates[0],
+      lng: location.coordinates[1],
+    };
+    const selectedPoint = { lat, lng };
+
+    // Calculate distance between points in meters (simple approximation)
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = (locationPoint.lat * Math.PI) / 180;
+    const φ2 = (selectedPoint.lat * Math.PI) / 180;
+    const Δφ = ((selectedPoint.lat - locationPoint.lat) * Math.PI) / 180;
+    const Δλ = ((selectedPoint.lng - locationPoint.lng) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+
+    // If distance is less than the radius, the point is inside the circle
+    if (distance <= location.radius) {
+      return location.name;
+    }
+  }
+  return null;
 };
 
 export default function RouteCreator() {
@@ -35,6 +67,30 @@ export default function RouteCreator() {
   const [routeName, setRouteName] = useState("");
   const [activeTab, setActiveTab] = useState("details");
   const [isSaving, setIsSaving] = useState(false);
+  const routeCoordinatesRef = useRef<Array<[number, number]>>([]);
+
+  // Auto-generate route name when departure or destination changes
+  useEffect(() => {
+    if (departure?.name && destination?.name) {
+      setRouteName(`${departure.name} to ${destination.name}`);
+    } else if (departure?.name) {
+      setRouteName(`${departure.name} route`);
+    } else if (destination?.name) {
+      setRouteName(`Route to ${destination.name}`);
+    } else {
+      setRouteName("");
+    }
+  }, [departure, destination]);
+
+  // Handle departure selection with auto-naming
+  const handleDepartureSelect = (location: Location) => {
+    setDeparture(location);
+  };
+
+  // Handle destination selection with auto-naming
+  const handleDestinationSelect = (location: Location) => {
+    setDestination(location);
+  };
 
   // Calculate completion percentage
   const calculateCompletion = () => {
@@ -46,6 +102,32 @@ export default function RouteCreator() {
     if (destination) completed++;
 
     return Math.floor((completed / total) * 100);
+  };
+
+  // Function to handle route calculation and log passed areas
+  const handleRouteCalculated = (coordinates: Array<[number, number]>) => {
+    routeCoordinatesRef.current = coordinates;
+    
+    // Log areas that the route passes through
+    if (coordinates.length > 0) {
+      const routeAreas = new Set<string>();
+      
+      // Check each coordinate to see if it falls within a defined area
+      coordinates.forEach(coord => {
+        const locationName = getLocationName(coord[1], coord[0]);
+        if (locationName) {
+          routeAreas.add(locationName);
+        }
+      });
+      
+      // Log the unique areas
+      const areasArray = Array.from(routeAreas);
+      if (areasArray.length > 0) {
+        console.log("Route passes through these areas:", areasArray);
+      } else {
+        console.log("Route doesn't pass through any predefined areas");
+      }
+    }
   };
 
   const addStop = () => {
@@ -107,7 +189,7 @@ export default function RouteCreator() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-3">
         <Card className="shadow-md border-slate-200">
           <Tabs
             defaultValue="details"
@@ -137,14 +219,17 @@ export default function RouteCreator() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="route-name" className="text-sm font-medium">
-                      Route Name <span className="text-red-500">*</span>
+                      Route Name <span className="text-red-500">*</span>{" "}
+                      <span className="text-xs text-slate-500 font-normal">
+                        (Auto-generated from departure and destination)
+                      </span>
                     </Label>
                     <Input
                       id="route-name"
-                      placeholder="Enter a descriptive name for this route"
+                      placeholder="Route name will be auto-generated"
                       value={routeName}
-                      onChange={(e) => setRouteName(e.target.value)}
-                      className="border-slate-300 focus:border-slate-500"
+                      className="border-slate-300 focus:border-slate-500 bg-slate-50"
+                      disabled
                       required
                     />
                   </div>
@@ -167,7 +252,7 @@ export default function RouteCreator() {
                       <LocationSearch
                         id="departure"
                         placeholder="Search for departure location"
-                        onSelect={(location) => setDeparture(location)}
+                        onSelect={handleDepartureSelect}
                         selectedLocation={departure}
                       />
                     </div>
@@ -189,7 +274,7 @@ export default function RouteCreator() {
                       <LocationSearch
                         id="destination"
                         placeholder="Search for destination location"
-                        onSelect={(location) => setDestination(location)}
+                        onSelect={handleDestinationSelect}
                         selectedLocation={destination}
                       />
                     </div>
@@ -279,9 +364,15 @@ export default function RouteCreator() {
                     }
                     onStartPointSelect={(location) => {
                       if (location) {
+                        // Check if the selected point is inside any predefined location
+                        const locationName = getLocationName(
+                          location[1],
+                          location[0]
+                        );
+
                         setDeparture({
                           id: departure?.id || "departure",
-                          name: departure?.name || "Custom Departure",
+                          name: locationName || "Custom Departure",
                           lng: location[0],
                           lat: location[1],
                         });
@@ -291,9 +382,15 @@ export default function RouteCreator() {
                     }}
                     onEndPointSelect={(location) => {
                       if (location) {
+                        // Check if the selected point is inside any predefined location
+                        const locationName = getLocationName(
+                          location[1],
+                          location[0]
+                        );
+
                         setDestination({
                           id: destination?.id || "destination",
-                          name: destination?.name || "Custom Destination",
+                          name: locationName || "Custom Destination",
                           lng: location[0],
                           lat: location[1],
                         });
@@ -306,14 +403,26 @@ export default function RouteCreator() {
                       .map((stop) => [stop.lng, stop.lat] as [number, number])}
                     onIntermediatePointsChange={(waypoints) => {
                       setStops(
-                        waypoints.map((point, index) => ({
-                          id: `stop-${index + 1}`,
-                          name: stops[index]?.name || `Stop ${index + 1}`,
-                          lng: point[0],
-                          lat: point[1],
-                        }))
+                        waypoints.map((point, index) => {
+                          // Check if the waypoint is inside any predefined location
+                          const locationName = getLocationName(
+                            point[1],
+                            point[0]
+                          );
+
+                          return {
+                            id: `stop-${index + 1}`,
+                            name:
+                              locationName ||
+                              stops[index]?.name ||
+                              `Stop ${index + 1}`,
+                            lng: point[0],
+                            lat: point[1],
+                          };
+                        })
                       );
                     }}
+                    onRouteCalculated={handleRouteCalculated}
                     height="500px"
                     width="100%"
                     showLocateControl={true}
@@ -325,7 +434,7 @@ export default function RouteCreator() {
         </Card>
       </div>
 
-      <div>
+      {/* <div>
         <Card className="shadow-md border-slate-200 sticky top-6">
           <CardContent className="pt-6">
             <div className="space-y-6">
@@ -351,7 +460,7 @@ export default function RouteCreator() {
                   <div>
                     <p className="font-medium">Route Name</p>
                     <p className="text-sm text-slate-500">
-                      {routeName || "Not specified yet"}
+                      {routeName || "Auto-generated from locations"}
                     </p>
                   </div>
                 </div>
@@ -452,7 +561,7 @@ export default function RouteCreator() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
     </div>
   );
 }

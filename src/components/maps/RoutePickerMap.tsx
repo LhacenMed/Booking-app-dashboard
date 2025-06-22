@@ -69,10 +69,10 @@ declare module "leaflet" {
 }
 
 // Type for waypoint data structure
-type Waypoint = {
-  latLng: [number, number]; // [lng, lat] format
-  isIntermediate?: boolean;
-};
+// type Waypoint = {
+//   latLng: [number, number]; // [lng, lat] format
+//   isIntermediate?: boolean;
+// };
 
 interface RoutePickerMapProps {
   startPoint: [number, number] | null;
@@ -80,6 +80,7 @@ interface RoutePickerMapProps {
   onStartPointSelect: (location: [number, number] | null) => void;
   onEndPointSelect: (location: [number, number] | null) => void;
   onIntermediatePointsChange?: (waypoints: [number, number][]) => void;
+  onRouteCalculated?: (coordinates: Array<[number, number]>) => void;
   intermediatePoints?: [number, number][];
   height?: string;
   width?: string;
@@ -98,6 +99,7 @@ const RoutePickerMap: React.FC<RoutePickerMapProps> = ({
   onStartPointSelect,
   onEndPointSelect,
   onIntermediatePointsChange,
+  onRouteCalculated,
   intermediatePoints: externalIntermediatePoints,
   height = "500px",
   width = "100%",
@@ -172,6 +174,73 @@ const RoutePickerMap: React.FC<RoutePickerMapProps> = ({
     distance: string;
     duration: string;
   } | null>(null);
+
+  // New state to track if initial route fit has been done
+  const initialFitDoneRef = useRef(false);
+
+  // Function to fit map to route bounds
+  const fitMapToRoute = useCallback(() => {
+    if (
+      !mapRef.current ||
+      (!startPoint &&
+        !endPoint &&
+        (!intermediatePoints || intermediatePoints.length === 0))
+    ) {
+      return;
+    }
+
+    try {
+      // Collect all points
+      const points: L.LatLng[] = [];
+
+      if (startPoint) {
+        points.push(L.latLng(startPoint[1], startPoint[0]));
+      }
+
+      if (endPoint) {
+        points.push(L.latLng(endPoint[1], endPoint[0]));
+      }
+
+      if (intermediatePoints && intermediatePoints.length > 0) {
+        intermediatePoints.forEach((point) => {
+          points.push(L.latLng(point[1], point[0]));
+        });
+      }
+
+      // If we have at least 2 points, fit the map to those bounds
+      if (points.length >= 2) {
+        const bounds = L.latLngBounds(points);
+        mapRef.current.fitBounds(bounds, {
+          padding: [50, 50], // Add some padding around the bounds
+          maxZoom: 15, // Limit max zoom level for better usability
+          animate: true,
+        });
+        return true;
+      } else if (points.length === 1) {
+        // If we only have one point, center on it with a reasonable zoom
+        mapRef.current.setView(points[0], 14);
+        return true;
+      }
+    } catch (error) {
+      console.error("Error fitting map to route:", error);
+    }
+
+    return false;
+  }, [startPoint, endPoint, intermediatePoints]);
+
+  // Update map bounds when route changes
+  useEffect(() => {
+    // Only try to fit the map if we have at least the start or end point and initialization is complete
+    if (isInitializedRef.current && (startPoint || endPoint)) {
+      // If initial fit hasn't been done yet, or we have both start and end points
+      if (!initialFitDoneRef.current || (startPoint && endPoint)) {
+        const fitSuccessful = fitMapToRoute();
+        if (fitSuccessful) {
+          initialFitDoneRef.current = true;
+        }
+      }
+    }
+  }, [startPoint, endPoint, fitMapToRoute]);
 
   // Initialize the map once
   useEffect(() => {
@@ -307,7 +376,7 @@ const RoutePickerMap: React.FC<RoutePickerMapProps> = ({
       marker.bindTooltip(tooltipText);
 
       // Handle marker drag events
-      marker.on("dragend", function (event) {
+      marker.on("dragend", function () {
         const position = marker.getLatLng();
         const newLngLat: [number, number] = [position.lng, position.lat];
 
@@ -612,6 +681,23 @@ const RoutePickerMap: React.FC<RoutePickerMapProps> = ({
             distance: `${(route.summary.totalDistance / 1000).toFixed(2)} km`,
             duration: `${Math.round(route.summary.totalTime / 60)} minutes`,
           });
+
+          // Fit the map to the route coordinates when route is found
+          if (route.coordinates && route.coordinates.length > 0) {
+            mapRef.current?.fitBounds(L.latLngBounds(route.coordinates), {
+              padding: [50, 50],
+              maxZoom: 15,
+              animate: true,
+            });
+
+            // Convert Leaflet LatLng objects to [lng, lat] array for callback
+            if (onRouteCalculated && route.coordinates) {
+              const coords = route.coordinates.map(
+                (latLng) => [latLng.lng, latLng.lat] as [number, number]
+              );
+              onRouteCalculated(coords);
+            }
+          }
         }
       });
 
@@ -620,7 +706,7 @@ const RoutePickerMap: React.FC<RoutePickerMapProps> = ({
     } catch (error) {
       console.error("Error setting up route:", error);
     }
-  }, [startPoint, endPoint, intermediatePoints]);
+  }, [startPoint, endPoint, intermediatePoints, onRouteCalculated]);
 
   // Clear all waypoints including intermediates
   const clearAllWaypoints = useCallback(() => {

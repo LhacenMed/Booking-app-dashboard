@@ -50,12 +50,12 @@ export const GeneralSettings = () => {
     description: "",
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // Save implementation would go here
-    setTimeout(() => setIsLoading(false), 1000);
-  };
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setIsLoading(true);
+  //   // Save implementation would go here
+  //   setTimeout(() => setIsLoading(false), 1000);
+  // };
 
   // Save the company details
   const saveCompanyDetails = (e: React.FormEvent) => {

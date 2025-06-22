@@ -62,8 +62,11 @@ export default function LocationSearch({
 
   useEffect(() => {
     if (searchValue) {
-      const filtered = mockLocations.filter((location) =>
-        location.name.toLowerCase().includes(searchValue.toLowerCase())
+      const searchTerm = searchValue.toLowerCase();
+      const filtered = mockLocations.filter(
+        (location) =>
+          location.name.toLowerCase().includes(searchTerm) ||
+          location.id.toLowerCase().includes(searchTerm)
       );
       setFilteredLocations(filtered);
     } else {
@@ -71,13 +74,36 @@ export default function LocationSearch({
     }
   }, [searchValue]);
 
+  const handleLocationSelect = (value: string) => {
+    // First try to find by name
+    let location = mockLocations.find(
+      (loc) => loc.name.toLowerCase() === value.toLowerCase()
+    );
+
+    // If not found by name, try by ID
+    if (!location) {
+      location = mockLocations.find(
+        (loc) => loc.id.toLowerCase() === value.toLowerCase()
+      );
+    }
+
+    // If found by either name or ID
+    if (location) {
+      onSelect(location);
+      setOpen(false);
+      setSearchValue("");
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={`location-button-${id}`}
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-controls={`location-command-${id}`}
           className={cn(
             "w-full justify-between border-slate-300 hover:bg-slate-50",
             selectedLocation ? "text-slate-900" : "text-slate-500"
@@ -98,8 +124,9 @@ export default function LocationSearch({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0 shadow-md border-slate-200">
-        <Command>
+        <Command id={`location-command-${id}`}>
           <CommandInput
+            id={`location-input-${id}`}
             placeholder="Search location..."
             value={searchValue}
             onValueChange={setSearchValue}
@@ -112,27 +139,28 @@ export default function LocationSearch({
                 <p className="text-sm text-slate-500">No location found.</p>
               </div>
             </CommandEmpty>
-            <CommandGroup className="max-h-60 overflow-y-auto">
+            <CommandGroup
+              heading="Locations"
+              id={`location-group-${id}`}
+              className="max-h-60 overflow-y-auto"
+            >
               {filteredLocations.map((location) => (
                 <CommandItem
+                  id={`location-item-${id}-${location.id}`}
                   key={location.id}
                   value={location.name}
-                  onSelect={() => {
-                    onSelect(location);
-                    setOpen(false);
-                  }}
-                  className="flex items-center py-2"
+                  onSelect={handleLocationSelect}
                 >
                   <MapPin className="mr-2 h-4 w-4 text-slate-500" />
-                  <span className="flex-1">{location.name}</span>
-                  <Check
-                    className={cn(
-                      "ml-auto h-4 w-4 text-green-600",
-                      selectedLocation?.id === location.id
-                        ? "opacity-100"
-                        : "opacity-0"
-                    )}
-                  />
+                  <span className="flex-1">
+                    {location.name}
+                    <span className="ml-1 text-xs text-slate-400">
+                      ({location.id})
+                    </span>
+                  </span>
+                  {selectedLocation?.id === location.id && (
+                    <Check className="h-4 w-4 text-green-600" />
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>

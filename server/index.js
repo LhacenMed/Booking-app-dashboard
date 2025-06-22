@@ -10,15 +10,15 @@ const crypto = require("crypto");
 const { query, where, getDocs } = require("firebase-admin/firestore");
 
 // Initialize Firebase Admin
-console.log("Initializing Firebase Admin...");
+// console.log("Initializing Firebase Admin...");
 try {
     const serviceAccount = require("./firebase-admin-key.json"); // You'll need to place your key file here
-    console.log("Service account loaded successfully");
+    // console.log("Service account loaded successfully");
 
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
     });
-    console.log("Firebase Admin initialized successfully");
+    // console.log("Firebase Admin initialized successfully");
 } catch (error) {
     console.error("Firebase Admin initialization error:", error);
     process.exit(1);
@@ -62,14 +62,14 @@ const emailSendLimiter = rateLimit({
 });
 
 // Debug environment variables
-console.log("Environment check:", {
-    BREVO_API_KEY: process.env.BREVO_API_KEY ?
-        `${process.env.BREVO_API_KEY.substring(0, 10)}...` : "Missing",
-    BREVO_API_KEY_LENGTH: process.env.BREVO_API_KEY ?
-        process.env.BREVO_API_KEY.length : 0,
-    SENDER_EMAIL: process.env.SENDER_EMAIL || "Missing",
-    SENDER_NAME: process.env.SENDER_NAME || "Missing",
-});
+// console.log("Environment check:", {
+//     BREVO_API_KEY: process.env.BREVO_API_KEY ?
+//         `${process.env.BREVO_API_KEY.substring(0, 10)}...` : "Missing",
+//     BREVO_API_KEY_LENGTH: process.env.BREVO_API_KEY ?
+//         process.env.BREVO_API_KEY.length : 0,
+//     SENDER_EMAIL: process.env.SENDER_EMAIL || "Missing",
+//     SENDER_NAME: process.env.SENDER_NAME || "Missing",
+// });
 
 // Validate environment variables before starting server
 function validateEnvironmentVariables() {
@@ -177,7 +177,7 @@ app.post("/api/send-email", emailSendLimiter, async(req, res) => {
         };
 
         const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log("Verification code sent successfully");
+        //console.log("Verification code sent successfully");
 
         return res.status(200).json({
             success: true,
@@ -196,7 +196,7 @@ app.post("/api/send-email", emailSendLimiter, async(req, res) => {
 // Add new endpoint to list all users
 app.get("/api/list-users", async(req, res) => {
     try {
-        console.log("Attempting to list users...");
+        // console.log("Attempting to list users...");
 
         // Set a longer timeout for the Firebase request
         const timeout = 120000; // 120 seconds
@@ -246,7 +246,7 @@ app.get("/api/list-users", async(req, res) => {
             timeoutPromise,
         ]);
 
-        console.log(`Successfully retrieved ${listUsersResult.users.length} users`);
+        // console.log(`Successfully retrieved ${listUsersResult.users.length} users`);
 
         const users = listUsersResult.users.map((userRecord) => ({
             email: userRecord.email,
@@ -255,12 +255,12 @@ app.get("/api/list-users", async(req, res) => {
             creationTime: userRecord.metadata.creationTime,
         }));
 
-        console.log("👥 All registered users in Firebase Auth:");
+        // console.log("👥 All registered users in Firebase Auth:");
         users.forEach((user) => {
-            console.log(`- Email: ${user.email}`);
-            console.log(`  Created: ${user.creationTime}`);
-            console.log(`  Verified: ${user.emailVerified ? "✅" : "❌"}`);
-            console.log("  ---");
+            // console.log(`- Email: ${user.email}`);
+            // console.log(`  Created: ${user.creationTime}`);
+            // console.log(`  Verified: ${user.emailVerified ? "✅" : "❌"}`);
+            // console.log("  ---");
         });
 
         return res.status(200).json({
@@ -490,7 +490,7 @@ app.post("/api/create-account", accountCreationLimiter, async(req, res) => {
         // Sign out any existing sessions for this user
         try {
             await admin.auth().revokeRefreshTokens(uid);
-            console.log("Successfully revoked tokens for user:", uid);
+            // console.log("Successfully revoked tokens for user:", uid);
         } catch (signOutError) {
             console.error("Error revoking tokens:", signOutError);
             // Don't throw error as account creation was successful
@@ -499,7 +499,7 @@ app.post("/api/create-account", accountCreationLimiter, async(req, res) => {
         // Create a custom token for the new user
         try {
             const customToken = await admin.auth().createCustomToken(uid);
-            console.log("Successfully created custom token for user:", uid);
+            // console.log("Successfully created custom token for user:", uid);
 
             return res.status(200).json({
                 success: true,
@@ -572,7 +572,7 @@ app.post("/api/request-verification", emailSendLimiter, async(req, res) => {
         if (!emailQuery.empty) {
             // Use the existing document's ID
             companyId = emailQuery.docs[0].id;
-            console.log("Found existing company document:", companyId);
+            // console.log("Found existing company document:", companyId);
 
             // Update the existing document's timestamp
             await agenciesRef.doc(companyId).update({
@@ -581,7 +581,7 @@ app.post("/api/request-verification", emailSendLimiter, async(req, res) => {
         } else {
             // Generate new company ID and create new document
             companyId = generateSecureCompanyId(email);
-            console.log("Generated new company ID:", companyId);
+            // console.log("Generated new company ID:", companyId);
 
             // Store in Firestore
             const companyDocData = {
@@ -636,6 +636,7 @@ app.post("/api/request-verification", emailSendLimiter, async(req, res) => {
         apiKey.apiKey = process.env.BREVO_API_KEY;
 
         let sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+        con
         sendSmtpEmail.subject = "Verify your email";
         sendSmtpEmail.htmlContent = `
             <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -1071,6 +1072,128 @@ app.post("/api/resend-verification", emailSendLimiter, async(req, res) => {
             success: false,
             error: "Failed to resend verification code",
             type: "server_error",
+        });
+    }
+});
+
+// Add SMS validation endpoint
+app.post("/api/send-sms-validation", emailSendLimiter, async(req, res) => {
+    try {
+        const { phone, lang, code } = req.body;
+
+        // Validate phone number format (must start with 2, 3, or 4 and be 8 digits)
+        const phoneRegex = /^[234]\d{7}$/;
+        if (!phone || !phoneRegex.test(phone)) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid phone number format. Must start with 2, 3, or 4 and be 8 digits long.",
+                type: "validation_error"
+            });
+        }
+
+        // Validate language
+        if (!lang || !['ar', 'fr'].includes(lang)) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid language. Must be 'ar' for Arabic or 'fr' for French.",
+                type: "validation_error"
+            });
+        }
+
+        // Validate code if provided
+        if (code && (!/^\d{3,6}$/.test(code))) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid code format. Must be between 3 and 6 digits.",
+                type: "validation_error"
+            });
+        }
+
+        // Prepare request data
+        const validationKey = "H9lZfXvef0E3qH70";
+        const token = "Lp1D3gj8JmW2jqCkRumgIQj8IIXj4vBY";
+        const requestData = {
+            phone,
+            lang
+        };
+
+        // Add code if provided
+        if (code) {
+            requestData.code = code;
+        }
+
+        // Send request to Chinguisoft API
+        const response = await axios.post(
+            `https://chinguisoft.com/api/sms/validation/${validationKey}`,
+            requestData, {
+                headers: {
+                    "Validation-token": token,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        // Return success response with the code and balance
+        return res.status(200).json({
+            success: true,
+            message: "SMS validation code sent successfully",
+            data: {
+                code: response.data.code,
+                balance: response.data.balance
+            }
+        });
+
+    } catch (error) {
+        console.error("SMS validation error:", error);
+
+        // Handle specific error responses from Chinguisoft API
+        if (error.response) {
+            switch (error.response.status) {
+                case 422:
+                    return res.status(422).json({
+                        success: false,
+                        error: "Validation failed",
+                        details: error.response.data.errors,
+                        type: "validation_error"
+                    });
+                case 429:
+                    return res.status(429).json({
+                        success: false,
+                        error: "Too many requests. Please try again later.",
+                        type: "rate_limit_error"
+                    });
+                case 401:
+                    return res.status(401).json({
+                        success: false,
+                        error: "Authentication failed",
+                        type: "auth_error"
+                    });
+                case 402:
+                    return res.status(402).json({
+                        success: false,
+                        error: "Insufficient balance",
+                        balance: error.response.data.balance,
+                        type: "payment_error"
+                    });
+                case 503:
+                    return res.status(503).json({
+                        success: false,
+                        error: "Service temporarily unavailable",
+                        type: "service_error"
+                    });
+                default:
+                    return res.status(500).json({
+                        success: false,
+                        error: "Failed to send SMS validation code",
+                        type: "server_error"
+                    });
+            }
+        }
+
+        return res.status(500).json({
+            success: false,
+            error: "Internal server error",
+            type: "server_error"
         });
     }
 });

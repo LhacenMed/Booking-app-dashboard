@@ -7,7 +7,7 @@ import DocsPage from "./pages/docs";
 import TeamPage from "./pages/team";
 import TripsPage from "./pages/trips";
 import FinancePage from "./pages/finance";
-import { SeatManagement } from "./components/Trips/SeatManagement";
+import { SeatManagement } from "./pages/seats";
 import { AppLayout } from "@/layouts/AppLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import WelcomePage from "./pages/onboarding/welcome";
@@ -19,11 +19,12 @@ import CreditsPage from "./pages/onboarding/credits";
 import ReviewPage from "./pages/onboarding/review";
 import OnboardingLayout from "@/layouts/OnboardingLayout";
 import NotFoundPage from "./pages/404";
-import ErrorPage from "./components/ErrorBoundary/ErrorPage";
+import ErrorPage from "./pages/error";
 import MessageEmail from "./pages/message-email";
 import SignUpTestPage0 from "./pages/signup-test0";
 import SignUpTestPage1 from "./pages/signup-test1";
 import MapPage from "./pages/map";
+import ReservationsPage from "./pages/reservations";
 // Import settings components
 import { SettingsLayout } from "./components/Settings/SettingsLayout";
 import { GeneralSettings } from "./pages/settings/general";
@@ -143,6 +144,10 @@ export const router = createBrowserRouter([
                 element: <SeatManagement />,
               },
             ],
+          },
+          {
+            path: "reservations",
+            element: <ReservationsPage />,
           },
           {
             path: "settings",

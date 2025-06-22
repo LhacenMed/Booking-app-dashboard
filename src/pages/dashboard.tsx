@@ -3,8 +3,12 @@ import { useAgency } from "@/hooks/useAgency";
 import { auth } from "@/config/firebase";
 import { StatusBanner } from "@/components/CompanyStatus/StatusBanner";
 import { Button, Spinner } from "@heroui/react";
-import { Dashboard } from "@/components/Dashboard/Dashboard";
 import { DashboardTopBar } from "@/components/Dashboard/DashboardTopBar";
+import { FiCalendar } from "react-icons/fi";
+import { StatCards } from "@/components/Dashboard/StatCards";
+import { ActivityGraph } from "@/components/Dashboard/ActivityGraph";
+import { UsageRadar } from "@/components/Dashboard/UsageRadar";
+import { RecentTransactions } from "@/components/Dashboard/RecentTransactions";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -68,10 +72,32 @@ export default function DashboardPage() {
     );
   }
 
+  const dateSelector = (
+    <Button
+      variant="light"
+      className="flex items-center gap-2"
+      startContent={<FiCalendar />}
+    >
+      Prev 6 Months
+    </Button>
+  );
+
   return (
     <div className="container mx-auto">
       <StatusBanner />
-      <Dashboard />
+      <div className="flex flex-col h-screen bg-background">
+        <DashboardTopBar rightContent={dateSelector} />
+        <div className="flex-1 overflow-auto">
+          <div className="p-6">
+            <div className="px-4 grid gap-3 grid-cols-12">
+              <StatCards />
+              <ActivityGraph />
+              <UsageRadar />
+              <RecentTransactions />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

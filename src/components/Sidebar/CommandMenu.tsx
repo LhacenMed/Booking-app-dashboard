@@ -8,6 +8,7 @@ import {
   FiTruck,
   FiLogOut,
   FiSearch,
+  FiCalendar,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { useAgency } from "@/hooks/useAgency";
@@ -31,21 +32,28 @@ const pages: Page[] = [
   },
   {
     title: "Trips",
-    href: "/trips",
+    href: "/dashboard/trips",
     icon: <FiTruck className="text-default-500" />,
     description: "Manage your trips and bookings",
     keywords: ["bookings", "routes", "schedule", "transport"],
   },
   {
+    title: "Reservations",
+    href: "/dashboard/reservations",
+    icon: <FiCalendar className="text-default-500" />,
+    description: "View and manage reservations",
+    keywords: ["bookings", "schedule", "passengers", "seats", "calendar"],
+  },
+  {
     title: "Finance",
-    href: "/finance",
+    href: "/dashboard/finance",
     icon: <FiDollarSign className="text-default-500" />,
     description: "Financial reports and transactions",
     keywords: ["money", "payments", "revenue", "transactions", "reports"],
   },
   {
     title: "Team",
-    href: "/team",
+    href: "/dashboard/team",
     icon: <FiUsers className="text-default-500" />,
     description: "Manage team members and roles",
     keywords: ["members", "staff", "employees", "roles", "permissions"],
@@ -184,7 +192,7 @@ export const CommandMenu = ({
               // Handle logout
               setOpen(false);
             }}
-            className="flex cursor-pointer transition-colors p-2 text-sm text-danger-foreground hover:bg-danger/20 rounded items-center gap-2 mt-2"
+            className="flex cursor-pointer transition-colors p-2 text-sm text-content hover:bg-danger/20 rounded items-center gap-2 mt-2"
           >
             <FiLogOut />
             Sign Out
