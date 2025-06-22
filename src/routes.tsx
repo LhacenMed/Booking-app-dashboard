@@ -34,6 +34,7 @@ import { SecuritySettings } from "./pages/settings/security";
 import { BillingSettings } from "./pages/settings/billing";
 import { IntegrationsSettings } from "./pages/settings/integrations";
 import { RoutePage } from "./pages/settings/route";
+import SupabaseAuth from "./pages/SupabaseAuth";
 
 export const router = createBrowserRouter([
   {
@@ -63,6 +64,10 @@ export const router = createBrowserRouter([
       {
         path: "/signup-test1",
         element: <SignUpTestPage1 />,
+      },
+      {
+        path: "/supabase-auth",
+        element: <SupabaseAuth />,
       },
       {
         path: "/map",

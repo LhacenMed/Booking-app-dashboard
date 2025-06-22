@@ -7,8 +7,6 @@ import "@/styles/mouse-follower.css";
 import type { NavigateOptions } from "react-router-dom";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-// import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useState, useEffect } from "react";
 import { Spinner } from "@heroui/react";
 
@@ -17,16 +15,6 @@ declare module "@react-types/shared" {
     routerOptions: NavigateOptions;
   }
 }
-
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false, // disable automatic refetching when window gains focus
-      retry: 1, // retry failed requests only once
-    },
-  },
-});
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -103,9 +91,7 @@ function App() {
   // }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
-    </QueryClientProvider>
   );
 }
 
