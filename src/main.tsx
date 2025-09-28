@@ -4,7 +4,7 @@ import { HeroUIProvider } from "@heroui/react";
 import { NotificationProvider } from "@/components/ui/notification";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@/styles/globals.css";
-// import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const rootElement = document.getElementById("root");
 
@@ -22,9 +22,9 @@ if (rootElement) {
     <HeroUIProvider>
       <NotificationProvider>
         <QueryClientProvider client={queryClient}>
-          {/* <AuthProvider> */}
+          <AuthProvider>
             <App />
-          {/* </AuthProvider> */}
+          </AuthProvider>
         </QueryClientProvider>
       </NotificationProvider>
     </HeroUIProvider>

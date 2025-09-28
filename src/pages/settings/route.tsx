@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Button, Input, Textarea } from "@heroui/react";
+import { Button } from "@heroui/react";
 // import RoutePickerMap from "@/components/maps/RoutePickerMap";
 import RouteCreator from "@/components/route-creator";
 
@@ -128,28 +128,6 @@ export const RoutePage = () => {
       }, 800);
     }
   }, [routeId]);
-
-  // Handle form input changes
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value, type } = e.target;
-
-    // Handle checkbox input
-    if (type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked;
-      setRouteForm((prev) => ({ ...prev, [name]: checked }));
-      return;
-    }
-
-    // Handle all other inputs
-    setRouteForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Handle trip type selection
-  const handleTripTypeChange = (type: string) => {
-    setRouteForm((prev) => ({ ...prev, tripType: type }));
-  };
 
   // Save the route
   const saveRoute = async () => {

@@ -92,7 +92,7 @@ export const GeneralSettings = () => {
       <h1 className="text-2xl font-ot-bold mb-6">General Settings</h1>
 
       {/* Company Details Card */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-background rounded-lg shadow-sm border border-border p-6">
         <h2 className="text-xl font-ot-semibold mb-4">Company Details</h2>
 
         <form onSubmit={saveCompanyDetails} className="space-y-4 max-w-xl">
@@ -135,7 +135,7 @@ export const GeneralSettings = () => {
       </div>
 
       {/* Custom Route Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-background rounded-lg shadow-sm border border-border p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-ot-semibold">Custom Routes</h2>
           <Button color="primary" onClick={navigateToRouteCreation}>
@@ -143,11 +143,11 @@ export const GeneralSettings = () => {
           </Button>
         </div>
 
-        <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100">
-          <h3 className="font-medium text-blue-800 mb-2">
+        <div className="bg-secondary p-4 rounded-lg mb-6 border border-border">
+          <h3 className="font-medium text-primary mb-2">
             About Custom Routes
           </h3>
-          <p className="text-blue-700 mb-2">
+          <p className="text-primary mb-2">
             Plan and save custom routes for your company's trips. These routes
             can be used for:
           </p>
@@ -161,9 +161,9 @@ export const GeneralSettings = () => {
 
         {/* Routes table */}
         {routes.length > 0 ? (
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="border border-border rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-background">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Name
@@ -185,15 +185,15 @@ export const GeneralSettings = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-background divide-y divide-border">
                 {routes.map((route) => (
                   <tr
                     key={route.id}
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className="hover:bg-secondary cursor-pointer"
                     onClick={() => navigateToRouteDetails(route.id)}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-primary">
                         {route.name}
                       </div>
                     </td>

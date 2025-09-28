@@ -1,14 +1,10 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { auth } from "@/config/firebase";
-import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/config/firebase";
-import { 
-  // cn,
-  Spinner
-} from "@heroui/react";
+import { Spinner } from "@heroui/react";
 import { useAgency } from "@/hooks/useAgency";
+import { useAuth } from "@/context/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -27,107 +23,141 @@ export const ProtectedRoute = ({
   requireStatus,
   redirectTo = "/login",
 }: ProtectedRouteProps) => {
+  console.log("[ProtectedRoute] Initializing with props:", {
+    requireAuth,
+    requireOnboarding,
+    preventIfOnboarded,
+    requireStatus,
+    redirectTo,
+  });
+
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const location = useLocation();
+  const { user, loading: authLoading } = useAuth();
 
-  const userId = auth.currentUser?.uid || null;
+  console.log("[ProtectedRoute] Current state:", {
+    isLoading,
+    needsOnboarding,
+    isOnboarded,
+    isOffline,
+    location: location.pathname,
+    user: user ? { uid: user.uid, email: user.email } : null,
+    authLoading,
+  });
+
+  const userId = user?.uid || null;
   const { status: statusData, isLoading: statusLoading } = requireStatus
     ? useAgency(userId)
     : { status: null, isLoading: false };
 
+  console.log("[ProtectedRoute] Agency status:", {
+    userId,
+    statusData,
+    statusLoading,
+  });
+
   // Monitor online/offline status
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
+    console.log("[ProtectedRoute] Setting up online/offline listeners");
+    const handleOnline = () => {
+      console.log("[ProtectedRoute] Device went online");
+      setIsOffline(false);
+    };
+    const handleOffline = () => {
+      console.log("[ProtectedRoute] Device went offline");
+      setIsOffline(true);
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
     return () => {
+      console.log("[ProtectedRoute] Cleaning up online/offline listeners");
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const checkOnboardingStatus = async () => {
+      console.log(
+        "[ProtectedRoute] Checking onboarding status for user:",
+        user?.uid
+      );
       if (user) {
-        setIsAuthenticated(true);
         if (requireOnboarding || preventIfOnboarded) {
           try {
             const companyDoc = await getDoc(doc(db, "agencies", user.uid));
             const onboardedStatus =
               companyDoc.exists() && companyDoc.data()?.onboarded;
+            console.log("[ProtectedRoute] Company doc data:", {
+              exists: companyDoc.exists(),
+              onboardedStatus,
+              data: companyDoc.exists() ? companyDoc.data() : null,
+            });
             setIsOnboarded(onboardedStatus);
             setNeedsOnboarding(!onboardedStatus);
           } catch (error) {
-            console.error("Error checking onboarding status:", error);
-            // When offline, don't redirect to onboarding
+            console.error(
+              "[ProtectedRoute] Error checking onboarding status:",
+              error
+            );
             if (isOffline) {
-              // Use session storage or localStorage to remember last known state if available
               const lastKnownOnboardingState =
                 localStorage.getItem("user_onboarded");
+              console.log(
+                "[ProtectedRoute] Using cached onboarding state:",
+                lastKnownOnboardingState
+              );
               if (lastKnownOnboardingState === "true") {
                 setIsOnboarded(true);
                 setNeedsOnboarding(false);
               } else if (requireOnboarding) {
-                // For the dashboard route that requires onboarding
-                // Default to assuming the user is onboarded when offline
                 setIsOnboarded(true);
                 setNeedsOnboarding(false);
               } else if (preventIfOnboarded) {
-                // For the onboarding route that should be prevented if onboarded
-                // Default to allowing access to onboarding when offline only if explicitly going there
                 setIsOnboarded(false);
                 setNeedsOnboarding(true);
               }
             } else {
-              // If error is not related to being offline, use default behavior
               setNeedsOnboarding(true);
               setIsOnboarded(false);
             }
           }
         }
       } else {
-        setIsAuthenticated(false);
+        console.log(
+          "[ProtectedRoute] No user found, resetting onboarding state"
+        );
         setNeedsOnboarding(false);
         setIsOnboarded(false);
       }
       setIsLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, [requireOnboarding, preventIfOnboarded, isOffline]);
+    checkOnboardingStatus();
+  }, [user, requireOnboarding, preventIfOnboarded, isOffline]);
 
-  // Save onboarding state to localStorage when it changes
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (user && !isLoading) {
+      console.log(
+        "[ProtectedRoute] Saving onboarding state to localStorage:",
+        isOnboarded
+      );
       localStorage.setItem("user_onboarded", isOnboarded.toString());
     }
-  }, [isOnboarded, isAuthenticated, isLoading]);
+  }, [isOnboarded, user, isLoading]);
 
-  if (isLoading || statusLoading) {
+  if (isLoading || statusLoading || authLoading) {
+    console.log("[ProtectedRoute] Still loading...", {
+      isLoading,
+      statusLoading,
+      authLoading,
+    });
     return (
-      // <div className="h-screen w-screen flex items-center justify-center min-h-screen relative overflow-hidden bg-black">
-      //   {/* Grid Background */}
-      //   <div
-      //     className={cn(
-      //       "absolute inset-0",
-      //       "[background-size:50px_50px]",
-      //       "[background-image:linear-gradient(to_right,#111_1px,transparent_1px),linear-gradient(to_bottom,#111_1px,transparent_1px)]"
-      //     )}
-      //   />
-      //   {/* Radial gradient overlay */}
-      //   <div
-      //     className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]"
-      //     aria-hidden="true"
-      //   />
-      //   <Spinner size="lg" />
-      // </div>
       <div className="h-screen w-screen flex items-center justify-center relative overflow-hidden">
         <Spinner size="lg" />
       </div>
@@ -135,23 +165,34 @@ export const ProtectedRoute = ({
   }
 
   // Auth check
-  if (requireAuth && !isAuthenticated) {
+  if (requireAuth && !user) {
+    console.log(
+      "[ProtectedRoute] Auth required but no user found, redirecting to:",
+      redirectTo
+    );
     sessionStorage.setItem("redirectAfterLogin", location.pathname);
     return <Navigate to={redirectTo} replace />;
   }
 
   // If offline and trying to access dashboard, allow access regardless of onboarding status
   if (isOffline && requireOnboarding) {
+    console.log("[ProtectedRoute] Offline mode - bypassing onboarding check");
     return <>{children}</>;
   }
 
   // Prevent onboarded users from accessing onboarding pages
   if (preventIfOnboarded && isOnboarded && !isOffline) {
+    console.log(
+      "[ProtectedRoute] User is onboarded, preventing access to onboarding pages"
+    );
     return <Navigate to="/dashboard" replace />;
   }
 
   // Onboarding check (skip if offline)
   if (requireAuth && requireOnboarding && needsOnboarding && !isOffline) {
+    console.log(
+      "[ProtectedRoute] User needs onboarding, redirecting to onboarding flow"
+    );
     return <Navigate to="/onboarding/select-company" replace />;
   }
 
@@ -161,8 +202,13 @@ export const ProtectedRoute = ({
     (!statusData || statusData.status !== requireStatus) &&
     !isOffline
   ) {
+    console.log("[ProtectedRoute] Status check failed:", {
+      required: requireStatus,
+      current: statusData?.status,
+    });
     return <Navigate to="/dashboard" replace />;
   }
 
+  console.log("[ProtectedRoute] All checks passed, rendering children");
   return <>{children}</>;
 };

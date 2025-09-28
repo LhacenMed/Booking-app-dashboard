@@ -15,13 +15,13 @@ export default function DashboardPage() {
   const userId = auth.currentUser?.uid || null;
   const { status: statusData, isLoading, error } = useAgency(userId);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen">
+  //       <Spinner size="lg" />
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (
@@ -58,19 +58,19 @@ export default function DashboardPage() {
     );
   }
 
-  if (!userId) {
-    return (
-      <div className="container mx-auto">
-        <DashboardTopBar showSearch={false} />
-        <div className="text-xl font-medium text-default-500 text-center pt-20">
-          Please sign in to continue
-          <div className="mt-3">
-            <Button onPress={() => navigate("/login")}>Login</Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (!userId) {
+  //   return (
+  //     <div className="container mx-auto">
+  //       <DashboardTopBar showSearch={false} />
+  //       <div className="text-xl font-medium text-default-500 text-center pt-20">
+  //         Please sign in to continue
+  //         <div className="mt-3">
+  //           <Button onPress={() => navigate("/login")}>Login</Button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   const dateSelector = (
     <Button

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Card, CardHeader, CardBody, Input, Button, Link } from "@heroui/react";
 import DefaultLayout from "@/layouts/default";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { auth, db } from "@/config/firebase";
 import { useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/config/firebase";
 import { addAccountToLocalStorage } from "@/utils/localAccounts";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,14 +13,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { signInUser, signOut, user } = useAuth();
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await signOut();
       console.log("Successfully logged out");
-      // Clear any stored user data if needed
       localStorage.removeItem("currentAccount");
-      setError(""); // Clear any existing errors
+      setError("");
     } catch (error: any) {
       console.error("Logout error:", error);
       setError("Failed to logout: " + error.message);
@@ -34,24 +34,24 @@ export default function LoginPage() {
 
     try {
       console.log("Attempting login with:", email);
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      console.log("Login successful, user:", userCredential.user.uid);
+      const result = await signInUser({ email, password });
+
+      if (!result.success || !result.data) {
+        throw new Error(result.error || "Failed to login");
+      }
+
+      const userId = result.data.uid;
+      console.log("Login successful, user:", userId);
 
       // Get company data
-      const companyDoc = await getDoc(
-        doc(db, "agencies", userCredential.user.uid)
-      );
+      const companyDoc = await getDoc(doc(db, "agencies", userId));
       if (companyDoc.exists()) {
         const companyData = companyDoc.data();
         console.log("Company data fetched:", companyData);
 
         // Save to local storage
         const accountData = {
-          id: userCredential.user.uid,
+          id: userId,
           name: companyData.name,
           email: companyData.email,
           logo: companyData.logo,
@@ -60,7 +60,7 @@ export default function LoginPage() {
         const saved = addAccountToLocalStorage(accountData);
         console.log("Save to local storage result:", saved);
       } else {
-        console.log("No company data found for user:", userCredential.user.uid);
+        console.log("No company data found for user:", userId);
       }
 
       setIsLoading(false);
@@ -95,7 +95,9 @@ export default function LoginPage() {
       <div className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
         <Card className="w-full max-w-md p-6">
           <CardHeader className="flex flex-col gap-2 items-center">
-            <h1 className="text-2xl font-bold">Welcome Back</h1>
+            <h1 className="text-2xl font-bold">
+              Welcome Back{user ? `, ${user.email}` : ""}
+            </h1>
             <p className="text-default-500">Sign in to continue</p>
           </CardHeader>
           <CardBody>

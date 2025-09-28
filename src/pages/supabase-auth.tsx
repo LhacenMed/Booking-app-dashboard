@@ -53,17 +53,17 @@ export default function SupabaseAuth() {
   if (!session) {
     return (
       <div className="flex justify-center items-center h-screen bg-black">
-        {/* <Auth
+        <Auth
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}
           theme="dark"
-        /> */}
-        <button
+        />
+        {/* <button
           onClick={signUp}
           className="text-white bg-blue-500 p-2 rounded-md"
         >
           Sign Up with Google
-        </button>
+        </button> */}
       </div>
     );
   } else {

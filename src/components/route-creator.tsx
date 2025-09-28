@@ -4,10 +4,7 @@ import {
   MapPin,
   Plus,
   Trash2,
-  CheckCircle2,
   MapIcon,
-  RotateCw,
-  Save,
 } from "lucide-react";
 // import RouteMap from "./route-map";
 import RoutePickerMap from "./maps/RoutePickerMap";
@@ -15,7 +12,6 @@ import LocationSearch from "./location-search";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ux/tabs";
 import { Badge } from "@/components/ux/badge";
 import { Separator } from "@/components/ux/separator";
-import { Progress } from "@/components/ux/progress";
 import { Button } from "@/components/ux/button";
 import { Card, CardContent } from "@/components/ux/card";
 import { Input } from "@/components/ux/input";
@@ -66,7 +62,6 @@ export default function RouteCreator() {
   const [stops, setStops] = useState<Location[]>([]);
   const [routeName, setRouteName] = useState("");
   const [activeTab, setActiveTab] = useState("details");
-  const [isSaving, setIsSaving] = useState(false);
   const routeCoordinatesRef = useRef<Array<[number, number]>>([]);
 
   // Auto-generate route name when departure or destination changes
@@ -90,18 +85,6 @@ export default function RouteCreator() {
   // Handle destination selection with auto-naming
   const handleDestinationSelect = (location: Location) => {
     setDestination(location);
-  };
-
-  // Calculate completion percentage
-  const calculateCompletion = () => {
-    let completed = 0;
-    const total = 3; // Route name, departure, destination are required
-
-    if (routeName) completed++;
-    if (departure) completed++;
-    if (destination) completed++;
-
-    return Math.floor((completed / total) * 100);
   };
 
   // Function to handle route calculation and log passed areas
@@ -159,9 +142,6 @@ export default function RouteCreator() {
       return;
     }
 
-    // Simulate saving
-    setIsSaving(true);
-
     setTimeout(() => {
       // Create route object
       const route = {
@@ -173,8 +153,6 @@ export default function RouteCreator() {
 
       // Here you would typically send this data to your API
       console.log("Submitting route:", route);
-
-      setIsSaving(false);
 
       // Show success message
       alert("Route created successfully!");

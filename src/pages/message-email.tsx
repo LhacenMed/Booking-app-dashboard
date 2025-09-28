@@ -34,11 +34,6 @@ import CustomInput from "@/components/ui/CustomInput";
 import { Spinner } from "@heroui/react";
 import { useNavigate } from "react-router-dom";
 
-// Simple function to generate 6-digit code
-// const generateVerificationCode = () => {
-//   return Math.floor(100000 + Math.random() * 900000).toString();
-// };
-
 // Add this helper function at the top level, after the generateVerificationCode function
 const generateCustomCompanyId = (email: string) => {
   // Get first 5 letters of email (before @), convert to uppercase

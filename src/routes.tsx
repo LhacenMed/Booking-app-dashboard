@@ -9,7 +9,7 @@ import TripsPage from "./pages/trips";
 import FinancePage from "./pages/finance";
 import { SeatManagement } from "./pages/seats";
 import { AppLayout } from "@/layouts/AppLayout";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ProtectedRoute } from "@/layouts/ProtectedRoute";
 import WelcomePage from "./pages/onboarding/welcome";
 import SelectCompanyPage from "./pages/onboarding/select-company";
 import AgencyDetailsPage from "./pages/onboarding/agency-details";
@@ -34,7 +34,7 @@ import { SecuritySettings } from "./pages/settings/security";
 import { BillingSettings } from "./pages/settings/billing";
 import { IntegrationsSettings } from "./pages/settings/integrations";
 import { RoutePage } from "./pages/settings/route";
-import SupabaseAuth from "./pages/SupabaseAuth";
+import SupabaseAuth from "./pages/supabase-auth";
 
 export const router = createBrowserRouter([
   {
@@ -77,11 +77,11 @@ export const router = createBrowserRouter([
       {
         path: "/onboarding",
         element: (
-          <ProtectedRoute requireAuth preventIfOnboarded>
+          // <ProtectedRoute requireAuth preventIfOnboarded>
             <OnboardingLayout>
               <Outlet />
             </OnboardingLayout>
-          </ProtectedRoute>
+          // </ProtectedRoute>
         ),
         errorElement: <ErrorPage />,
         children: [
@@ -123,9 +123,9 @@ export const router = createBrowserRouter([
       {
         path: "/dashboard",
         element: (
-          <ProtectedRoute requireAuth requireOnboarding>
+          // <ProtectedRoute requireAuth requireOnboarding>
             <AppLayout />
-          </ProtectedRoute>
+          // </ProtectedRoute>
         ),
         errorElement: <ErrorPage />,
         children: [

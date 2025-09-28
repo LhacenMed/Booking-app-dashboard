@@ -6,14 +6,14 @@ import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyD_zssaAnfTzxnVOh_d0QXoNBrtKcML0NA",
-  authDomain: "rnauthvideo2.firebaseapp.com",
-  projectId: "rnauthvideo2",
-  storageBucket: "rnauthvideo2.firebasestorage.app",
-  messagingSenderId: "995000915226",
-  appId: "1:995000915226:web:1d881f3439e7a1d38088a3",
+  apiKey: "AIzaSyAIT0T1vjeE6RCCggnKw0Ewltl-gUWw7sg",
+  authDomain: "booking-app-f7f84.firebaseapp.com",
+  projectId: "booking-app-f7f84",
+  storageBucket: "booking-app-f7f84.firebasestorage.app",
+  messagingSenderId: "3227817482",
+  appId: "1:3227817482:web:a18eebb26e12aac6b7b1f3",
 };
-
+console.log(firebaseConfig);
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase Authentication and get a reference to the service

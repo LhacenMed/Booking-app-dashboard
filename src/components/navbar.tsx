@@ -16,10 +16,8 @@ import {
 } from "@heroui/react";
 import { link as linkStyles } from "@heroui/theme";
 import clsx from "clsx";
-import { auth } from "@/config/firebase";
 import { useNavigate } from "react-router-dom";
-import { signOut, onAuthStateChanged } from "firebase/auth";
-import { useAgency } from "@/hooks/useAgency";
+import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
 
 import { siteConfig } from "@/config/site";
@@ -36,26 +34,17 @@ const avatarStyles = {
 
 export const Navbar = () => {
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = useState(auth.currentUser);
-  const { company: companyData, isLoading } = useAgency(
-    currentUser?.uid || null
-  );
+  const { session, signOut } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Listen for auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("Auth state changed:", user?.email);
-      setCurrentUser(user);
-    });
-
-    // Cleanup subscription
-    return () => unsubscribe();
-  }, []);
+    // Set loading to false once session is determined
+    setIsLoading(false);
+  }, [session]);
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
-      setCurrentUser(null);
+      await signOut();
       navigate("/login");
     } catch (error) {
       console.error("Error signing out:", error);
@@ -132,7 +121,7 @@ export const Navbar = () => {
           <ThemeSwitch />
         </NavbarItem>
         <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
-        {!currentUser && !isLoading && (
+        {!session && !isLoading && (
           <NavbarItem className="hidden md:flex">
             <Button
               as={Link}
@@ -182,28 +171,19 @@ export const Navbar = () => {
         {!isLoading ? (
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
-              {currentUser && companyData ? (
+              {session ? (
                 <Avatar
                   isBordered
                   as="button"
                   className="transition-transform bg-white"
                   style={avatarStyles}
                   color="warning"
-                  name={companyData.name || currentUser.email || ""}
+                  name={session.user?.email || ""}
                   size="sm"
-                  src={companyData.logo?.url}
+                  src={session.user?.user_metadata?.avatar_url || ""}
                   imgProps={{
                     className: "object-contain",
                   }}
-                />
-              ) : currentUser ? (
-                <Avatar
-                  isBordered
-                  as="button"
-                  className="transition-transform"
-                  color="warning"
-                  name={currentUser.email || ""}
-                  size="sm"
                 />
               ) : (
                 <Avatar
@@ -218,16 +198,13 @@ export const Navbar = () => {
                 />
               )}
             </DropdownTrigger>
-            {currentUser ? (
+            {session ? (
               <DropdownMenu aria-label="Profile Actions" variant="flat">
                 <DropdownItem key="profile" className="h-14 gap-2">
                   <p className="font-semibold">Signed in as</p>
                   <p className="font-semibold text-primary">
-                    {currentUser.email}
+                    {session.user?.email}
                   </p>
-                </DropdownItem>
-                <DropdownItem key="company_profile">
-                  Company Profile
                 </DropdownItem>
                 <DropdownItem key="settings">Settings</DropdownItem>
                 <DropdownItem key="help">Help & Support</DropdownItem>
